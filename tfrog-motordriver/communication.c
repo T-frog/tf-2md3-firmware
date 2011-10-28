@@ -503,13 +503,6 @@ int command_analyze( unsigned char *data, int len )
 		break;
 	case PARAM_pwm_max:
 		driver_param.PWM_max = i.integer;
-		//THEVA.GENERAL.PWM.HALF_PERIOD	= driver_param.PWM_max;
-		THEVA.GENERAL.PWM.DEADTIME	= 100;
-		for( j = 0; j < 3; j ++ )
-		{
-			THEVA.MOTOR[0].PWM[j].L = THEVA.GENERAL.PWM.HALF_PERIOD;
-			THEVA.MOTOR[1].PWM[j].L = THEVA.GENERAL.PWM.HALF_PERIOD;
-		}
 		break;
 	case PARAM_pwm_min:
 		driver_param.PWM_min = i.integer;
@@ -539,7 +532,8 @@ int command_analyze( unsigned char *data, int len )
 			}
 
       		printf("initialized\n\r" );
-			THEVA.GENERAL.PWM.HALF_PERIOD  = 2400;
+			THEVA.GENERAL.PWM.HALF_PERIOD  = 1200;
+			THEVA.GENERAL.PWM.DEADTIME	= 32;
 			controlPWM_config();
 			printf("PWM Period: %d\n\r", THEVA.GENERAL.PWM.HALF_PERIOD);
 			printf("PWM Deadtime: %d\n\r", THEVA.GENERAL.PWM.DEADTIME);

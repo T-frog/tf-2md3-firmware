@@ -66,7 +66,7 @@ typedef enum
 /* product */
 #define YP_PRODUCT_NAME "Yamabico Project - Spur"
 /* protocol */
-#define YP_PROTOCOL_NAME "YPP:04:04"
+#define YP_PROTOCOL_NAME "YPP:05:00"
 /* vendor */
 #define YP_VENDOR_NAME "Univ. of Tsukuba - Intelligent Robot Lab."
 

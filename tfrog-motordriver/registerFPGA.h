@@ -10,7 +10,7 @@ typedef volatile unsigned short TVREG;
 // 0x10-0x1F	Motor1 Control Registers
 // 0x20-0x2F	Motor2 Control Registers
 
-typedef struct _REG_GENERAL
+typedef volatile struct _REG_GENERAL
 {
 	TVREG ID;					// 0x0			FPGA識別用
 	TVREG OUTPUT_ENABLE;		// 0x1			モータ出力有効/無効
@@ -25,7 +25,7 @@ typedef struct _REG_GENERAL
 	TVREG Reserved1[4];			// 0xC-0xF		予約
 } REG_GENERAL;
 
-typedef struct _REG_MOTOR
+typedef volatile struct _REG_MOTOR
 {
 	TVREG ENCODER;				// 0x0			エンコーダ4逓倍アップダウンカウント値
 	TVREG Reserved0[2];			// 0x1-0x2		予約
@@ -42,7 +42,7 @@ typedef struct _REG_MOTOR
 	TVREG INVERT;				// 0xF			反転
 } REG_MOTOR;
 
-typedef struct _THEVA_REG{
+typedef volatile struct _THEVA_REG{
 	REG_GENERAL	GENERAL;		// 0x00
 	TVREG		Reserved0[16];	// 0x10-0x1F
 	REG_MOTOR	MOTOR[2];		// 0x20-0x3F

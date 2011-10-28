@@ -271,12 +271,12 @@ int main()
 
     // connect if needed
     VBus_Configure();
-
+/*
 	printf("sizeof(int) = %d\n\r", (int)sizeof(int) );
 	printf("sizeof(long int) = %d\n\r", (int)sizeof(long int) );
 	printf("sizeof(long) = %d\n\r", (int)sizeof(long) );
 	printf("sizeof(short) = %d\n\r", (int)sizeof(short) );
-
+*/
 	printf("SRAM init\n\r" );
 	SRAM_Init();
 

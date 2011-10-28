@@ -38,10 +38,10 @@ void controlPWM_config( void )
 	static unsigned short hall[2];
 	static int i, j;
 	
-	hall[0] = *(unsigned short*)&THEVA.MOTOR[0].ROT_DETECTER;
-	hall[1] = *(unsigned short*)&THEVA.MOTOR[1].ROT_DETECTER;
+	hall[0] = *(unsigned short*)&THEVA.MOTOR[1].ROT_DETECTER;
+	hall[1] = *(unsigned short*)&THEVA.MOTOR[0].ROT_DETECTER;
 	
-	PIO_Clear( &pinsLeds[USBD_LEDPOWER] );
+//	PIO_Clear( &pinsLeds[USBD_LEDPOWER] );
 	for( i = 0; i < 2; i ++ )
 	{
 	//	enc2phase[i] = 2000 / motor_param[i].enc_rev;
@@ -106,31 +106,32 @@ void controlPWM_config( void )
 			SinTB[i][j] = ival;
 		}
 	}
-	PIO_Set( &pinsLeds[USBD_LEDPOWER] );
+//	PIO_Set( &pinsLeds[USBD_LEDPOWER] );
 }
 
+
+static unsigned short enc[2];
+static unsigned short _enc[2];
+static unsigned short hall[2];
+static unsigned short _hall[2];
+//static int test = 0;
+static int i;
+static int init = 0;
+static int cnt = 0;
 //------------------------------------------------------------------------------
 /// PWM control interrupt (every PWM period) 20us/50us
 //------------------------------------------------------------------------------
 //void FIQ_PWMPeriod( const Pin *pPin )
 void FIQ_PWMPeriod( void )
 {
-	static unsigned short enc[2];
-	static unsigned short _enc[2];
-	static unsigned short hall[2];
-	static unsigned short _hall[2];
-	//static int test = 0;
-	static int i;
-	static int init = 0;
-	static int cnt = 0;
 
 //    AT91C_BASE_AIC->AIC_ICCR = 1 << AT91C_ID_IRQ0;
 
 	if( driver_param.servo_level < SERVO_LEVEL_TORQUE ) return;
 	//PIO_Clear( &pinsLeds[USBD_LEDPOWER] );
 
-	motor[0].enc = enc[0] = 0xFFFF - THEVA.MOTOR[0].ENCODER;
-	motor[1].enc = enc[1] = 0xFFFF - THEVA.MOTOR[1].ENCODER;
+	motor[0].enc = enc[0] = THEVA.MOTOR[0].ENCODER;
+	motor[1].enc = enc[1] = THEVA.MOTOR[1].ENCODER;
 
 	hall[0] = *(unsigned short*)&THEVA.MOTOR[0].ROT_DETECTER;
 	hall[1] = *(unsigned short*)&THEVA.MOTOR[1].ROT_DETECTER;
@@ -195,7 +196,7 @@ void FIQ_PWMPeriod( void )
 		static char v;
 		static char w;
 		
-		if( -20 < motor[i].vel && motor[i].vel < 20 )
+		//if( -20 < motor[i].vel && motor[i].vel < 20 )
 		{
 			u = v = w = 0;
 
@@ -234,18 +235,18 @@ void FIQ_PWMPeriod( void )
 		
 			// ƒ[ƒ“_ŒvŽZ
 		
-			/*if( w == -1 )
+			if( w == -1 )
 				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev     / 6;
 			else if( v == 1 )
 				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 2 / 6;
-			else */if( u == -1 )
+			else if( u == -1 )
 				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 3 / 6;
-			/*else if( w == 1 )
+			else if( w == 1 )
 				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 4 / 6;
 			else if( v == -1 )
 				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 5 / 6;
 			else if( u == 1 )
-				motor_param[i].enc0 = motor[i].pos;*/
+				motor_param[i].enc0 = motor[i].pos;
 		}
 	}
 
@@ -254,7 +255,7 @@ void FIQ_PWMPeriod( void )
 	_enc[0] = enc[0];
 	_enc[1] = enc[1];
 	
-	if( cnt ++ % 10 == 0 ) ISR_VelocityControl();
+	if( cnt ++ % 20 == 0 ) ISR_VelocityControl();
 
 	//PIO_Set( &pinsLeds[USBD_LEDPOWER] );
 	
