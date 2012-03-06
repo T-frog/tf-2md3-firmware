@@ -252,7 +252,7 @@ const CDCDSerialDriverConfigurationDescriptors configurationDescriptors = {
 };
 
 /// Language ID string descriptor
-const unsigned char languageIdStringDescriptor[] = {
+unsigned char languageIdStringDescriptor[] = {
 
     USBStringDescriptor_LENGTH(1),
     USBGenericDescriptor_STRING,
@@ -572,7 +572,7 @@ const CDCDSerialDriverConfigurationDescriptors otherSpeedDescriptorsHS = {
 #endif
 
 /// Product string descriptor
-const unsigned char productStringDescriptor[] = {
+unsigned char productStringDescriptor[] = {
 
     USBStringDescriptor_LENGTH(13),
     USBGenericDescriptor_STRING,
@@ -592,7 +592,7 @@ const unsigned char productStringDescriptor[] = {
 };
 
 /// List of string descriptors used by the device
-const unsigned char *stringDescriptors[] = {
+unsigned char *stringDescriptors[] = {
 
     languageIdStringDescriptor,
     productStringDescriptor,

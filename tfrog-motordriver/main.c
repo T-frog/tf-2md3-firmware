@@ -41,9 +41,11 @@
 #include <utility/trace.h>
 #include <string.h>
 #include <utility/led.h>
+#include <usb/common/core/USBStringDescriptor.h>
 #include <usb/device/cdc-serial/CDCDSerialDriver.h>
 #include <usb/device/cdc-serial/CDCDSerialDriverDescriptors.h>
 #include <pmc/pmc.h>
+#include <setjmp.h>
 
 #include "power.h"
 #include "controlPWM.h"
@@ -52,11 +54,35 @@
 #include "communication.h"
 
 
-extern int getStackPointer( void );
-extern int getIrqStackPointer( void );
+//extern int getStackPointer( void );
+//extern int getIrqStackPointer( void );
+
+int watchdog = 0;
+int velcontrol = 0;
 
 static const Pin pinsLeds[] = {PINS_LEDS};
 static const unsigned int numLeds = PIO_LISTSIZE(pinsLeds);
+
+extern unsigned char languageIdStringDescriptor[];
+extern USBDDriverDescriptors cdcdSerialDriverDescriptors;
+
+unsigned char manufacturerStringDescriptor2[64] = 
+{
+  USBStringDescriptor_LENGTH(0),
+  USBGenericDescriptor_STRING
+};
+unsigned char productStringDescriptor2[64] = 
+{
+  USBStringDescriptor_LENGTH(0),
+  USBGenericDescriptor_STRING
+};
+unsigned char *stringDescriptors2[3] = 
+{
+  languageIdStringDescriptor,
+  productStringDescriptor2,
+  manufacturerStringDescriptor2
+};
+
 
 //------------------------------------------------------------------------------
 //      Definitions
@@ -97,7 +123,7 @@ void SRAM_Init()
     // Enable corresponding PIOs
     PIO_Configure(pinsSram, PIO_LISTSIZE(pinsSram));
     
-	AT91C_BASE_SMC->SMC2_CSR[0] = 1 | AT91C_SMC2_WSEN | (0 << 8) | AT91C_SMC2_BAT | AT91C_SMC2_DBW_16 | (1 << 24) | (1 << 28);
+	AT91C_BASE_SMC->SMC2_CSR[0] = 1 | AT91C_SMC2_WSEN | (0 << 8) | AT91C_SMC2_BAT | AT91C_SMC2_DBW_16 | (0 << 24) | (1 << 28);
 }
 
 //------------------------------------------------------------------------------
@@ -136,7 +162,7 @@ static void VBus_Configure( void )
     ISR_Vbus(&pinVbus);   
 }
 
-int natoi( unsigned char *buf, int size )
+inline int natoi( unsigned char *buf, int size )
 {
 	int ret, i;
 	ret = 0;
@@ -155,7 +181,7 @@ int natoi( unsigned char *buf, int size )
 	}
 	return ret;
 }
-int nitoa( unsigned char *buf, int data, int len )
+inline int nitoa( unsigned char *buf, int data, int len )
 {
 	int i;
 	for( i = 0; i < len; i ++ ){
@@ -180,34 +206,7 @@ static void UsbDataReceived(unsigned int unused,
     // Check that data has been received successfully
     if (status == USBD_STATUS_SUCCESS) {
 		static int remain = 0;
-/*
-		unsigned short *freg = (void*)0x10000000;
-		unsigned short data;
-		int addr;
-
-		addr = 0;
-		if( received > 2 ){
-			addr = natoi( usbBuffer, 2 );
-			if( received > 7 ){
-				data = natoi( usbBuffer + 3, 4 );
-				freg[ addr ] = data;
-				usbBuffer[ received ++ ] = 'W';
-			}
-			usbBuffer[ received ++ ] = '[';
-			received += nitoa( usbBuffer + received, freg[ addr ], 4 );
-			usbBuffer[ received ++ ] = ']';
-			usbBuffer[ received ++ ] = '\n';
-			usbBuffer[ received ++ ] = '\n';
-		}
-*/
-/*
-		if( received > 1 ){
-			motor[0].ref.vel = natoi( usbBuffer, received - 1 );
-		}
-		received += nitoa( usbBuffer + received, motor[0].vel, 4 );
-		usbBuffer[ received ++ ] = '\n';
-		usbBuffer[ received ++ ] = '\n';
-*/
+		
 		//LED_Clear(USBD_LEDUSB);
 		remain = data_fetch( usbBuffer, received + remain );
 
@@ -215,6 +214,7 @@ static void UsbDataReceived(unsigned int unused,
 	                          DATABUFFERSIZE - remain,
 	                          (TransferCallback) UsbDataReceived,
 	                          0);
+		watchdog = 0;
 		//LED_Set(USBD_LEDUSB);
 /*
             TRACE_ERROR(
@@ -245,8 +245,25 @@ static void UsbDataReceived(unsigned int unused,
 //------------------------------------------------------------------------------
 int main()
 {
-	short analog[9];
+	short analog[16];
 	short enc_buf2[2];
+
+	if( (AT91C_BASE_RSTC->RSTC_RSR & AT91C_RSTC_RSTTYP) == AT91C_RSTC_RSTTYP_WATCHDOG || 
+		(AT91C_BASE_RSTC->RSTC_RSR & AT91C_RSTC_RSTTYP) == AT91C_RSTC_RSTTYP_BROWNOUT || 
+		(AT91C_BASE_RSTC->RSTC_RSR & AT91C_RSTC_RSTTYP) == AT91C_RSTC_RSTTYP_WAKEUP || 
+		(AT91C_BASE_RSTC->RSTC_RSR & AT91C_RSTC_RSTTYP) == AT91C_RSTC_RSTTYP_POWERUP )
+	{
+		register int i;
+
+	    LED_Configure(USBD_LEDPOWER);
+		PIO_Clear(&pinsLeds[USBD_LEDPOWER]);
+
+		AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
+		for( i = 80000 / 4 - 1; i >= 0; i -- ) ((long *)0x00200000)[i] = 0;
+		AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_PROCRST | AT91C_RSTC_PERRST | AT91C_RSTC_EXTRST;
+	}
+
+	AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST;
 
     TRACE_CONFIGURE(DBGU_STANDARD, 230400, BOARD_MCK);
     printf("-- Locomotion Board %s --\n\r", SOFTPACK_VERSION);
@@ -260,9 +277,32 @@ int main()
     PIO_Configure(pins, PIO_LISTSIZE(pins));
 
 	// Disable PWM Output
-	PIO_Set( &pinPWMEnable );
+    PIO_Set( &pinPWMEnable );
 
+    
     // BOT driver initialization
+    {
+		const char manufacturer[] = { "T-frog project" };
+		const char product[] = { "T-frog Driver i-Cart2" };
+		int i;
+
+		manufacturerStringDescriptor2[0] = USBStringDescriptor_LENGTH(strlen(manufacturer));
+		productStringDescriptor2[0] = USBStringDescriptor_LENGTH(strlen(product));
+
+		for( i = 0; i < strlen(manufacturer); i ++ )
+		{
+			manufacturerStringDescriptor2[ i * 2 + 2 ] = manufacturer[i];
+			manufacturerStringDescriptor2[ i * 2 + 2 + 1 ] = 0;
+		}
+		for( i = 0; i < strlen(product); i ++ )
+		{
+			productStringDescriptor2[ i * 2 + 2 ] = product[i];
+			productStringDescriptor2[ i * 2 + 2 + 1 ] = 0;
+		}
+    }
+    cdcdSerialDriverDescriptors.pFsDevice->iManufacturer = 2;
+    cdcdSerialDriverDescriptors.pStrings = (const unsigned char **)stringDescriptors2;
+    cdcdSerialDriverDescriptors.numStrings = 3;
     CDCDSerialDriver_Initialize();
 
     LED_Configure(USBD_LEDPOWER);
@@ -280,6 +320,10 @@ int main()
 	printf("SRAM init\n\r" );
 	SRAM_Init();
 
+	// PWM Generator init
+	THEVA.GENERAL.PWM.COUNT_ENABLE = 1;
+	THEVA.GENERAL.OUTPUT_ENABLE    = 1;
+
 	printf("PWM control init\n\r" );
 	// Configure PWM control
 	controlPWM_init();
@@ -292,8 +336,10 @@ int main()
 	motor[0].pos = motor[1].pos = 0;
 	driver_param.cnt_updated = 0;
 	driver_param.watchdog = 0;
-	driver_param.watchdog_limit = 500;
+	driver_param.watchdog_limit = 600;
 	driver_param.servo_level = SERVO_LEVEL_STOP;
+	driver_param.admask = 0;
+	driver_param.io_mask = 0;
 
 	motor[0].ref.vel = 0;
 	motor[1].ref.vel = 0;
@@ -308,38 +354,19 @@ int main()
 		memcpy( &driver_param, (int*)( 0x0017FF00 ), sizeof(driver_param) );
 		memcpy( motor_param, (int*)( 0x0017FF00 + sizeof(driver_param) ), sizeof(motor_param) );
 	}
-	
-	// Watchdog Enable
-//	AT91C_BASE_WDTC->WDTC_WDMR = 102 /*0.4s*/ | AT91C_WDTC_WDRSTEN | AT91C_WDTC_WDRPROC | ( 102 << 16 ) | AT91C_WDTC_WDDBGHLT | AT91C_WDTC_WDIDLEHLT;
 
-    //		PIO_Clear(&pinsLeds[USBD_LEDOTHER]);
-    //		PIO_Set(&pinsLeds[USBD_LEDOTHER]);
+//	PIO_Clear(&pinsLeds[USBD_LEDOTHER]);
+//	PIO_Set(&pinsLeds[USBD_LEDOTHER]);
     // Driver loop
     while (1) {
-		static int i;
+		//static int i;
 		//int j;
 
-//		AT91C_BASE_WDTC->WDTC_WDCR = 1;
 		data_analyze( );
-		if( ( i ++ ) % 50000 == 0 )
+		if( watchdog == 0 )
 		{
-		//	int i;
-/*			printf("SP 0x%x 0x%x\n\r", getStackPointer(), getIrqStackPointer() );
-			for( i = 0; i < 2; i ++ )
-			{
-				printf(" Motor %d: iref=%d vel=%d vref=%d pos=%d(%d)  %d\n\r", 
-						i, motor[i].ref.rate, motor[i].vel, motor[i].ref.vel, motor[i].pos, motor_param[i].enc0, motor[i].error_integ );
-				printf(" Hall: %d %d %d   %d\n", 
-						(THEVA.MOTOR[i].ROT_DETECTER.HALL & 1)!=0, 
-						(THEVA.MOTOR[i].ROT_DETECTER.HALL & 2)!=0, 
-						(THEVA.MOTOR[i].ROT_DETECTER.HALL & 4)!=0, 
-						(THEVA.MOTOR[i].ROT_DETECTER.HALL & 0x80)!=0  );
-				for( j = 0; j < 3; j ++ )
-				{
-					printf( "  %dH:%d L:%d\n",j,THEVA.MOTOR[i].PWM[j].H,THEVA.MOTOR[i].PWM[j].L );
-				}
-			}
-			printf("\n\r" );*/
+			AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
+			if( driver_param.servo_level >= SERVO_LEVEL_TORQUE ) watchdog = 1;
 		}
 		if( connecting ){
 		    if(USBD_GetState() < USBD_STATE_CONFIGURED) continue;
@@ -360,7 +387,9 @@ int main()
 			//static long cnt = 0;
 			/* 約5msおき */
 			
-			mask = 0;//analog_mask;
+			mask = driver_param.admask;//analog_mask;
+			if( driver_param.io_mask ) mask |= 0x100;
+			analog[8] = ( 15 << 12 ) | THEVA.PORT[0];
 			data_send( ( short )( ( short )motor[0].enc_buf - ( short )enc_buf2[0] ),
 							( short )( ( short )motor[1].enc_buf - ( short )enc_buf2[1] ), 
 							motor[0].ref.rate_buf, motor[1].ref.rate_buf, analog, mask );
@@ -369,7 +398,12 @@ int main()
 			enc_buf2[1] = motor[1].enc_buf;
 
 			driver_param.cnt_updated = 0;
+		}
 
+		if( velcontrol == 1 )
+		{
+			velcontrol = 0;
+			ISR_VelocityControl();
 		}
     }
 }

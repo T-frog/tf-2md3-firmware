@@ -190,5 +190,8 @@
 //#define PIN_PWM_CYCLE     {1 << 19, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_PERIPH_A, PIO_DEFAULT}
 
 
+#define RAMFUNC __attribute__ ((long_call, section (".ramfunc")))
+
+
 #endif //#ifndef BOARD_H
 

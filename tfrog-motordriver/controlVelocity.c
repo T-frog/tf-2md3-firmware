@@ -11,6 +11,7 @@
 #include <utility/led.h>
 #include <usb/device/cdc-serial/CDCDSerialDriver.h>
 #include <usb/device/cdc-serial/CDCDSerialDriverDescriptors.h>
+#include <string.h>
 
 #include "controlPWM.h"
 #include "controlVelocity.h"
@@ -20,6 +21,7 @@ MotorState	motor[2];
 MotorParam	motor_param[2];
 DriverParam	driver_param;
 
+extern int watchdog;
 
 static const Pin pinsLeds[] = {PINS_LEDS};
 static const unsigned int numLeds = PIO_LISTSIZE(pinsLeds);
@@ -45,6 +47,8 @@ void ISR_VelocityControl( )
 	
 //	status = AT91C_BASE_TC0->TC_SR;
 
+	watchdog = 0;
+
 	enc[0] = motor[0].enc;
 	enc[1] = motor[1].enc;
 
@@ -53,11 +57,11 @@ void ISR_VelocityControl( )
 
 	if( driver_param.servo_level >= SERVO_LEVEL_TORQUE )
 	{										// servo_level 2(toque enable)
-		int toq[2], out_pwm[2];
+		static int toq[2], out_pwm[2];
 
 		if( driver_param.servo_level >= SERVO_LEVEL_VELOCITY )
 		{									// servo_level 3 (speed enable)
-			int toq_pi[2], s_a, s_b;
+			static int toq_pi[2], s_a, s_b;
 			for ( i = 0; i < 2; i++ )
 			{
 				motor[i].ref.vel_interval ++;
@@ -65,7 +69,7 @@ void ISR_VelocityControl( )
 				{
 					static int vel_buf[2] = { 0, 0 };
 
-					motor[i].ref.vel_buf = motor[i].ref.vel;
+					motor[i].ref.vel_buf = -motor[i].ref.vel;
 					motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - vel_buf[i] ) / motor[i].ref.vel_interval;
 
 					vel_buf[i] = motor[i].ref.vel_buf;
@@ -77,7 +81,7 @@ void ISR_VelocityControl( )
 			for ( i = 0; i < 2; i++ )
 			{
 				// 積分
-				error[i] = motor[i].ref.vel - vel[i];
+				error[i] = motor[i].ref.vel_buf - vel[i];
 				motor[i].error_integ += error[i];
 				if( motor[i].error_integ > driver_param.integ_max ) 
 				{
@@ -98,10 +102,10 @@ void ISR_VelocityControl( )
 
 			toq[0] = ( s_a * driver_param.Kdynamics[0] 
 					 + s_b * driver_param.Kdynamics[2]
-					 + motor[0].ref.vel * driver_param.Kdynamics[4] ) / 256;
+					 + motor[0].ref.vel_buf * driver_param.Kdynamics[4] ) / 256;
 			toq[1] = ( s_b * driver_param.Kdynamics[1]
 					 + s_a * driver_param.Kdynamics[3]
-					 + motor[1].ref.vel * driver_param.Kdynamics[5] ) / 256;
+					 + motor[1].ref.vel_buf * driver_param.Kdynamics[5] ) / 256;
 		}
 		else
 		{									// servo_level 2(toque enable)
@@ -133,6 +137,7 @@ void ISR_VelocityControl( )
 				toq[i] = motor_param[i].torque_min;
 			}
 
+
 			// トルク→pwm変換
 			out_pwm[i] = ( toq[i] * motor_param[i].Kcurrent + vel[i] * motor_param[i].Kvolt ) / 65536;
 
@@ -153,15 +158,31 @@ void ISR_VelocityControl( )
 
 		driver_param.cnt_updated ++;
 		driver_param.watchdog ++;
-		if( driver_param.watchdog > driver_param.watchdog_limit )
+
+		if( ( driver_param.servo_level >= SERVO_LEVEL_VELOCITY && driver_param.watchdog > driver_param.watchdog_limit ) ||
+			( driver_param.servo_level < SERVO_LEVEL_VELOCITY && driver_param.watchdog > driver_param.watchdog_limit * 8 ) )
 		{
-			driver_param.watchdog = 0;
-			driver_param.watchdog_limit = 200;
+			watchdog = 0;
 			driver_param.cnt_updated = 0;
+			driver_param.watchdog = 0;
+			driver_param.watchdog_limit = 600;
 			driver_param.servo_level = SERVO_LEVEL_STOP;
+			driver_param.admask = 0;
+			driver_param.io_mask = 0;
+
+			motor[0].pos = motor[1].pos = 0;
+			motor_param[0].enc_rev = 800;
+			motor_param[1].enc_rev = 800;
+			if( *(int*)( 0x0017FF00 + sizeof(driver_param) + sizeof(motor_param) ) == 0xAACC )
+			{
+				memcpy( &driver_param, (int*)( 0x0017FF00 ), sizeof(driver_param) );
+				memcpy( motor_param, (int*)( 0x0017FF00 + sizeof(driver_param) ), sizeof(motor_param) );
+			}
+
 			THEVA.GENERAL.PWM.COUNT_ENABLE = 0;
 			THEVA.GENERAL.OUTPUT_ENABLE = 0;
 			PIO_Set( &pinPWMEnable );
+			return;
     		//AIC_DisableIT(AT91C_ID_TC0);
 		}
 		if( driver_param.cnt_updated == 5 )
@@ -195,7 +216,7 @@ void ISR_VelocityControl( )
 //------------------------------------------------------------------------------
 /// Configure velocity control loop
 //------------------------------------------------------------------------------
-void controlVelocity_init( )
+inline void controlVelocity_init( )
 {
     // Configure timer 0
 /*

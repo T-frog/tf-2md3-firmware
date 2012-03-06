@@ -45,10 +45,10 @@ BOARD = theva-rev1
 # TRACE_LEVEL_ERROR      2
 # TRACE_LEVEL_FATAL      1
 # TRACE_LEVEL_NO_TRACE   0
-TRACE_LEVEL = 3
+TRACE_LEVEL = 2
 
 # Optimization level, put in comment for debugging
-OPTIMIZATION = -O4 -mcpu=arm7tdmi
+OPTIMIZATION = -O6 -mcpu=arm7tdmi -fomit-frame-pointer -funroll-loops
 
 # AT91 library directory
 AT91LIB = ../at91lib
@@ -80,7 +80,7 @@ OBJCOPY = $(CROSS_COMPILE)objcopy
 INCLUDES = -I$(AT91LIB)/boards/$(BOARD) -I$(AT91LIB)/peripherals 
 INCLUDES += -I$(AT91LIB)/components -I$(AT91LIB)/usb/device -I$(AT91LIB)
 
-CFLAGS = -Wall -mlong-calls -ffunction-sections
+CFLAGS = -Wall -mlong-calls #-ffunction-sections
 CFLAGS += $(OPTIMIZATION) $(INCLUDES) -D$(CHIP) -DTRACE_LEVEL=$(TRACE_LEVEL)
 ASFLAGS = $(OPTIMIZATION) $(INCLUDES) -D$(CHIP) -D__ASSEMBLY__
 LDFLAGS = $(OPTIMIZATION) -nostartfiles -Wl,--gc-sections -L/usr/local/arm/arm-elf/lib

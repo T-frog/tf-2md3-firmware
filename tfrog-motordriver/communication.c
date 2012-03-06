@@ -24,7 +24,7 @@ int r_receive_buf = 0;
 unsigned long send_buf_pos = 0;
 extern const Pin pinPWMEnable;
 
-void send( char *buf )
+inline void send( char *buf )
 {
 	for( ; *buf; buf ++ )
 	{
@@ -33,7 +33,7 @@ void send( char *buf )
 	}
 }
 
-void flush( void )
+inline void flush( void )
 {
 	static int itry = 0;
 	if( send_buf_pos == 0 ) return;
@@ -64,7 +64,7 @@ void flush( void )
 /**
  * @brief エンコード
  */
-int encode( unsigned char *src, int len, unsigned char *dst, int buf_max )
+inline int encode( unsigned char *src, int len, unsigned char *dst, int buf_max )
 {
 	static int pos, s_pos, w_pos;
 	static unsigned short b;
@@ -108,7 +108,7 @@ int encode( unsigned char *src, int len, unsigned char *dst, int buf_max )
  * @param buf_max[in] デコード後のデータバッファのサイズ
  * @return デコード後のバイト数
  */
-int decord( unsigned char *src, int len, unsigned char *dst, int buf_max )
+inline int decord( unsigned char *src, int len, unsigned char *dst, int buf_max )
 {
 	static unsigned short dat, b;
 //	static int pos;
@@ -151,7 +151,7 @@ int decord( unsigned char *src, int len, unsigned char *dst, int buf_max )
 }
 
 /* オドメトリデータの送信 */
-int data_send( short cnt1, short cnt2, short pwm1, short pwm2, short *analog, unsigned short analog_mask )
+inline int data_send( short cnt1, short cnt2, short pwm1, short pwm2, short *analog, unsigned short analog_mask )
 {
 	static unsigned char data[34];
 
@@ -190,7 +190,7 @@ int data_send( short cnt1, short cnt2, short pwm1, short pwm2, short *analog, un
 	return encode_len;
 }
 
-int data_fetch( unsigned char *data, int len )
+inline int data_fetch( unsigned char *data, int len )
 {
 	unsigned char *data_begin;
 
@@ -217,7 +217,7 @@ int data_fetch( unsigned char *data, int len )
 	return len;
 }
 
-int data_analyze( )
+inline int data_analyze( )
 {
 	unsigned char line[64];
 	unsigned char *data;
@@ -282,7 +282,7 @@ int data_analyze( )
 
 // //////////////////////////////////////////////////
 /* 受信したYPSpur拡張コマンドの解析 */
-int extended_command_analyze( char *data )
+inline int extended_command_analyze( char *data )
 {
 //	char line[64];
 	static int i;
@@ -317,6 +317,7 @@ int extended_command_analyze( char *data )
 				tmp |= 1;
 		}
 //		analog_mask = tmp;
+		driver_param.admask = tmp;
 		send( data );
 		send( "\n00P\n\n" );
 	}
@@ -334,6 +335,7 @@ int extended_command_analyze( char *data )
 		}
 //		PFC.PEIOR.WORD  = ( PFC.PEIOR.WORD  & 0xFFF0 ) | ( ( tmp & 0x0F ) << 0 );
 //		PFC.PBIOR.WORD  = ( PFC.PBIOR.WORD  & 0xFFC3 ) | ( ( tmp & 0xF0 ) >> 2 );
+		driver_param.io_dir = tmp;
 		send( data );
 		send( "\n00P\n\n" );
 	}
@@ -364,10 +366,12 @@ int extended_command_analyze( char *data )
 		if( data[5] == '1' )
 		{
 //			dio_enable = 1;
+			driver_param.io_mask = 0xFF;
 		}
 		else
 		{
 //			dio_enable = 0;
+			driver_param.io_mask = 0;
 		}
 		send( data );
 		send( "\n00P\n\n" );
@@ -435,9 +439,9 @@ int extended_command_analyze( char *data )
 
 // //////////////////////////////////////////////////
 /* 受信したコマンドの解析 */
-int command_analyze( unsigned char *data, int len )
+inline int command_analyze( unsigned char *data, int len )
 {
-	static int imotor, j;
+	static int imotor;
 
 	static Integer4 i;
 
@@ -531,16 +535,16 @@ int command_analyze( unsigned char *data, int len )
 				while( 1 );
 			}
 
-      		printf("initialized\n\r" );
-			THEVA.GENERAL.PWM.HALF_PERIOD  = 1200;
-			THEVA.GENERAL.PWM.DEADTIME	= 32;
+      	//	printf("initialized\n\r" );
 			controlPWM_config();
-			printf("PWM Period: %d\n\r", THEVA.GENERAL.PWM.HALF_PERIOD);
-			printf("PWM Deadtime: %d\n\r", THEVA.GENERAL.PWM.DEADTIME);
 
 			THEVA.GENERAL.PWM.COUNT_ENABLE = 1;
 			THEVA.GENERAL.OUTPUT_ENABLE    = 1;
+
 			PIO_Clear( &pinPWMEnable );
+		//	printf("PWM Period: %d\n\r", THEVA.GENERAL.PWM.HALF_PERIOD);
+		//	printf("PWM Deadtime: %d\n\r", THEVA.GENERAL.PWM.DEADTIME);
+
     	//	AIC_EnableIT(AT91C_ID_TC0);
 		}
 		if( driver_param.servo_level < SERVO_LEVEL_VELOCITY && i.integer >= SERVO_LEVEL_VELOCITY )
@@ -554,8 +558,12 @@ int command_analyze( unsigned char *data, int len )
 		driver_param.watchdog_limit = 0;
 		break;
 	case PARAM_io_dir:
+		driver_param.io_dir = i.integer;
 		break;
 	case PARAM_io_data:
+		break;
+	case PARAM_ad_mask:
+		driver_param.admask = i.integer;
 		break;
 /*
 	case PARAM_enc_rev:

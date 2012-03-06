@@ -11,7 +11,7 @@
 	@param b [in] Input value B
 	@return A*B
  */
-fixp4 fp4mulf( fixp4 a, fixp4 b )
+inline fixp4 fp4mulf( fixp4 a, fixp4 b )
 {
 	return (fixp4)( ( (long long) a * b ) / FP4_ONE );
 }
@@ -22,7 +22,7 @@ fixp4 fp4mulf( fixp4 a, fixp4 b )
 	@param b [in] Input value B
 	@return A*B
  */
-fixp4 fp4mul( fixp4 a, fixp4 b )
+inline fixp4 fp4mul( fixp4 a, fixp4 b )
 {
 	long long y;
 
@@ -40,7 +40,7 @@ fixp4 fp4mul( fixp4 a, fixp4 b )
 	@param b [in] Input value B
 	@return A/B
  */
-fixp4 fp4div( fixp4 a, fixp4 b )
+inline fixp4 fp4div( fixp4 a, fixp4 b )
 {
 	return (fixp4)( ( (long long)a * FP4_ONE ) / b );
 }
@@ -50,7 +50,7 @@ fixp4 fp4div( fixp4 a, fixp4 b )
 	@param a [in] Input value A
 	@return A expressed in fixed point
  */
-fixp4 double2fp4( double a )
+inline fixp4 double2fp4( double a )
 {
 	return (fixp4)( a * FP4_MUL + 0.5 );
 }
@@ -60,7 +60,7 @@ fixp4 double2fp4( double a )
 	@param a [in] Input value A
 	@return A expressed in fixed point
  */
-fixp4 int2fp4( int a )
+inline fixp4 int2fp4( int a )
 {
 	return (fixp4)( a * FP4_ONE );
 }
@@ -70,7 +70,7 @@ fixp4 int2fp4( int a )
 	@param a [in] Input value A
 	@return A expressed in double
  */
-double fp42double( fixp4 a )
+inline double fp42double( fixp4 a )
 {
 	return (double)a * FP4_DIV;
 }

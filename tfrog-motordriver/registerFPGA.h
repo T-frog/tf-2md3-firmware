@@ -46,7 +46,7 @@ typedef volatile struct _THEVA_REG{
 	REG_GENERAL	GENERAL;		// 0x00
 	TVREG		Reserved0[16];	// 0x10-0x1F
 	REG_MOTOR	MOTOR[2];		// 0x20-0x3F
-	TVREG		Reserved1[63];	// 0x40-0x6F
+	TVREG		Reserved1[48];	// 0x40-0x6F
 	TVREG		PORT[16];		// 0x70-0x7F
 } THEVA_REG;
 

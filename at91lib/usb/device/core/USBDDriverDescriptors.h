@@ -60,7 +60,7 @@
 typedef struct {
 
     /// Pointer to the full-speed device descriptor.
-    const USBDeviceDescriptor *pFsDevice;
+    USBDeviceDescriptor *pFsDevice;
     /// Pointer to the full-speed configuration descriptor.
     const USBConfigurationDescriptor *pFsConfiguration;
     /// Pointer to the full-speed qualifier descriptor.

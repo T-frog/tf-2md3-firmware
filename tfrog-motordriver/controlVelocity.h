@@ -26,6 +26,7 @@ typedef struct _MotorState
 typedef struct _MotorParam
 {
 	unsigned short	enc_rev;	// count/rev
+	unsigned short	enc_drev[6];
 	int				enc0;		// count
 	int				vel_max;	// count/ms
 	int				Kcurrent;
@@ -52,6 +53,9 @@ typedef struct _DriverParam
 	unsigned short	watchdog_limit;
 	unsigned short	watchdog;
 	unsigned char	cnt_updated;
+	unsigned short	admask;
+	unsigned short	io_dir;
+	unsigned short	io_mask;
 } DriverParam;
 
 extern MotorState	motor[2];
@@ -59,7 +63,7 @@ extern MotorParam	motor_param[2];
 extern DriverParam	driver_param;
 
 void controlVelocity_init( );
-void ISR_VelocityControl( );
+RAMFUNC void ISR_VelocityControl( );
 
 #endif
 

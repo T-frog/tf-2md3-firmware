@@ -51,7 +51,8 @@ typedef enum
 	PARAM_servo = 64,
 	PARAM_watch_dog_limit,
 	PARAM_io_dir = 96,
-	PARAM_io_data
+	PARAM_io_data,
+	PARAM_ad_mask
 } YPSpur_loco_param;
 
 
