@@ -42,6 +42,10 @@ void controlPWM_config( )
 {
 	static unsigned short hall[2];
 	static int i, j;
+	static unsigned short bwatchdog;
+
+	bwatchdog = driver_param.enable_watchdog;
+	driver_param.enable_watchdog = 0;
 	
 	hall[0] = *(unsigned short*)&THEVA.MOTOR[0].ROT_DETECTER;
 	hall[1] = *(unsigned short*)&THEVA.MOTOR[1].ROT_DETECTER;
@@ -124,12 +128,14 @@ void controlPWM_config( )
 			else if( ival < -4096 ) ival = -4096;
 		
 			SinTB[i][j] = ival;
+			driver_param.watchdog = 0;
 		}
 		for( j = 0; j < motor_param[i].enc_rev/2; j ++ )
 		{
 			SinTB[i][j+motor_param[i].enc_rev/2] = -SinTB[i][j];
 		}
 	}
+	driver_param.enable_watchdog = bwatchdog;
 //	PIO_Set( &pinsLeds[USBD_LEDPOWER] );
 }
 

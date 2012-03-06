@@ -47,7 +47,36 @@ void ISR_VelocityControl( )
 	
 //	status = AT91C_BASE_TC0->TC_SR;
 
-	watchdog = 0;
+
+	if( driver_param.enable_watchdog )
+	{
+		driver_param.watchdog ++;
+
+		if( driver_param.watchdog == driver_param.watchdog_limit )
+		{
+			driver_param.enable_watchdog = 0;
+			driver_param.cnt_updated = 0;
+			driver_param.watchdog_limit = 600;
+			driver_param.servo_level = SERVO_LEVEL_STOP;
+			driver_param.admask = 0;
+			driver_param.io_mask = 0;
+
+			motor[0].pos = motor[1].pos = 0;
+			motor_param[0].enc_rev = 800;
+			motor_param[1].enc_rev = 800;
+			if( *(int*)( 0x0017FF00 + sizeof(driver_param) + sizeof(motor_param) ) == 0xAACC )
+			{
+				memcpy( &driver_param, (int*)( 0x0017FF00 ), sizeof(driver_param) );
+				memcpy( motor_param, (int*)( 0x0017FF00 + sizeof(driver_param) ), sizeof(motor_param) );
+			}
+
+			THEVA.GENERAL.PWM.COUNT_ENABLE = 0;
+			THEVA.GENERAL.OUTPUT_ENABLE = 0;
+			PIO_Set( &pinPWMEnable );
+			return;
+			//AIC_DisableIT(AT91C_ID_TC0);
+		}
+	}
 
 	enc[0] = motor[0].enc;
 	enc[1] = motor[1].enc;
@@ -61,6 +90,7 @@ void ISR_VelocityControl( )
 
 		if( driver_param.servo_level >= SERVO_LEVEL_VELOCITY )
 		{									// servo_level 3 (speed enable)
+
 			static int toq_pi[2], s_a, s_b;
 			for ( i = 0; i < 2; i++ )
 			{
@@ -157,34 +187,6 @@ void ISR_VelocityControl( )
 
 
 		driver_param.cnt_updated ++;
-		driver_param.watchdog ++;
-
-		if( ( driver_param.servo_level >= SERVO_LEVEL_VELOCITY && driver_param.watchdog > driver_param.watchdog_limit ) ||
-			( driver_param.servo_level < SERVO_LEVEL_VELOCITY && driver_param.watchdog > driver_param.watchdog_limit * 8 ) )
-		{
-			watchdog = 0;
-			driver_param.cnt_updated = 0;
-			driver_param.watchdog = 0;
-			driver_param.watchdog_limit = 600;
-			driver_param.servo_level = SERVO_LEVEL_STOP;
-			driver_param.admask = 0;
-			driver_param.io_mask = 0;
-
-			motor[0].pos = motor[1].pos = 0;
-			motor_param[0].enc_rev = 800;
-			motor_param[1].enc_rev = 800;
-			if( *(int*)( 0x0017FF00 + sizeof(driver_param) + sizeof(motor_param) ) == 0xAACC )
-			{
-				memcpy( &driver_param, (int*)( 0x0017FF00 ), sizeof(driver_param) );
-				memcpy( motor_param, (int*)( 0x0017FF00 + sizeof(driver_param) ), sizeof(motor_param) );
-			}
-
-			THEVA.GENERAL.PWM.COUNT_ENABLE = 0;
-			THEVA.GENERAL.OUTPUT_ENABLE = 0;
-			PIO_Set( &pinPWMEnable );
-			return;
-    		//AIC_DisableIT(AT91C_ID_TC0);
-		}
 		if( driver_param.cnt_updated == 5 )
 		{
 		//	static long cnt = 0;

@@ -52,6 +52,7 @@ typedef struct _DriverParam
 	YPSpur_servo_level servo_level;
 	unsigned short	watchdog_limit;
 	unsigned short	watchdog;
+	unsigned short	enable_watchdog;
 	unsigned char	cnt_updated;
 	unsigned short	admask;
 	unsigned short	io_dir;

@@ -461,7 +461,6 @@ inline int command_analyze( unsigned char *data, int len )
 	case PARAM_w_ref:
 		motor[imotor].ref.vel = i.integer;
 		motor[imotor].ref.vel_changed = 1;
-		driver_param.watchdog = 0;
 		break;
 	case PARAM_p_ki:
 		motor_param[imotor].Kcurrent = i.integer;
@@ -555,7 +554,9 @@ inline int command_analyze( unsigned char *data, int len )
 		driver_param.servo_level = i.integer;
 		break;
 	case PARAM_watch_dog_limit:
-		driver_param.watchdog_limit = 0;
+		driver_param.watchdog_limit = i.integer;
+		driver_param.watchdog = 0;
+		driver_param.enable_watchdog = 1;
 		break;
 	case PARAM_io_dir:
 		driver_param.io_dir = i.integer;
@@ -571,8 +572,9 @@ inline int command_analyze( unsigned char *data, int len )
 		motor_param[1].changed = 1;
 */
 	default:
-		break;
+		return 0;
 	}
+	driver_param.watchdog = 0;
 	return 0;
 }
 

@@ -124,7 +124,7 @@ const USBDeviceDescriptor deviceDescriptor = {
     CDCDSerialDriverDescriptors_VENDORID,
     CDCDSerialDriverDescriptors_PRODUCTID,
     CDCDSerialDriverDescriptors_RELEASE,
-    0, // No string descriptor for manufacturer
+    2, // string descriptor for manufacturer
     1, // Index of product string descriptor is #1
     0, // No string descriptor for serial number
     1 // Device has 1 possible configuration

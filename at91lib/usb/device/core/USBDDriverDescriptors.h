@@ -76,7 +76,7 @@ typedef struct {
     /// Pointer to the high-speed other speed configuration descriptor.
     const USBConfigurationDescriptor *pHsOtherSpeed;
     /// Pointer to the list of string descriptors.
-    const unsigned char **pStrings;
+    unsigned char **pStrings;
     /// Number of string descriptors in list.
     unsigned char numStrings;
 

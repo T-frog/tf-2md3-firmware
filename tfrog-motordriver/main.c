@@ -214,7 +214,6 @@ static void UsbDataReceived(unsigned int unused,
 	                          DATABUFFERSIZE - remain,
 	                          (TransferCallback) UsbDataReceived,
 	                          0);
-		watchdog = 0;
 		//LED_Set(USBD_LEDUSB);
 /*
             TRACE_ERROR(
@@ -336,6 +335,7 @@ int main()
 	motor[0].pos = motor[1].pos = 0;
 	driver_param.cnt_updated = 0;
 	driver_param.watchdog = 0;
+	driver_param.enable_watchdog = 0;
 	driver_param.watchdog_limit = 600;
 	driver_param.servo_level = SERVO_LEVEL_STOP;
 	driver_param.admask = 0;
@@ -348,6 +348,8 @@ int main()
 
 	motor_param[0].enc_rev = 800;
 	motor_param[1].enc_rev = 800;
+
+	watchdog = 1;
 	
 	if( *(int*)( 0x0017FF00 + sizeof(driver_param) + sizeof(motor_param) ) == 0xAACC )
 	{
