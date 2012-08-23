@@ -35,6 +35,9 @@ static const Pin pinPWMEnable = PIN_PWM_ENABLE;
 short SinTB[2][4096];
 int phase_offset[2][2];
 int phase90[2];
+int PWM_abs_max = 0;
+int PWM_abs_min = 0;
+int PWM_center = 0;
 
 extern int velcontrol;
 
@@ -43,6 +46,8 @@ void controlPWM_config( )
 	static unsigned short hall[2];
 	static int i, j;
 	static unsigned short bwatchdog;
+	int PWM_resolution;
+	int deadtime;
 
 	bwatchdog = driver_param.enable_watchdog;
 	driver_param.enable_watchdog = 0;
@@ -50,8 +55,15 @@ void controlPWM_config( )
 	hall[0] = *(unsigned short*)&THEVA.MOTOR[0].ROT_DETECTER;
 	hall[1] = *(unsigned short*)&THEVA.MOTOR[1].ROT_DETECTER;
 	
-	THEVA.GENERAL.PWM.HALF_PERIOD  = 1200;
-	THEVA.GENERAL.PWM.DEADTIME	= 36;
+	PWM_resolution = 1200;
+	deadtime = 36;
+	THEVA.GENERAL.PWM.HALF_PERIOD = PWM_resolution;
+	THEVA.GENERAL.PWM.DEADTIME	  = deadtime;
+
+	PWM_abs_max = PWM_resolution - deadtime - 1;
+	PWM_abs_min = deadtime + 1;
+	PWM_center  = PWM_resolution / 2;
+
 
 //	PIO_Clear( &pinsLeds[USBD_LEDPOWER] );
 	for( i = 0; i < 2; i ++ )
@@ -61,9 +73,9 @@ void controlPWM_config( )
 		THEVA.MOTOR[i].PWM[0].H = 0;
 		THEVA.MOTOR[i].PWM[1].H = 0;
 		THEVA.MOTOR[i].PWM[2].H = 0;
-		THEVA.MOTOR[i].PWM[0].L = driver_param.PWM_max;
-		THEVA.MOTOR[i].PWM[1].L = driver_param.PWM_max;
-		THEVA.MOTOR[i].PWM[2].L = driver_param.PWM_max;
+		THEVA.MOTOR[i].PWM[0].L = PWM_resolution;
+		THEVA.MOTOR[i].PWM[1].L = PWM_resolution;
+		THEVA.MOTOR[i].PWM[2].L = PWM_resolution;
 
 		motor_param[i].enc_drev[0] = motor_param[i].enc_rev     / 6;
 		motor_param[i].enc_drev[1] = motor_param[i].enc_rev * 2 / 6;
@@ -71,35 +83,37 @@ void controlPWM_config( )
 		motor_param[i].enc_drev[3] = motor_param[i].enc_rev * 4 / 6;
 		motor_param[i].enc_drev[4] = motor_param[i].enc_rev * 5 / 6;
 		motor_param[i].enc_drev[5] = motor_param[i].enc_rev;
+		
+		motor_param[i].enc_10hz = motor_param[i].enc_rev * 10 * 4 / 1000;
 
 		if( hall[i] & HALL_U )
 		{
 			if( hall[i] & HALL_V )
 			{
-				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev *  5 / 12;	// 150ìx
+				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev *  5 / 12;	// 150Â∫¶
 			}
 			else if( hall[i] & HALL_W )
 			{
-				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev *  1 / 12;	// 30ìx
+				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev *  1 / 12;	// 30Â∫¶
 			}
 			else
 			{
-				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev *  3 / 12;	// 90ìx
+				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev *  3 / 12;	// 90Â∫¶
 			}
 		}
 		else
 		{
 			if( !( hall[i] & HALL_V ) )
 			{
-				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 11 / 12;	// 330ìx
+				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 11 / 12;	// 330Â∫¶
 			}
 			else if( !( hall[i] & HALL_W ) )
 			{
-				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev *  7 / 12;	// 210ìx
+				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev *  7 / 12;	// 210Â∫¶
 			}
 			else
 			{
-				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev *  9 / 12;	// 270ìx
+				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev *  9 / 12;	// 270Â∫¶
 			}
 		}
 
@@ -184,7 +198,7 @@ void FIQ_PWMPeriod( )
 	if( motor[0].pos < 0 ) motor[0].pos += motor_param[0].enc_rev;
 	if( motor[1].pos < 0 ) motor[1].pos += motor_param[1].enc_rev;
 
-	// PWMåvéZ
+	// PWMË®àÁÆó
 	{
 		static int pwm[2][3];
 		static int phase[3];
@@ -207,9 +221,9 @@ void FIQ_PWMPeriod( )
 			for( i = 0; i < 3; i ++ )
 			{
 				static int pwmt;
-				pwmt = ( ( (int)SinTB[j][ phase[i] ] * motor[j].ref.rate ) / 8192 ) + driver_param.PWM_max / 2;
-				if( pwmt < 0 ) pwmt = 0;
-				if( pwmt >= driver_param.PWM_max ) pwmt = driver_param.PWM_max - 1;
+				pwmt = ( ( (int)SinTB[j][ phase[i] ] * motor[j].ref.rate ) / 8192 ) + PWM_center;
+				if( pwmt < PWM_abs_min ) pwmt = PWM_abs_min;
+				if( pwmt > PWM_abs_max ) pwmt = PWM_abs_max;
 				pwm[j][i] = pwmt;
 			}
 		}
@@ -220,14 +234,13 @@ void FIQ_PWMPeriod( )
 		}
 	}
 	
-	// É[Éçì_åvéZ
+	// „Çº„É≠ÁÇπË®àÁÆó
 	for( i = 0; i < 2; i ++ )
 	{
 		static char u;
 		static char v;
 		static char w;
 		
-		//if( -20 < motor[i].vel && motor[i].vel < 20 )
 		{
 			u = v = w = 0;
 
@@ -235,34 +248,45 @@ void FIQ_PWMPeriod( )
 			{
 			case HALL_U:
 				if( !( _hall[i] & HALL_U ) )
-					u = 1;  // ê≥âÒì] UóßÇøè„Ç™ÇË 0ìx
+					u = 1;  // Ê≠£ÂõûËª¢ UÁ´ã„Å°‰∏ä„Åå„Çä 0Â∫¶
 				else
-					u = -1; // ê≥âÒì] UóßÇøâ∫Ç™ÇË 180ìx
+					u = -1; // Ê≠£ÂõûËª¢ UÁ´ã„Å°‰∏ã„Åå„Çä 180Â∫¶
 				break;
 			case HALL_V:
 				if( !( _hall[i] & HALL_V ) )
-					v = 1;  // ê≥âÒì] VóßÇøè„Ç™ÇË 120ìx
+					v = 1;  // Ê≠£ÂõûËª¢ VÁ´ã„Å°‰∏ä„Åå„Çä 120Â∫¶
 				else
-					v = -1; // ê≥âÒì] VóßÇøâ∫Ç™ÇË 300ìx
+					v = -1; // Ê≠£ÂõûËª¢ VÁ´ã„Å°‰∏ã„Åå„Çä 300Â∫¶
 				break;
 			case HALL_W:
 				if( !( _hall[i] & HALL_W ) )
-					w = 1;  // ê≥âÒì] WóßÇøè„Ç™ÇË 240ìx
+					w = 1;  // Ê≠£ÂõûËª¢ WÁ´ã„Å°‰∏ä„Åå„Çä 240Â∫¶
 				else
-					w = -1; // ê≥âÒì] WóßÇøâ∫Ç™ÇË 60ìx
+					w = -1; // Ê≠£ÂõûËª¢ WÁ´ã„Å°‰∏ã„Åå„Çä 60Â∫¶
 				break;
 			default:
-				// ÉGÉâÅ[
+				// „Ç®„É©„Éº
 				break;
 			}
 
-			// ãtâÒì]
-			if( motor[i].vel < 0 )
+			// ÈÄÜÂõûËª¢
+			if( motor[i].vel < -8 )
 			{
 				u = -u; v = -v; w = -w;
 			}
+			else if( motor[i].vel <= 8 )
+			{
+			    continue;
+			}
+			
+			// „Éõ„Éº„É´Á¥†Â≠ê„ÅØÈ´òÈÄüÂüü„Åß„ÅØ‰ø°È†º„Åß„Åç„Å™„ÅÑ
+			if( motor[i].vel < -motor_param[i].enc_10hz ||
+			    motor[i].vel >  motor_param[i].enc_10hz )
+			{
+			    continue;
+			}
 		
-			// É[Éçì_åvéZ
+			// „Çº„É≠ÁÇπË®àÁÆó
 		
 			if( w == -1 )
 				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[0];
@@ -281,10 +305,36 @@ void FIQ_PWMPeriod( )
 
 	_hall[0] = hall[0];
 	_hall[1] = hall[1];
+	
+	if( cnt ++ % 20 == 0 )
+	{
+	    static int _vel[2][4] = { { 0, 0, 0, 0 }, { 0, 0, 0, 0 } };
+	    static unsigned short __enc[2];
+	    static unsigned char cnt = 0;
+	    int vel[2];
+
+        velcontrol = 1;
+	    for ( i = 0; i < 2; i++ )
+	    {
+		    vel[i] = (short)( enc[i] - __enc[i] );
+	        _vel[i][cnt] = vel[i];
+	        if( abs( vel[i] ) < 32 )
+	        {
+	            motor[i].vel = _vel[i][0] + _vel[i][1] + _vel[i][2] + _vel[i][3];
+	        }
+	        else
+	        {
+	            motor[i].vel = vel[i] * 4;
+	        }
+		    __enc[i] = enc[i];
+			motor[i].enc_buf = enc[i];
+	    }
+	    cnt ++;
+	    if( cnt >= 4 ) cnt = 0;
+	}
+	
 	_enc[0] = enc[0];
 	_enc[1] = enc[1];
-	
-	if( cnt ++ % 20 == 0 ) velcontrol = 1;
 
 	//PIO_Set( &pinsLeds[USBD_LEDPOWER] );
 	

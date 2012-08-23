@@ -62,7 +62,7 @@ inline void flush( void )
 
 
 /**
- * @brief ƒGƒ“ƒR[ƒh
+ * @brief ã‚¨ãƒ³ã‚³ãƒ¼ãƒ‰
  */
 inline int encode( unsigned char *src, int len, unsigned char *dst, int buf_max )
 {
@@ -90,7 +90,7 @@ inline int encode( unsigned char *src, int len, unsigned char *dst, int buf_max 
 			s_pos += 8;
 			pos++;
 			if( pos >= len )
-				s_pos += 4;						// ÅŒã
+				s_pos += 4;						// æœ€å¾Œ
 		}
 	}
 
@@ -101,12 +101,12 @@ inline int encode( unsigned char *src, int len, unsigned char *dst, int buf_max 
 }
 
 /**
- * @brief ƒfƒR[ƒh
- * @param src[in] ƒfƒR[ƒh‚·‚é•¶š—ñ
- * @param len[in] ƒfƒR[ƒh‚·‚é•¶š—ñ‚Ì’·‚³
- * @param dst[out] ƒfƒR[ƒhŒã‚Ìƒf[ƒ^
- * @param buf_max[in] ƒfƒR[ƒhŒã‚Ìƒf[ƒ^ƒoƒbƒtƒ@‚ÌƒTƒCƒY
- * @return ƒfƒR[ƒhŒã‚ÌƒoƒCƒg”
+ * @brief ãƒ‡ã‚³ãƒ¼ãƒ‰
+ * @param src[in] ãƒ‡ã‚³ãƒ¼ãƒ‰ã™ã‚‹æ–‡å­—åˆ—
+ * @param len[in] ãƒ‡ã‚³ãƒ¼ãƒ‰ã™ã‚‹æ–‡å­—åˆ—ã®é•·ã•
+ * @param dst[out] ãƒ‡ã‚³ãƒ¼ãƒ‰å¾Œã®ãƒ‡ãƒ¼ã‚¿
+ * @param buf_max[in] ãƒ‡ã‚³ãƒ¼ãƒ‰å¾Œã®ãƒ‡ãƒ¼ã‚¿ãƒãƒƒãƒ•ã‚¡ã®ã‚µã‚¤ã‚º
+ * @return ãƒ‡ã‚³ãƒ¼ãƒ‰å¾Œã®ãƒã‚¤ãƒˆæ•°
  */
 inline int decord( unsigned char *src, int len, unsigned char *dst, int buf_max )
 {
@@ -150,7 +150,7 @@ inline int decord( unsigned char *src, int len, unsigned char *dst, int buf_max 
 	return w_pos;
 }
 
-/* ƒIƒhƒƒgƒŠƒf[ƒ^‚Ì‘—M */
+/* ã‚ªãƒ‰ãƒ¡ãƒˆãƒªãƒ‡ãƒ¼ã‚¿ã®é€ä¿¡ */
 inline int data_send( short cnt1, short cnt2, short pwm1, short pwm2, short *analog, unsigned short analog_mask )
 {
 	static unsigned char data[34];
@@ -177,7 +177,7 @@ inline int data_send( short cnt1, short cnt2, short pwm1, short pwm2, short *ana
 		}
 	}
 
-	// •ÏŠ·
+	// å¤‰æ›
 	send_buf_pos = 0;
 	send_buf[ 0 ] = COMMUNICATION_START_BYTE;
 	encode_len = encode( ( unsigned char * )data, len, send_buf + 1, 1024 - 2 );
@@ -281,7 +281,7 @@ inline int data_analyze( )
 
 
 // //////////////////////////////////////////////////
-/* óM‚µ‚½YPSpurŠg’£ƒRƒ}ƒ“ƒh‚Ì‰ğÍ */
+/* å—ä¿¡ã—ãŸYPSpuræ‹¡å¼µã‚³ãƒãƒ³ãƒ‰ã®è§£æ */
 inline int extended_command_analyze( char *data )
 {
 //	char line[64];
@@ -407,7 +407,7 @@ inline int extended_command_analyze( char *data )
 		}
 		send( data );
 		send( "\n00P\n\n" );
-		// ‘—MI—¹‚Ü‚Å‘Ò‹@
+		// é€ä¿¡çµ‚äº†ã¾ã§å¾…æ©Ÿ
 //		while( SCI_send_rp[channel] != SCI_send_wp[channel] );
 //		for ( lo = 0; lo < 10000; lo++ );		/* wait more than 1bit time */
 //		sci_init( tmp );
@@ -438,7 +438,7 @@ inline int extended_command_analyze( char *data )
 }
 
 // //////////////////////////////////////////////////
-/* óM‚µ‚½ƒRƒ}ƒ“ƒh‚Ì‰ğÍ */
+/* å—ä¿¡ã—ãŸã‚³ãƒãƒ³ãƒ‰ã®è§£æ */
 inline int command_analyze( unsigned char *data, int len )
 {
 	static int imotor;
@@ -505,16 +505,19 @@ inline int command_analyze( unsigned char *data, int len )
 		motor_param[imotor].Ki = i.integer;
 		break;
 	case PARAM_pwm_max:
-		driver_param.PWM_max = i.integer;
+	    driver_param.PWM_max = i.integer;
 		break;
 	case PARAM_pwm_min:
-		driver_param.PWM_min = i.integer;
+	    driver_param.PWM_min = i.integer;
 		break;
 	case PARAM_toq_max:
 		motor_param[imotor].torque_max = i.integer;
 		break;
 	case PARAM_toq_min:
 		motor_param[imotor].torque_min = i.integer;
+		break;
+	case PARAM_toq_limit:
+		motor_param[imotor].torque_limit = i.integer;
 		break;
 	case PARAM_p_toq_offset:
 		motor_param[imotor].torque_offset = i.integer;
@@ -547,7 +550,7 @@ inline int command_analyze( unsigned char *data, int len )
     	//	AIC_EnableIT(AT91C_ID_TC0);
 		}
 		if( driver_param.servo_level < SERVO_LEVEL_VELOCITY && i.integer >= SERVO_LEVEL_VELOCITY )
-		{	// servo level‚ª‘¬“x§Œä‚É„ˆÚ‚µ‚½
+		{	// servo levelãŒé€Ÿåº¦åˆ¶å¾¡ã«æ¨ç§»ã—ãŸ
 			motor[0].error_integ = 0;
 			motor[1].error_integ = 0;
 		}
@@ -566,11 +569,8 @@ inline int command_analyze( unsigned char *data, int len )
 	case PARAM_ad_mask:
 		driver_param.admask = i.integer;
 		break;
-/*
 	case PARAM_enc_rev:
-		motor_param[0].changed = 1;
-		motor_param[1].changed = 1;
-*/
+	    motor_param[imotor].enc_rev = i.integer;
 	default:
 		return 0;
 	}

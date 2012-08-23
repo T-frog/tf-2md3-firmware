@@ -346,8 +346,8 @@ int main()
 	motor_param[0].enc0 = 0;
 	motor_param[1].enc0 = 0;
 
-	motor_param[0].enc_rev = 800;
-	motor_param[1].enc_rev = 800;
+	motor_param[0].enc_rev = 0;
+	motor_param[1].enc_rev = 0;
 
 	watchdog = 1;
 	

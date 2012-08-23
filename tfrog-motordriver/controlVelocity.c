@@ -35,9 +35,6 @@ static const Pin pinPWMEnable = PIN_PWM_ENABLE;
 void ISR_VelocityControl( )
 {
 //    volatile unsigned int status;
-
-	static unsigned short enc[2];
-	static unsigned short _enc[2];
 	static int pwm_sum[2] = { 0, 0 };
 	static int error[2];
 	static int i;
@@ -62,8 +59,8 @@ void ISR_VelocityControl( )
 			driver_param.io_mask = 0;
 
 			motor[0].pos = motor[1].pos = 0;
-			motor_param[0].enc_rev = 800;
-			motor_param[1].enc_rev = 800;
+			motor_param[0].enc_rev = 0;
+			motor_param[1].enc_rev = 0;
 			if( *(int*)( 0x0017FF00 + sizeof(driver_param) + sizeof(motor_param) ) == 0xAACC )
 			{
 				memcpy( &driver_param, (int*)( 0x0017FF00 ), sizeof(driver_param) );
@@ -78,12 +75,6 @@ void ISR_VelocityControl( )
 		}
 	}
 
-	enc[0] = motor[0].enc;
-	enc[1] = motor[1].enc;
-
-	vel[0] = (short)( enc[0] - _enc[0] );
-	vel[1] = (short)( enc[1] - _enc[1] );
-
 	if( driver_param.servo_level >= SERVO_LEVEL_TORQUE )
 	{										// servo_level 2(toque enable)
 		static int toq[2], out_pwm[2];
@@ -94,41 +85,38 @@ void ISR_VelocityControl( )
 			static int toq_pi[2], s_a, s_b;
 			for ( i = 0; i < 2; i++ )
 			{
-				motor[i].ref.vel_interval ++;
-				if( motor[i].ref.vel_changed )
-				{
-					static int vel_buf[2] = { 0, 0 };
+			    motor[i].ref.vel_interval ++;
+			    if( motor[i].ref.vel_changed )
+			    {
+			        static int vel_buf[2] = { 0, 0 };
+				    motor[i].ref.vel_buf = motor[i].ref.vel * 4;
+				    motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - vel_buf[i] ) / motor[i].ref.vel_interval;
 
-					motor[i].ref.vel_buf = -motor[i].ref.vel;
-					motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - vel_buf[i] ) / motor[i].ref.vel_interval;
+				    vel_buf[i] = motor[i].ref.vel_buf;
+				    motor[i].ref.vel_interval = 0;
 
-					vel_buf[i] = motor[i].ref.vel_buf;
-					motor[i].ref.vel_interval = 0;
-
-					motor[i].ref.vel_changed = 0;
-				}
-			}
-			for ( i = 0; i < 2; i++ )
-			{
-				// 積分
-				error[i] = motor[i].ref.vel_buf - vel[i];
-				motor[i].error_integ += error[i];
-				if( motor[i].error_integ > driver_param.integ_max ) 
-				{
-					motor[i].error_integ = driver_param.integ_max;
-				}
-				else if( motor[i].error_integ < driver_param.integ_min ) 
-				{
-					motor[i].error_integ = driver_param.integ_min;
-				}
-
+				    motor[i].ref.vel_changed = 0;
+			    }
+			
+			    // 積分
+			    motor[i].error = motor[i].ref.vel_buf - motor[i].vel;
+			    motor[i].error_integ += motor[i].error;
+			    if( motor[i].error_integ > driver_param.integ_max * 4 ) 
+			    {
+				    motor[i].error_integ = driver_param.integ_max * 4;
+			    }
+			    else if( motor[i].error_integ < driver_param.integ_min * 4 ) 
+			    {
+				    motor[i].error_integ = driver_param.integ_min * 4;
+			    }
+			
 				// PI制御分
-				toq_pi[i] = error[i] * motor_param[i].Kp + motor[i].error_integ * motor_param[i].Ki;
+				toq_pi[i] = motor[i].error * motor_param[i].Kp + motor[i].error_integ * motor_param[i].Ki;
 			}
 
 			// PWSでの相互の影響を考慮したフィードフォワード
-			s_a = ( toq_pi[0] + motor[0].ref.vel_diff );
-			s_b = ( toq_pi[1] + motor[1].ref.vel_diff );
+			s_a = ( toq_pi[0] + motor[0].ref.vel_diff ) / 4;
+			s_b = ( toq_pi[1] + motor[1].ref.vel_diff ) / 4;
 
 			toq[0] = ( s_a * driver_param.Kdynamics[0] 
 					 + s_b * driver_param.Kdynamics[2]
@@ -145,18 +133,6 @@ void ISR_VelocityControl( )
 		// 出力段
 		for ( i = 0; i < 2; i++ )
 		{
-			// 摩擦補償（線形）
-			if( vel[i] > 0 )
-			{
-				toq[i] += ( motor_param[i].fr_wplus * vel[i] + motor_param[i].fr_plus );
-			}
-			else if( vel[i] < 0 )
-			{
-				toq[i] -= ( motor_param[i].fr_wminus * ( -vel[i] ) + motor_param[i].fr_minus );
-			}
-			// トルク補償
-			toq[i] += motor_param[i].torque_offset;
-
 			// トルクでクリッピング
 			if( toq[i] >= motor_param[i].torque_max )
 			{
@@ -166,10 +142,31 @@ void ISR_VelocityControl( )
 			{
 				toq[i] = motor_param[i].torque_min;
 			}
+			
+			// 摩擦補償（線形）
+			if( motor[i].vel > 0 )
+			{
+				toq[i] += ( motor_param[i].fr_wplus * motor[i].vel + motor_param[i].fr_plus );
+			}
+			else if( motor[i].vel < 0 )
+			{
+				toq[i] -= ( motor_param[i].fr_wminus * ( -motor[i].vel ) + motor_param[i].fr_minus );
+			}
+			// トルク補償
+			toq[i] += motor_param[i].torque_offset;
 
+			// トルクでクリッピング
+			if( toq[i] >= motor_param[i].torque_limit )
+			{
+				toq[i] = motor_param[i].torque_limit;
+			}
+			if( toq[i] <= -motor_param[i].torque_limit )
+			{
+				toq[i] = -motor_param[i].torque_limit;
+			}
 
 			// トルク→pwm変換
-			out_pwm[i] = ( toq[i] * motor_param[i].Kcurrent + vel[i] * motor_param[i].Kvolt ) / 65536;
+			out_pwm[i] = ( toq[i] * motor_param[i].Kcurrent + motor[i].vel * motor_param[i].Kvolt / 4 ) / 65536;
 
 			// PWMでクリッピング
 			if( out_pwm[i] > driver_param.PWM_max - 1 )
@@ -190,8 +187,6 @@ void ISR_VelocityControl( )
 		if( driver_param.cnt_updated == 5 )
 		{
 		//	static long cnt = 0;
-			motor[0].enc_buf = enc[0];
-			motor[1].enc_buf = enc[1];
 			motor[0].ref.rate_buf = pwm_sum[0];
 			motor[1].ref.rate_buf = pwm_sum[1];
 			pwm_sum[0] = 0;
@@ -202,15 +197,6 @@ void ISR_VelocityControl( )
 	{
 		motor[0].ref.rate = 0;
 		motor[1].ref.rate = 0;
-	}
-	for ( i = 0; i < 2; i++ )
-	{
-		motor[i].vel = vel[i];
-		motor[i].pos += vel[i];
-		if( motor[i].pos >= motor_param[i].enc_rev ) motor[i].pos -= motor_param[i].enc_rev;
-		if( motor[i].pos < 0 ) motor[i].pos += motor_param[i].enc_rev;
-
-		_enc[i] = enc[i];
 	}
 //			PIO_Set(&pinsLeds[USBD_LEDOTHER]);
 }

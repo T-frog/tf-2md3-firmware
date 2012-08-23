@@ -20,12 +20,14 @@ typedef struct _MotorState
 		int			rate;		// -PWM_max < rate < PWM_max
 		int			rate_buf;	// 
 	} ref;
+	int			error;
 	int			error_integ;
 } MotorState;
 
 typedef struct _MotorParam
 {
 	unsigned short	enc_rev;	// count/rev
+	unsigned short  enc_10hz;
 	unsigned short	enc_drev[6];
 	int				enc0;		// count
 	int				vel_max;	// count/ms
@@ -35,6 +37,7 @@ typedef struct _MotorParam
 	int				Ki;			// 1/ss
 	int				torque_max;
 	int				torque_min;
+	int				torque_limit;
 	int				torque_offset;
 	int 			fr_plus;
 	int 			fr_wplus;
