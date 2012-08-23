@@ -1,3 +1,4 @@
+
 /**
 	@file fixp.c
 	@brief Fixed point value operation
@@ -13,7 +14,7 @@
  */
 inline fixp4 fp4mulf( fixp4 a, fixp4 b )
 {
-	return (fixp4)( ( (long long) a * b ) / FP4_ONE );
+	return ( fixp4 ) ( ( ( long long )a * b ) / FP4_ONE );
 }
 
 /**
@@ -26,12 +27,14 @@ inline fixp4 fp4mul( fixp4 a, fixp4 b )
 {
 	long long y;
 
-	y = (long long) a * b;
+	y = ( long long )a *b;
 	y = y >> FP4_POINTBIT;
 
-	if( y > 0x7FFFFFFF ) return 0x7FFFFFFF;
-	if( y < -0x7FFFFFFF ) return -0x7FFFFFFF;
-	return (fixp4)y;
+	if( y > 0x7FFFFFFF )
+		return 0x7FFFFFFF;
+	if( y < -0x7FFFFFFF )
+		return -0x7FFFFFFF;
+	return ( fixp4 ) y;
 }
 
 /**
@@ -42,7 +45,7 @@ inline fixp4 fp4mul( fixp4 a, fixp4 b )
  */
 inline fixp4 fp4div( fixp4 a, fixp4 b )
 {
-	return (fixp4)( ( (long long)a * FP4_ONE ) / b );
+	return ( fixp4 ) ( ( ( long long )a * FP4_ONE ) / b );
 }
 
 /**
@@ -52,7 +55,7 @@ inline fixp4 fp4div( fixp4 a, fixp4 b )
  */
 inline fixp4 double2fp4( double a )
 {
-	return (fixp4)( a * FP4_MUL + 0.5 );
+	return ( fixp4 ) ( a * FP4_MUL + 0.5 );
 }
 
 /**
@@ -62,7 +65,7 @@ inline fixp4 double2fp4( double a )
  */
 inline fixp4 int2fp4( int a )
 {
-	return (fixp4)( a * FP4_ONE );
+	return ( fixp4 ) ( a * FP4_ONE );
 }
 
 /**
@@ -72,11 +75,5 @@ inline fixp4 int2fp4( int a )
  */
 inline double fp42double( fixp4 a )
 {
-	return (double)a * FP4_DIV;
+	return ( double )a *FP4_DIV;
 }
-
-
-
-
-
-

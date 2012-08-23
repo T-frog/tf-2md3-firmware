@@ -1,3 +1,4 @@
+
 /**
 	@file fixp.h
 	@brief Fixed point value operation
@@ -5,7 +6,6 @@
 
 #ifndef __FIX_POINT_AWD__
 #define __FIX_POINT_AWD__
-
 
 #define INLINE	inline
 
@@ -22,13 +22,12 @@ typedef int fixp4;
 
 #define DOUBLE2FP4(a)		(fixp4)( a * FP4_MUL + 0.5 )
 #define INT2FP4(a)			(fixp4)( a << FP4_POINTBIT )
-	
+
 INLINE fixp4 fp4mul( fixp4 a, fixp4 b );
 INLINE fixp4 fp4mulf( fixp4 a, fixp4 b );
 INLINE fixp4 fp4div( fixp4 a, fixp4 b );
 INLINE fixp4 double2fp4( double a );
 INLINE fixp4 int2fp4( int a );
 INLINE double fp42double( fixp4 a );
-
 
 #endif

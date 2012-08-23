@@ -6,3 +6,4 @@
 a.out
 *.bin
 *.elf
+.spurip_history
