@@ -54,7 +54,7 @@ OPTIMIZATION = -O6 -mcpu=arm7tdmi -fomit-frame-pointer -funroll-loops
 AT91LIB = ../at91lib
 
 # Output file basename
-OUTPUT = cdc-test-$(BOARD)-$(CHIP)
+OUTPUT = tfrog-motordriver-$(BOARD)-$(CHIP)
 
 # Compile for all memories available on the board (this sets $(MEMORIES))
 include $(AT91LIB)/boards/$(BOARD)/board.mak

@@ -37,9 +37,7 @@ void ISR_VelocityControl(  )
 {
 	// volatile unsigned int status;
 	static int pwm_sum[2] = { 0, 0 };
-	static int error[2];
 	static int i;
-	static int vel[2];
 
 	// PIO_Clear(&pinsLeds[USBD_LEDOTHER]);
 
@@ -89,7 +87,7 @@ void ISR_VelocityControl(  )
 				if( motor[i].ref.vel_changed )
 				{
 					static int vel_buf[2] = { 0, 0 };
-					motor[i].ref.vel_buf = motor[i].ref.vel * 4;
+					motor[i].ref.vel_buf = motor[i].ref.vel;
 					motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - vel_buf[i] ) / motor[i].ref.vel_interval;
 
 					vel_buf[i] = motor[i].ref.vel_buf;
@@ -101,13 +99,13 @@ void ISR_VelocityControl(  )
 				// 積分
 				motor[i].error = motor[i].ref.vel_buf - motor[i].vel;
 				motor[i].error_integ += motor[i].error;
-				if( motor[i].error_integ > driver_param.integ_max * 4 )
+				if( motor[i].error_integ > driver_param.integ_max )
 				{
-					motor[i].error_integ = driver_param.integ_max * 4;
+					motor[i].error_integ = driver_param.integ_max;
 				}
-				else if( motor[i].error_integ < driver_param.integ_min * 4 )
+				else if( motor[i].error_integ < driver_param.integ_min )
 				{
-					motor[i].error_integ = driver_param.integ_min * 4;
+					motor[i].error_integ = driver_param.integ_min;
 				}
 
 				// PI制御分
@@ -115,8 +113,8 @@ void ISR_VelocityControl(  )
 			}
 
 			// PWSでの相互の影響を考慮したフィードフォワード
-			s_a = ( toq_pi[0] + motor[0].ref.vel_diff ) / 4;
-			s_b = ( toq_pi[1] + motor[1].ref.vel_diff ) / 4;
+			s_a = ( toq_pi[0] + motor[0].ref.vel_diff ) / 16;
+			s_b = ( toq_pi[1] + motor[1].ref.vel_diff ) / 16;
 
 			toq[0] = ( s_a * driver_param.Kdynamics[0]
 					   + s_b * driver_param.Kdynamics[2] + motor[0].ref.vel_buf * driver_param.Kdynamics[4] ) / 256;
@@ -144,11 +142,11 @@ void ISR_VelocityControl(  )
 			// 摩擦補償（線形）
 			if( motor[i].vel > 0 )
 			{
-				toq[i] += ( motor_param[i].fr_wplus * motor[i].vel + motor_param[i].fr_plus );
+				toq[i] += ( motor_param[i].fr_wplus * motor[i].vel / 16 + motor_param[i].fr_plus );
 			}
 			else if( motor[i].vel < 0 )
 			{
-				toq[i] -= ( motor_param[i].fr_wminus * ( -motor[i].vel ) + motor_param[i].fr_minus );
+				toq[i] -= ( motor_param[i].fr_wminus * ( -motor[i].vel ) / 16 + motor_param[i].fr_minus );
 			}
 			// トルク補償
 			toq[i] += motor_param[i].torque_offset;
@@ -164,7 +162,7 @@ void ISR_VelocityControl(  )
 			}
 
 			// トルク→pwm変換
-			out_pwm[i] = ( toq[i] * motor_param[i].Kcurrent + motor[i].vel * motor_param[i].Kvolt / 4 ) / 65536;
+			out_pwm[i] = ( toq[i] * motor_param[i].Kcurrent + motor[i].vel * motor_param[i].Kvolt / 16 ) / 65536;
 
 			// PWMでクリッピング
 			if( out_pwm[i] > driver_param.PWM_max - 1 )

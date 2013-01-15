@@ -466,6 +466,10 @@ inline int command_analyze( unsigned char *data, int len )
 	switch ( data[0] )
 	{
 	case PARAM_w_ref:
+		motor[imotor].ref.vel = i.integer * 16;
+		motor[imotor].ref.vel_changed = 1;
+		break;
+	case PARAM_w_ref_highprec:
 		motor[imotor].ref.vel = i.integer;
 		motor[imotor].ref.vel_changed = 1;
 		break;
@@ -531,10 +535,10 @@ inline int command_analyze( unsigned char *data, int len )
 		driver_param.watchdog = 0;
 		break;
 	case PARAM_int_max:
-		driver_param.integ_max = i.integer;
+		driver_param.integ_max = i.integer * 16;
 		break;
 	case PARAM_int_min:
-		driver_param.integ_min = i.integer;
+		driver_param.integ_min = i.integer * 16;
 		break;
 	case PARAM_servo:
 		if( driver_param.servo_level < SERVO_LEVEL_TORQUE && i.integer >= SERVO_LEVEL_TORQUE )

@@ -41,6 +41,12 @@ int PWM_center = 0;
 
 extern int velcontrol;
 
+int _abs( int x )
+{
+	if( x < 0 ) return -x;
+	return x;
+}
+
 void controlPWM_config(  )
 {
 	static unsigned short hall[2];
@@ -75,6 +81,8 @@ void controlPWM_config(  )
 		THEVA.MOTOR[i].PWM[0].L = PWM_resolution;
 		THEVA.MOTOR[i].PWM[1].L = PWM_resolution;
 		THEVA.MOTOR[i].PWM[2].L = PWM_resolution;
+
+		motor[i].ref.rate = 0;
 
 		motor_param[i].enc_drev[0] = motor_param[i].enc_rev / 6;
 		motor_param[i].enc_drev[1] = motor_param[i].enc_rev * 2 / 6;
@@ -297,7 +305,7 @@ void FIQ_PWMPeriod(  )
 			// ホール素子は高速域では信頼できない
 			if( motor[i].vel < -motor_param[i].enc_10hz || motor[i].vel > motor_param[i].enc_10hz )
 			{
-				continue;
+			//	continue;
 			}
 
 			// ゼロ点計算
@@ -322,29 +330,59 @@ void FIQ_PWMPeriod(  )
 
 	if( cnt++ % 20 == 0 )
 	{
-		static int _vel[2][4] = { {0, 0, 0, 0}, {0, 0, 0, 0} };
+		static int _vel[2][16] = { {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} };
 		static unsigned short __enc[2];
 		static unsigned char cnt = 0;
-		int vel[2];
+		int vel;
 
 		velcontrol = 1;
 		for( i = 0; i < 2; i++ )
 		{
-			vel[i] = ( short )( enc[i] - __enc[i] );
-			_vel[i][cnt] = vel[i];
-			if( abs( vel[i] ) < 32 )
+			int j, n;
+			int __vel;
+			
+			__vel = ( short )( enc[i] - __enc[i] );
+			_vel[i][cnt] = __vel;
+			j = cnt;
+			
+			if( _abs( __vel ) < 8 )
 			{
-				motor[i].vel = _vel[i][0] + _vel[i][1] + _vel[i][2] + _vel[i][3];
+				vel = 0;
+				for( n = 0; n < 16; n ++ ) vel += _vel[i][n];
+			}
+			else if( _abs( __vel ) < 16 )
+			{
+				vel = 0;
+				for( n = 0; n < 8; n ++ )
+				{
+					vel += _vel[i][j];
+					if( j == 0 ) j = 15;
+					else j--;
+				}
+				vel *= 2;
+			}
+			else if( _abs( __vel ) < 32 )
+			{
+				vel = 0;
+				for( n = 0; n < 4; n ++ )
+				{
+					vel += _vel[i][j];
+					if( j == 0 ) j = 15;
+					else j--;
+				}
+				vel *= 4;
 			}
 			else
 			{
-				motor[i].vel = vel[i] * 4;
+				vel = __vel * 16;
 			}
+			
+			motor[i].vel = vel;
 			__enc[i] = enc[i];
 			motor[i].enc_buf = enc[i];
 		}
 		cnt++;
-		if( cnt >= 4 )
+		if( cnt >= 16 )
 			cnt = 0;
 	}
 
