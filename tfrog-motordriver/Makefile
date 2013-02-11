@@ -48,7 +48,7 @@ BOARD = theva-rev1
 TRACE_LEVEL = 2
 
 # Optimization level, put in comment for debugging
-OPTIMIZATION = -O6 -mcpu=arm7tdmi -fomit-frame-pointer -funroll-loops
+OPTIMIZATION = -O2 -mcpu=arm7tdmi -fomit-frame-pointer -funroll-loops
 
 # AT91 library directory
 AT91LIB = ../at91lib

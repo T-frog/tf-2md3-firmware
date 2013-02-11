@@ -224,6 +224,9 @@ int main(  )
 {
 	short analog[16];
 	short enc_buf2[2];
+	
+	// Enable user reset
+	AT91C_BASE_RSTC->RSTC_RMR = 0xA5000701;
 
 	LED_Configure( USBD_LEDPOWER );
 	PIO_Clear( &pinsLeds[USBD_LEDPOWER] );
@@ -307,10 +310,10 @@ int main(  )
 	motor[1].ref.vel_diff = 0;
 	motor[0].error_integ = 0;
 	motor[1].error_integ = 0;
-	motor[0].pos_init = 0;
-	motor[1].pos_init = 0;
 	motor_param[0].enc0 = 0;
 	motor_param[1].enc0 = 0;
+	motor_param[0].enc0tran = 0;
+	motor_param[1].enc0tran = 0;
 	motor_param[0].motor_type = MOTOR_TYPE_AC3;
 	motor_param[1].motor_type = MOTOR_TYPE_AC3;
 

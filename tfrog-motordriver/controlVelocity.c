@@ -59,6 +59,8 @@ void ISR_VelocityControl(  )
 			motor[0].pos = motor[1].pos = 0;
 			motor_param[0].enc_rev = 0;
 			motor_param[1].enc_rev = 0;
+			motor_param[0].motor_type = MOTOR_TYPE_AC3;
+			motor_param[1].motor_type = MOTOR_TYPE_AC3;
 			if( *( int * )( 0x0017FF00 + sizeof ( driver_param ) + sizeof ( motor_param ) ) == 0xAACC )
 			{
 				memcpy( &driver_param, ( int * )( 0x0017FF00 ), sizeof ( driver_param ) );
@@ -109,7 +111,8 @@ void ISR_VelocityControl(  )
 				}
 
 				// PI制御分
-				toq_pi[i] = motor[i].error * motor_param[i].Kp + motor[i].error_integ * motor_param[i].Ki;
+				toq_pi[i]  = motor[i].error * motor_param[i].Kp;
+				toq_pi[i] += motor[i].error_integ * motor_param[i].Ki;
 			}
 
 			// PWSでの相互の影響を考慮したフィードフォワード
@@ -162,7 +165,17 @@ void ISR_VelocityControl(  )
 			}
 
 			// トルク→pwm変換
-			out_pwm[i] = ( toq[i] * motor_param[i].Kcurrent + motor[i].vel * motor_param[i].Kvolt / 16 ) / 65536;
+			if( motor[i].dir == 0 )
+			{
+				out_pwm[i]  = 0;
+			}
+			else
+			{
+				out_pwm[i]  = ( motor[i].vel * motor_param[i].Kvolt ) / 16;
+			}
+			motor[i].ref.torque = toq[i] * motor_param[i].Kcurrent;
+			out_pwm[i] += motor[i].ref.torque;
+			out_pwm[i] /= 65536;
 
 			// PWMでクリッピング
 			if( out_pwm[i] > driver_param.PWM_max - 1 )

@@ -38,6 +38,8 @@ int phase90[2];
 int PWM_abs_max = 0;
 int PWM_abs_min = 0;
 int PWM_center = 0;
+int PWM_init = 0;
+int PWM_resolution = 0;
 
 extern int velcontrol;
 
@@ -52,7 +54,6 @@ void controlPWM_config(  )
 	static unsigned short hall[2];
 	static int i, j;
 	static unsigned short bwatchdog;
-	int PWM_resolution;
 	int deadtime;
 
 	bwatchdog = driver_param.enable_watchdog;
@@ -63,7 +64,7 @@ void controlPWM_config(  )
 
 	PWM_resolution = 1200;
 	driver_param.PWM_resolution = PWM_resolution;
-	deadtime = 36;
+	deadtime = 20;
 	THEVA.GENERAL.PWM.HALF_PERIOD = PWM_resolution;
 	THEVA.GENERAL.PWM.DEADTIME = deadtime;
 
@@ -137,6 +138,7 @@ void controlPWM_config(  )
 				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 9 / 12;	// 270度
 			}
 		}
+		motor_param[i].enc0tran = motor_param[i].enc0;
 
 		phase90[i] = motor_param[i].enc_rev - motor_param[i].enc_rev / 4;
 		phase_offset[i][0] = motor_param[i].enc_rev / 3;
@@ -153,8 +155,11 @@ void controlPWM_config(  )
 		{
 			fixp4 val;
 			int ival;
-			val = ( fp4sin( FP4_PI2 * j / motor_param[i].enc_rev )
-					+ fp4mul( fp4sin( FP4_PI2 * 3 * j / motor_param[i].enc_rev ), DOUBLE2FP4( 0.1547 ) ) );
+			int ang;
+			
+			ang = j;
+			val = ( fp4sin( FP4_PI2 * ang / motor_param[i].enc_rev )
+					+ fp4mul( fp4sin( FP4_PI2 * 3 * ang / motor_param[i].enc_rev ), DOUBLE2FP4( 0.1547 ) ) );
 			// = ( 2.0 / sqrt( 3.0 ) - 1.0 )
 
 			ival = val * /* 4730 */ 3547 / FP4_ONE;
@@ -172,12 +177,16 @@ void controlPWM_config(  )
 			SinTB[i][j + motor_param[i].enc_rev / 2] = -SinTB[i][j];
 		}
 	}
-	motor[0].ref.vel_diff = 0;
-	motor[1].ref.vel_diff = 0;
-	motor[0].error_integ = 0;
-	motor[1].error_integ = 0;
-	motor[0].pos_init = 0;
-	motor[1].pos_init = 0;
+	for( i = 0; i < 2; i++ )
+	{
+		motor[i].ref.vel_diff = 0;
+		motor[i].ref.vel_interval = 0;
+		motor[i].ref.vel_changed = 0;
+		motor[i].error_integ = 0;
+		motor[i].vel = 0;
+		motor[i].dir = 0;
+	}
+	PWM_init = 0;
 	
 	driver_param.enable_watchdog = bwatchdog;
 	// PIO_Set( &pinsLeds[USBD_LEDPOWER] );
@@ -240,18 +249,53 @@ void FIQ_PWMPeriod(  )
 
 		for( j = 0; j < 2; j++ )
 		{
-			switch( motor_param[i].motor_type )
+			int rate;
+			
+			rate = motor[j].ref.rate * PWM_init / 4096;
+			if( PWM_init < 4096 ) PWM_init ++;
+			
+			if( cnt % 64 == 2 + j )
+			{
+				while( motor_param[j].enc0 < 0 )
+					motor_param[j].enc0 += motor_param[j].enc_rev;
+				while( motor_param[j].enc0 >= motor_param[j].enc_rev )
+					motor_param[j].enc0 -= motor_param[j].enc_rev;
+				while( motor_param[j].enc0tran < 0 )
+					motor_param[j].enc0tran += motor_param[j].enc_rev;
+				while( motor_param[j].enc0tran >= motor_param[j].enc_rev )
+					motor_param[j].enc0tran -= motor_param[j].enc_rev;
+
+				if( motor_param[j].enc0 < motor_param[j].enc0tran - motor_param[j].enc_rev / 2 )
+					motor_param[j].enc0 += motor_param[j].enc_rev;
+				if( motor_param[j].enc0 >= motor_param[j].enc0tran + motor_param[j].enc_rev / 2 )
+					motor_param[j].enc0 -= motor_param[j].enc_rev;
+			
+				if( motor_param[j].enc0tran > motor_param[j].enc0 )
+				{
+					motor_param[j].enc0tran --;
+					if( motor_param[j].enc0tran < 0 )
+						motor_param[j].enc0tran = motor_param[j].enc_rev - 1;
+				}
+				else if( motor_param[j].enc0tran < motor_param[j].enc0 )
+				{
+					motor_param[j].enc0tran ++;
+					if( motor_param[j].enc0tran >= motor_param[j].enc_rev )
+						motor_param[j].enc0tran = 0;
+				}
+			}
+
+			switch( motor_param[j].motor_type )
 			{
 			case MOTOR_TYPE_DC:
 				{
 					static int pwmt;
-					pwmt = motor[j].ref.rate;
+					pwmt = PWM_center + rate / 2;
 					if( pwmt < PWM_abs_min )
 						pwmt = PWM_abs_min;
 					if( pwmt > PWM_abs_max )
 						pwmt = PWM_abs_max;
 					pwm[j][0] = pwmt;
-					pwmt = driver_param.PWM_resolution - motor[j].ref.rate;
+					pwmt = PWM_center - ( rate - rate / 2 );
 					if( pwmt < PWM_abs_min )
 						pwmt = PWM_abs_min;
 					if( pwmt > PWM_abs_max )
@@ -260,7 +304,7 @@ void FIQ_PWMPeriod(  )
 				}
 				break;
 			case MOTOR_TYPE_AC3:
-				phase[0] = ( ( motor[j].pos - motor_param[j].enc0 ) ) - phase90[j];
+				phase[0] = ( ( motor[j].pos - motor_param[j].enc0tran ) ) - phase90[j];
 				while( phase[0] < 0 )
 					phase[0] += motor_param[j].enc_rev;
 				while( phase[0] >= motor_param[j].enc_rev )
@@ -278,22 +322,53 @@ void FIQ_PWMPeriod(  )
 				while( phase[2] >= motor_param[j].enc_rev )
 					phase[2] -= motor_param[j].enc_rev;
 
-				for( i = 0; i < 3; i++ )
 				{
-					static int pwmt;
-					pwmt = ( ( ( int )SinTB[j][phase[i]] * motor[j].ref.rate ) / 8192 ) + PWM_center;
-					if( pwmt < PWM_abs_min )
-						pwmt = PWM_abs_min;
-					if( pwmt > PWM_abs_max )
-						pwmt = PWM_abs_max;
-					pwm[j][i] = pwmt;
+					for( i = 0; i < 3; i++ )
+					{
+						int pwmt;
+						pwmt = ( ( ( ( int )SinTB[j][phase[i]] ) * rate ) / 8192 );
+						pwmt += PWM_center;
+						if( pwmt < PWM_abs_min )
+							pwmt = PWM_abs_min;
+						if( pwmt > PWM_abs_max )
+							pwmt = PWM_abs_max;
+						pwm[j][i] = pwmt;
+					}
 				}
+				break;
 			}
 		}
-		for( i = 0; i < 3; i++ )
+		if( abs( motor[0].ref.torque ) < 65536 * 8 )
 		{
-			THEVA.MOTOR[0].PWM[i].H = pwm[0][i];
-			THEVA.MOTOR[1].PWM[i].H = pwm[1][i];
+			for( i = 0; i < 3; i++ )
+			{
+				THEVA.MOTOR[0].PWM[i].H = 0;
+				THEVA.MOTOR[0].PWM[i].L = 0;
+			}
+		}
+		else
+		{
+			for( i = 0; i < 3; i++ )
+			{
+				THEVA.MOTOR[0].PWM[i].H = pwm[0][i];
+				THEVA.MOTOR[0].PWM[i].L = PWM_resolution;
+			}
+		}
+		if( abs( motor[1].ref.torque ) < 65536 * 8 )
+		{
+			for( i = 0; i < 3; i++ )
+			{
+				THEVA.MOTOR[1].PWM[i].H = 0;
+				THEVA.MOTOR[1].PWM[i].L = 0;
+			}
+		}
+		else
+		{
+			for( i = 0; i < 3; i++ )
+			{
+				THEVA.MOTOR[1].PWM[i].H = pwm[1][i];
+				THEVA.MOTOR[1].PWM[i].L = PWM_resolution;
+			}
 		}
 	}
 
@@ -307,8 +382,10 @@ void FIQ_PWMPeriod(  )
 		if( motor_param[i].motor_type != MOTOR_TYPE_DC )
 		{
 			u = v = w = 0;
+			
+			if( hall[i] == _hall[i] ) continue;
 
-			switch ( hall[i] ^ _hall[i] )
+			switch( hall[i] ^ _hall[i] )
 			{
 			case HALL_U:
 				if( !( _hall[i] & HALL_U ) )
@@ -334,19 +411,19 @@ void FIQ_PWMPeriod(  )
 			}
 
 			// 逆回転
-			if( motor[i].vel < -8 )
+			if( motor[i].dir < 0 )
 			{
 				u = -u;
 				v = -v;
 				w = -w;
 			}
-			else if( motor[i].vel <= 8 )
+			else if( motor[i].dir == 0 )
 			{
 				continue;
 			}
 
 			// ホール素子は高速域では信頼できない
-			if( motor[i].vel < -motor_param[i].enc_10hz || motor[i].vel > motor_param[i].enc_10hz )
+			if( abs( motor[i].vel ) > motor_param[i].enc_10hz )
 			{
 			//	continue;
 			}
@@ -365,21 +442,20 @@ void FIQ_PWMPeriod(  )
 				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[4];
 			else if( u == 1 )
 				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[5];
-			
-			motor[i].pos_init = 1;
 		}
 	}
 
 	_hall[0] = hall[0];
 	_hall[1] = hall[1];
 
+	
 	if( cnt++ % 20 == 0 )
 	{
 		static int _vel[2][16] = { {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} };
 		static unsigned short __enc[2];
 		static unsigned char cnt = 0;
 		int vel;
-
+		
 		velcontrol = 1;
 		for( i = 0; i < 2; i++ )
 		{
@@ -389,6 +465,9 @@ void FIQ_PWMPeriod(  )
 			__vel = ( short )( enc[i] - __enc[i] );
 			_vel[i][cnt] = __vel;
 			j = cnt;
+			if( __vel < 0 ) motor[i].dir = -1;
+			else if( __vel > 0 ) motor[i].dir = 1;
+			else motor[i].dir = 0;
 			
 			if( _abs( __vel ) < 8 )
 			{

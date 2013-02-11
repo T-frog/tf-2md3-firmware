@@ -9,18 +9,18 @@ typedef struct _MotorState
 	int pos;									// count
 	int enc_buf;								// count
 	unsigned short enc;
-	unsigned short pos_init;
+	short dir;
 
 	struct
 	{
 		int vel;								// count/ms
 		int vel_buf;							// count/ms
-		char vel_changed;
 		int vel_interval;
 		int vel_diff;							// count/ms
 		int torque;								// 1/100000 Nm
 		int rate;								// -PWM_max < rate < PWM_max
 		int rate_buf;							// 
+		char vel_changed;
 	} ref;
 	int error;
 	int error_integ;
@@ -32,6 +32,7 @@ typedef struct _MotorParam
 	unsigned short enc_10hz;
 	unsigned short enc_drev[6];
 	int enc0;									// count
+	int enc0tran;									// count
 	int vel_max;								// count/ms
 	int Kcurrent;
 	int Kvolt;
