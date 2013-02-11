@@ -225,23 +225,8 @@ int main(  )
 	short analog[16];
 	short enc_buf2[2];
 
-	if( ( AT91C_BASE_RSTC->RSTC_RSR & AT91C_RSTC_RSTTYP ) == AT91C_RSTC_RSTTYP_WATCHDOG ||
-		( AT91C_BASE_RSTC->RSTC_RSR & AT91C_RSTC_RSTTYP ) == AT91C_RSTC_RSTTYP_BROWNOUT ||
-		( AT91C_BASE_RSTC->RSTC_RSR & AT91C_RSTC_RSTTYP ) == AT91C_RSTC_RSTTYP_WAKEUP ||
-		( AT91C_BASE_RSTC->RSTC_RSR & AT91C_RSTC_RSTTYP ) == AT91C_RSTC_RSTTYP_POWERUP )
-	{
-		register int i;
-
-		LED_Configure( USBD_LEDPOWER );
-		PIO_Clear( &pinsLeds[USBD_LEDPOWER] );
-
-		AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
-		for( i = 80000 / 4 - 1; i >= 0; i-- )
-			( ( long * )0x00200000 )[i] = 0;
-		AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_PROCRST | AT91C_RSTC_PERRST | AT91C_RSTC_EXTRST;
-	}
-
-	AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST;
+	LED_Configure( USBD_LEDPOWER );
+	PIO_Clear( &pinsLeds[USBD_LEDPOWER] );
 
 	TRACE_CONFIGURE( DBGU_STANDARD, 230400, BOARD_MCK );
 	printf( "-- Locomotion Board %s --\n\r", SOFTPACK_VERSION );
@@ -260,7 +245,7 @@ int main(  )
 	// BOT driver initialization
 	{
 		const char manufacturer[] = { "T-frog project" };
-		const char product[] = { "T-frog Driver i-Cart2" };
+		const char product[] = { "T-frog Driver" };
 		int i;
 
 		manufacturerStringDescriptor2[0] = USBStringDescriptor_LENGTH( strlen( manufacturer ) );
@@ -318,8 +303,16 @@ int main(  )
 
 	motor[0].ref.vel = 0;
 	motor[1].ref.vel = 0;
+	motor[0].ref.vel_diff = 0;
+	motor[1].ref.vel_diff = 0;
+	motor[0].error_integ = 0;
+	motor[1].error_integ = 0;
+	motor[0].pos_init = 0;
+	motor[1].pos_init = 0;
 	motor_param[0].enc0 = 0;
 	motor_param[1].enc0 = 0;
+	motor_param[0].motor_type = MOTOR_TYPE_AC3;
+	motor_param[1].motor_type = MOTOR_TYPE_AC3;
 
 	motor_param[0].enc_rev = 0;
 	motor_param[1].enc_rev = 0;

@@ -540,6 +540,17 @@ inline int command_analyze( unsigned char *data, int len )
 	case PARAM_int_min:
 		driver_param.integ_min = i.integer * 16;
 		break;
+	case PARAM_motor_phase:
+		switch( i.integer )
+		{
+		case 0:
+			motor_param[imotor].motor_type = MOTOR_TYPE_DC;
+			break;
+		case 3:
+			motor_param[imotor].motor_type = MOTOR_TYPE_AC3;
+			break;
+		}
+		break;
 	case PARAM_servo:
 		if( driver_param.servo_level < SERVO_LEVEL_TORQUE && i.integer >= SERVO_LEVEL_TORQUE )
 		{

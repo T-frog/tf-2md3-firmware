@@ -9,6 +9,7 @@ typedef struct _MotorState
 	int pos;									// count
 	int enc_buf;								// count
 	unsigned short enc;
+	unsigned short pos_init;
 
 	struct
 	{
@@ -44,12 +45,18 @@ typedef struct _MotorParam
 	int fr_wplus;
 	int fr_minus;
 	int fr_wminus;
+	enum _motor_type_t
+	{
+		MOTOR_TYPE_DC,
+		MOTOR_TYPE_AC3
+	} motor_type;
 } MotorParam;
 
 typedef struct _DriverParam
 {
 	int PWM_max;								// clock
 	int PWM_min;								// clock
+	int PWM_resolution;							// clock
 	int integ_max;								// 
 	int integ_min;								// 
 	int Kdynamics[6];
