@@ -79,9 +79,10 @@ unsigned char *stringDescriptors2[3] = {
 // ------------------------------------------------------------------------------
 
 char connecting = 0;
+char connected = 0;
 
 // / List of pins that must be configured for use by the application.
-static const Pin pins[] = { PIN_PWM_ENABLE };
+static const Pin pins[] = { PIN_PWM_ENABLE, PIN_PCK_PCK1 };
 
 // / VBus pin instance.
 static const Pin pinVbus = PIN_USB_VBUS;
@@ -118,15 +119,11 @@ static void ISR_Vbus( const Pin * pPin )
 		TRACE_INFO( "VBUS conn\n\r" );
 		USBD_Connect(  );
 		connecting = 1;
-		// LED_Set(USBD_LEDPOWER);
 	}
 	else
 	{
 		TRACE_INFO( "VBUS discon\n\r" );
 		USBD_Disconnect(  );
-		// LED_Clear(USBD_LEDPOWER);
-		// LED_Clear(USBD_LEDUSB);
-		PIO_Set( &pinPWMEnable );
 	}
 }
 
@@ -193,9 +190,11 @@ static void UsbDataReceived( unsigned int unused, unsigned char status, unsigned
 		static int remain = 0;
 
 		// LED_Clear(USBD_LEDUSB);
+		PIO_Clear(&pinsLeds[USBD_LEDOTHER]);
 		remain = data_fetch( usbBuffer, received + remain );
 
 		CDCDSerialDriver_Read( usbBuffer + remain, DATABUFFERSIZE - remain, ( TransferCallback ) UsbDataReceived, 0 );
+		PIO_Set(&pinsLeds[USBD_LEDOTHER]);
 		// LED_Set(USBD_LEDUSB);
 		/* 
 		 * TRACE_ERROR( "%d %d\n", driver_param.watchdog, THEVA.GENERAL.PWM.COUNT_ENABLE); */
@@ -224,12 +223,28 @@ int main(  )
 {
 	short analog[16];
 	short enc_buf2[2];
-	
+
 	// Enable user reset
-	AT91C_BASE_RSTC->RSTC_RMR = 0xA5000701;
+	AT91C_BASE_RSTC->RSTC_RMR = 0xA5000400 | AT91C_RSTC_URSTEN;
 
 	LED_Configure( USBD_LEDPOWER );
 	PIO_Clear( &pinsLeds[USBD_LEDPOWER] );
+
+	if( ( AT91C_BASE_RSTC->RSTC_RSR & AT91C_RSTC_RSTTYP ) != AT91C_RSTC_RSTTYP_SOFTWARE )
+	{
+		static const Pin pinsClear[] = { PINS_SRAM_CLEAR };
+		static const Pin pinsSet[] = { PINS_SRAM_SET };
+		volatile int i;
+
+		AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDDIS;
+		PIO_Configure( pinsClear, PIO_LISTSIZE( pinsClear ) );
+		for( i = 0; i < 50000; i ++ );
+		PIO_Set( &pinsLeds[USBD_LEDPOWER] );
+		PIO_Configure( pinsSet, PIO_LISTSIZE( pinsSet ) );
+		for( i = 0; i < 50000; i ++ );
+	
+		AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_PROCRST | AT91C_RSTC_PERRST;
+	}
 
 	TRACE_CONFIGURE( DBGU_STANDARD, 230400, BOARD_MCK );
 	printf( "-- Locomotion Board %s --\n\r", SOFTPACK_VERSION );
@@ -282,10 +297,6 @@ int main(  )
 	printf( "SRAM init\n\r" );
 	SRAM_Init(  );
 
-	// PWM Generator init
-	THEVA.GENERAL.PWM.COUNT_ENABLE = 1;
-	THEVA.GENERAL.OUTPUT_ENABLE = 1;
-
 	printf( "PWM control init\n\r" );
 	// Configure PWM control
 	controlPWM_init(  );
@@ -295,30 +306,6 @@ int main(  )
 	controlVelocity_init(  );
 
 	enc_buf2[0] = enc_buf2[1] = 0;
-	motor[0].pos = motor[1].pos = 0;
-	driver_param.cnt_updated = 0;
-	driver_param.watchdog = 0;
-	driver_param.enable_watchdog = 0;
-	driver_param.watchdog_limit = 600;
-	driver_param.servo_level = SERVO_LEVEL_STOP;
-	driver_param.admask = 0;
-	driver_param.io_mask = 0;
-
-	motor[0].ref.vel = 0;
-	motor[1].ref.vel = 0;
-	motor[0].ref.vel_diff = 0;
-	motor[1].ref.vel_diff = 0;
-	motor[0].error_integ = 0;
-	motor[1].error_integ = 0;
-	motor_param[0].enc0 = 0;
-	motor_param[1].enc0 = 0;
-	motor_param[0].enc0tran = 0;
-	motor_param[1].enc0tran = 0;
-	motor_param[0].motor_type = MOTOR_TYPE_AC3;
-	motor_param[1].motor_type = MOTOR_TYPE_AC3;
-
-	motor_param[0].enc_rev = 0;
-	motor_param[1].enc_rev = 0;
 
 	watchdog = 1;
 
@@ -328,18 +315,23 @@ int main(  )
 		memcpy( motor_param, ( int * )( 0x0017FF00 + sizeof ( driver_param ) ), sizeof ( motor_param ) );
 	}
 
-	// PIO_Clear(&pinsLeds[USBD_LEDOTHER]);
-	// PIO_Set(&pinsLeds[USBD_LEDOTHER]);
+	// Enable watchdog
+	AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDRSTEN | 0xFF00FF; // 1s
+	AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
+	
 	// Driver loop
 	while( 1 )
 	{
 		// static int i;
 		// int j;
 
+		if( velcontrol == 0 )
+		{
+			AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
+		}
 		data_analyze(  );
 		if( watchdog == 0 )
 		{
-			AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 			if( driver_param.servo_level >= SERVO_LEVEL_TORQUE )
 				watchdog = 1;
 		}
@@ -351,7 +343,15 @@ int main(  )
 			// Start receiving data on the USB
 			CDCDSerialDriver_Read( usbBuffer, DATABUFFERSIZE, ( TransferCallback ) UsbDataReceived, 0 );
 			connecting = 0;
-
+			connected = 1;
+		}
+		if( connected )
+		{
+			if( USBD_GetState(  ) < USBD_STATE_DEFAULT )
+			{
+				AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST;
+				while( 1 );
+			}
 		}
 
 		if( driver_param.cnt_updated >= 5 )

@@ -129,6 +129,9 @@ void LowLevelInit( void )
                                | BOARD_MUL | BOARD_DIV;
     while (!(AT91C_BASE_PMC->PMC_SR & AT91C_PMC_LOCK));
 
+    AT91C_BASE_PMC->PMC_SCER   |= AT91C_PMC_PCK1;
+    AT91C_BASE_PMC->PMC_PCKR[1] = AT91C_PMC_CSS_PLL_CLK | AT91C_PMC_PRES_CLK_8;
+
     /* Wait for the master clock if it was already initialized */
     while (!(AT91C_BASE_PMC->PMC_SR & AT91C_PMC_MCKRDY));
 

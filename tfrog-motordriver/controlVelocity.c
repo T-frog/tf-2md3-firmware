@@ -49,29 +49,10 @@ void ISR_VelocityControl(  )
 
 		if( driver_param.watchdog == driver_param.watchdog_limit )
 		{
-			driver_param.enable_watchdog = 0;
-			driver_param.cnt_updated = 0;
-			driver_param.watchdog_limit = 600;
-			driver_param.servo_level = SERVO_LEVEL_STOP;
-			driver_param.admask = 0;
-			driver_param.io_mask = 0;
+			controlVelocity_init( );
+			controlPWM_init(  );
 
-			motor[0].pos = motor[1].pos = 0;
-			motor_param[0].enc_rev = 0;
-			motor_param[1].enc_rev = 0;
-			motor_param[0].motor_type = MOTOR_TYPE_AC3;
-			motor_param[1].motor_type = MOTOR_TYPE_AC3;
-			if( *( int * )( 0x0017FF00 + sizeof ( driver_param ) + sizeof ( motor_param ) ) == 0xAACC )
-			{
-				memcpy( &driver_param, ( int * )( 0x0017FF00 ), sizeof ( driver_param ) );
-				memcpy( motor_param, ( int * )( 0x0017FF00 + sizeof ( driver_param ) ), sizeof ( motor_param ) );
-			}
-
-			THEVA.GENERAL.PWM.COUNT_ENABLE = 0;
-			THEVA.GENERAL.OUTPUT_ENABLE = 0;
-			PIO_Set( &pinPWMEnable );
 			return;
-			// AIC_DisableIT(AT91C_ID_TC0);
 		}
 	}
 
@@ -214,13 +195,22 @@ void ISR_VelocityControl(  )
 // ------------------------------------------------------------------------------
 inline void controlVelocity_init(  )
 {
-	// Configure timer 0
-	/* 
-	 * AT91C_BASE_PMC->PMC_PCER = (1 << AT91C_ID_TC0); AT91C_BASE_TC0->TC_CCR = AT91C_TC_CLKDIS; AT91C_BASE_TC0->TC_IDR 
-	 * = 0xFFFFFFFF; AT91C_BASE_TC0->TC_CMR = AT91C_TC_CLKS_TIMER_DIV3_CLOCK | AT91C_TC_WAVESEL_UP_AUTO |
-	 * AT91C_TC_WAVE; AT91C_BASE_TC0->TC_RC = 1500 / 8; // 1ms 1500 AT91C_BASE_TC0->TC_IER = AT91C_TC_CPCS;
-	 * 
-	 * AIC_ConfigureIT(AT91C_ID_TC0, 1, ISR_VelocityControl); //AIC_EnableIT(AT91C_ID_TC0);
-	 * 
-	 * AT91C_BASE_TC0->TC_CCR = AT91C_TC_CLKEN | AT91C_TC_SWTRG; */
+	int i;
+	
+	driver_param.cnt_updated = 0;
+	driver_param.watchdog = 0;
+	driver_param.enable_watchdog = 0;
+	driver_param.watchdog_limit = 600;
+	driver_param.servo_level = SERVO_LEVEL_STOP;
+	driver_param.admask = 0;
+	driver_param.io_mask = 0;
+
+	for( i = 0; i < 2; i ++ )
+	{
+		motor[i].ref.vel = 0;
+		motor[i].ref.vel_diff = 0;
+		motor[i].error_integ = 0;
+		motor_param[i].motor_type = MOTOR_TYPE_AC3;
+		motor_param[i].enc_rev = 0;
+	}
 }

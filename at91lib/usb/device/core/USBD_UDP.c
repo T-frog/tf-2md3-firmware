@@ -117,7 +117,7 @@
         reg |= (flags); \
         AT91C_BASE_UDP->UDP_CSR[endpoint] = reg; \
     }
-        //while ( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) != (flags)); \
+        //while ( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) != (flags)); 
 
 /// Sets the specified bit(s) in the UDP_CSR register.
 /// \param endpoint The endpoint number of the CSR to process.
@@ -130,7 +130,7 @@
         reg &= ~(flags); \
         AT91C_BASE_UDP->UDP_CSR[endpoint] = reg; \
     }
-        //while ( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) == (flags)); \
+        //while ( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) == (flags)); 
 //------------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------

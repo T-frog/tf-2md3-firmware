@@ -22,6 +22,7 @@ int w_receive_buf = 0;
 int r_receive_buf = 0;
 unsigned long send_buf_pos = 0;
 extern const Pin pinPWMEnable;
+static const Pin pinsLeds[] = { PINS_LEDS };
 
 inline void send( char *buf )
 {
@@ -556,6 +557,8 @@ inline int command_analyze( unsigned char *data, int len )
 		{
 			if( THEVA.GENERAL.ID != 0xA0 )
 			{
+				PIO_Clear( &pinsLeds[USBD_LEDUSB] );
+				PIO_Clear( &pinsLeds[USBD_LEDOTHER] );
 				TRACE_ERROR( "Invalid FPGA %u !\n\r", THEVA.GENERAL.ID );
 				while( 1 );
 			}
@@ -563,10 +566,6 @@ inline int command_analyze( unsigned char *data, int len )
 			// printf("initialized\n\r" );
 			controlPWM_config(  );
 
-			THEVA.GENERAL.PWM.COUNT_ENABLE = 1;
-			THEVA.GENERAL.OUTPUT_ENABLE = 1;
-
-			PIO_Clear( &pinPWMEnable );
 			// printf("PWM Period: %d\n\r", THEVA.GENERAL.PWM.HALF_PERIOD);
 			// printf("PWM Deadtime: %d\n\r", THEVA.GENERAL.PWM.DEADTIME);
 
@@ -597,6 +596,7 @@ inline int command_analyze( unsigned char *data, int len )
 	default:
 		return 0;
 	}
+	AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 	driver_param.watchdog = 0;
 	return 0;
 }
