@@ -22,7 +22,64 @@ int w_receive_buf = 0;
 int r_receive_buf = 0;
 unsigned long send_buf_pos = 0;
 extern const Pin pinPWMEnable;
-static const Pin pinsLeds[] = { PINS_LEDS };
+extern int PWM_resolution;
+extern int PWM_deadtime;
+
+inline int natoi( unsigned char *buf, int size )
+{
+	int ret, i;
+	ret = 0;
+	for( i = 0; i < size; i++ )
+	{
+		if( '0' <= *buf && *buf <= '9' )
+		{
+			ret *= 16;
+			ret += *buf - '0';
+		}
+		else if( 'A' <= *buf && *buf <= 'F' )
+		{
+			ret *= 16;
+			ret += *buf - 'A' + 0xA;
+		}
+		buf++;
+	}
+	return ret;
+}
+
+inline int nhex( unsigned char *buf, int data, int len )
+{
+	int i;
+	for( i = 0; i < len; i++ )
+	{
+		*buf = ( ( ( unsigned int )data >> ( ( len - i - 1 ) * 4 ) ) & 0xF ) + '0';
+		if( *buf > '9' )
+		{
+			*buf = *buf - '9' - 1 + 'A';
+		}
+		buf++;
+	}
+	*buf = 0;
+	return len;
+}
+
+inline int itoa10( unsigned char *buf, int data )
+{
+	int i;
+	int len;
+	char txt[16];
+	for( i = 0; data; i++ )
+	{
+		txt[i] = data % 10 + '0';
+		data = data / 10;
+	}
+	len = i;
+	for( i = 0; i < len; i ++ )
+	{
+		buf[ len - i - 1 ] = txt[ i ];
+	}
+	buf[len] = 0;
+	return len;
+}
 
 inline void send( char *buf )
 {
@@ -307,6 +364,159 @@ inline int extended_command_analyze( char *data )
 		send( "; \nSERI:Reserved; \n\n" );
 
 	}
+	else if( strstr( data, "PP" ) == data )
+	{
+		char val[8];
+		send( data );
+		send( "\n00P\nPWMRES:" );
+		itoa10( (unsigned char*)val, PWM_resolution );
+		send( val );
+		send( "; \nMOTORNUM:" );
+		send( YP_DRIVERPARAM_MOTORNUM );
+		send( "; \nTORQUEUNIT:" );
+		send( YP_DRIVERPARAM_TORQUEUNIT );
+		send( "; \n\n" );
+	}
+	else if( strstr( data, "$TESTENC" ) == data )
+	{
+		unsigned short tmp;
+		char num[16];
+
+		send( data );
+		send( "\nHALL" );
+		tmp = THEVA.MOTOR[0].ROT_DETECTER.HALL;
+		if( tmp & HALL_U ) num[0] = 'U'; else num[0] = '-';
+		if( tmp & HALL_V ) num[1] = 'V'; else num[1] = '-';
+		if( tmp & HALL_W ) num[2] = 'W'; else num[2] = '-';
+		num[3] = 0;
+		send( num );
+		send( "," );
+		tmp = THEVA.MOTOR[1].ROT_DETECTER.HALL;
+		if( tmp & HALL_U ) num[0] = 'U'; else num[0] = '-';
+		if( tmp & HALL_V ) num[1] = 'V'; else num[1] = '-';
+		if( tmp & HALL_W ) num[2] = 'W'; else num[2] = '-';
+		num[3] = 0;
+		send( num );
+		send( "\n" );
+
+		send( "ANG " );
+		nhex( (unsigned char*)num, THEVA.MOTOR[0].ENCODER, 4 );
+		num[4] = 0;
+		send( num );
+		send( "," );
+		nhex( (unsigned char*)num, THEVA.MOTOR[1].ENCODER, 4 );
+		num[4] = 0;
+		send( num );
+
+		send( "\n\n" );
+	}
+	else if( strstr( data, "$TEST1U" ) == data )
+	{
+		THEVA.GENERAL.PWM.HALF_PERIOD = 4800;
+		THEVA.GENERAL.PWM.DEADTIME = 100;
+		PIO_Clear( &pinPWMEnable );
+		AIC_DisableIT( AT91C_ID_IRQ0 );
+
+		THEVA.MOTOR[0].PWM[0].H = 2400;
+		THEVA.MOTOR[0].PWM[1].H = 0;
+		THEVA.MOTOR[0].PWM[2].H = 0;
+		THEVA.MOTOR[0].PWM[0].L = 4800;
+		THEVA.MOTOR[0].PWM[1].L = 0;
+		THEVA.MOTOR[0].PWM[2].L = 0;
+		THEVA.MOTOR[1].PWM[0].H = 0;
+		THEVA.MOTOR[1].PWM[1].H = 0;
+		THEVA.MOTOR[1].PWM[2].H = 0;
+		THEVA.MOTOR[1].PWM[0].L = 0;
+		THEVA.MOTOR[1].PWM[1].L = 0;
+		THEVA.MOTOR[1].PWM[2].L = 0;
+		send( data );
+		send( "\n\n" );
+	}
+	else if( strstr( data, "$TEST1V" ) == data )
+	{
+		THEVA.MOTOR[0].PWM[0].H = 0;
+		THEVA.MOTOR[0].PWM[1].H = 2400;
+		THEVA.MOTOR[0].PWM[2].H = 0;
+		THEVA.MOTOR[0].PWM[0].L = 0;
+		THEVA.MOTOR[0].PWM[1].L = 4800;
+		THEVA.MOTOR[0].PWM[2].L = 0;
+		THEVA.MOTOR[1].PWM[0].H = 0;
+		THEVA.MOTOR[1].PWM[1].H = 0;
+		THEVA.MOTOR[1].PWM[2].H = 0;
+		THEVA.MOTOR[1].PWM[0].L = 0;
+		THEVA.MOTOR[1].PWM[1].L = 0;
+		THEVA.MOTOR[1].PWM[2].L = 0;
+		send( data );
+		send( "\n\n" );
+	}
+	else if( strstr( data, "$TEST1W" ) == data )
+	{
+		THEVA.MOTOR[0].PWM[0].H = 0;
+		THEVA.MOTOR[0].PWM[1].H = 0;
+		THEVA.MOTOR[0].PWM[2].H = 2400;
+		THEVA.MOTOR[0].PWM[0].L = 0;
+		THEVA.MOTOR[0].PWM[1].L = 0;
+		THEVA.MOTOR[0].PWM[2].L = 4800;
+		THEVA.MOTOR[1].PWM[0].H = 0;
+		THEVA.MOTOR[1].PWM[1].H = 0;
+		THEVA.MOTOR[1].PWM[2].H = 0;
+		THEVA.MOTOR[1].PWM[0].L = 0;
+		THEVA.MOTOR[1].PWM[1].L = 0;
+		THEVA.MOTOR[1].PWM[2].L = 0;
+		send( data );
+		send( "\n\n" );
+	}
+	else if( strstr( data, "$TEST2U" ) == data )
+	{
+		THEVA.MOTOR[0].PWM[0].H = 0;
+		THEVA.MOTOR[0].PWM[1].H = 0;
+		THEVA.MOTOR[0].PWM[2].H = 0;
+		THEVA.MOTOR[0].PWM[0].L = 0;
+		THEVA.MOTOR[0].PWM[1].L = 0;
+		THEVA.MOTOR[0].PWM[2].L = 0;
+		THEVA.MOTOR[1].PWM[0].H = 2400;
+		THEVA.MOTOR[1].PWM[1].H = 0;
+		THEVA.MOTOR[1].PWM[2].H = 0;
+		THEVA.MOTOR[1].PWM[0].L = 4800;
+		THEVA.MOTOR[1].PWM[1].L = 0;
+		THEVA.MOTOR[1].PWM[2].L = 0;
+		send( data );
+		send( "\n\n" );
+	}
+	else if( strstr( data, "$TEST2V" ) == data )
+	{
+		THEVA.MOTOR[0].PWM[0].H = 0;
+		THEVA.MOTOR[0].PWM[1].H = 0;
+		THEVA.MOTOR[0].PWM[2].H = 0;
+		THEVA.MOTOR[0].PWM[0].L = 0;
+		THEVA.MOTOR[0].PWM[1].L = 0;
+		THEVA.MOTOR[0].PWM[2].L = 0;
+		THEVA.MOTOR[1].PWM[0].H = 0;
+		THEVA.MOTOR[1].PWM[1].H = 2400;
+		THEVA.MOTOR[1].PWM[2].H = 0;
+		THEVA.MOTOR[1].PWM[0].L = 0;
+		THEVA.MOTOR[1].PWM[1].L = 4800;
+		THEVA.MOTOR[1].PWM[2].L = 0;
+		send( data );
+		send( "\n\n" );
+	}
+	else if( strstr( data, "$TEST2W" ) == data )
+	{
+		THEVA.MOTOR[0].PWM[0].H = 0;
+		THEVA.MOTOR[0].PWM[1].H = 0;
+		THEVA.MOTOR[0].PWM[2].H = 0;
+		THEVA.MOTOR[0].PWM[0].L = 0;
+		THEVA.MOTOR[0].PWM[1].L = 0;
+		THEVA.MOTOR[0].PWM[2].L = 0;
+		THEVA.MOTOR[1].PWM[0].H = 0;
+		THEVA.MOTOR[1].PWM[1].H = 0;
+		THEVA.MOTOR[1].PWM[2].H = 2400;
+		THEVA.MOTOR[1].PWM[0].L = 0;
+		THEVA.MOTOR[1].PWM[1].L = 0;
+		THEVA.MOTOR[1].PWM[2].L = 4800;
+		send( data );
+		send( "\n\n" );
+	}
 	else if( strstr( data, "ADMASK" ) == data )
 	{
 		unsigned char tmp;
@@ -533,7 +743,6 @@ inline int command_analyze( unsigned char *data, int len )
 		break;
 	case PARAM_p_toq_offset:
 		motor_param[imotor].torque_offset = i.integer;
-		driver_param.watchdog = 0;
 		break;
 	case PARAM_int_max:
 		driver_param.integ_max = i.integer * 16;
@@ -555,17 +764,13 @@ inline int command_analyze( unsigned char *data, int len )
 	case PARAM_servo:
 		if( driver_param.servo_level < SERVO_LEVEL_TORQUE && i.integer >= SERVO_LEVEL_TORQUE )
 		{
-			if( THEVA.GENERAL.ID != 0xA0 )
-			{
-				PIO_Clear( &pinsLeds[USBD_LEDUSB] );
-				PIO_Clear( &pinsLeds[USBD_LEDOTHER] );
-				TRACE_ERROR( "Invalid FPGA %u !\n\r", THEVA.GENERAL.ID );
-				while( 1 );
-			}
-
 			// printf("initialized\n\r" );
 			controlPWM_config(  );
 
+			THEVA.GENERAL.PWM.COUNT_ENABLE = 1;
+			THEVA.GENERAL.OUTPUT_ENABLE = 1;
+
+			PIO_Clear( &pinPWMEnable );
 			// printf("PWM Period: %d\n\r", THEVA.GENERAL.PWM.HALF_PERIOD);
 			// printf("PWM Deadtime: %d\n\r", THEVA.GENERAL.PWM.DEADTIME);
 
@@ -580,8 +785,6 @@ inline int command_analyze( unsigned char *data, int len )
 		break;
 	case PARAM_watch_dog_limit:
 		driver_param.watchdog_limit = i.integer;
-		driver_param.watchdog = 0;
-		driver_param.enable_watchdog = 1;
 		break;
 	case PARAM_io_dir:
 		driver_param.io_dir = i.integer;
@@ -596,7 +799,7 @@ inline int command_analyze( unsigned char *data, int len )
 	default:
 		return 0;
 	}
-	AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 	driver_param.watchdog = 0;
 	return 0;
 }
+

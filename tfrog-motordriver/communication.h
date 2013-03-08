@@ -62,7 +62,7 @@ typedef enum
 #define COMMUNICATION_END_BYTE		0x0a
 
 /* firmware */
-#define YP_FIRMWARE_NAME "2010.11.04"
+#define YP_FIRMWARE_NAME "2013.03.08"
 /* parametor files dir */
 #define YP_PARAMS_DIR "robot-params"
 /* product */
@@ -71,6 +71,11 @@ typedef enum
 #define YP_PROTOCOL_NAME "YPP:05:00"
 /* vendor */
 #define YP_VENDOR_NAME "Univ. of Tsukuba - Intelligent Robot Lab."
+
+/* Driver parameters */
+#define YP_DRIVERPARAM_MOTORNUM "2"
+#define YP_DRIVERPARAM_TORQUEUNIT "100000"
+
 
 int data_analyze(  );
 int data_fetch( unsigned char *data, int len );
