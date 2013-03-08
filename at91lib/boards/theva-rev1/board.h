@@ -85,6 +85,7 @@
 #define BOARD_NAME "THEVA rev.1" 
 /// Board definition.
 #define theva_rev1 
+#define tfrog_rev1 
 /// Family definition.
 #define at91sam7se 
 //------------------------------------------------------------------------------
@@ -187,7 +188,7 @@
 
 #define PIN_PWM_CYCLE     {1 << 19, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_INPUT, PIO_DEFAULT}
 #define PIN_PWM_CYCLE2    {1 << 20, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_PERIPH_A, PIO_DEFAULT}
-//#define PIN_PWM_CYCLE     {1 << 19, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_PERIPH_A, PIO_DEFAULT}
+#define PIN_PCK_PCK1      {1 << 17, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_PERIPH_A, PIO_DEFAULT}
 
 
 #define RAMFUNC __attribute__ ((long_call, section (".ramfunc")))

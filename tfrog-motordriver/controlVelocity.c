@@ -43,18 +43,7 @@ void ISR_VelocityControl(  )
 
 	// status = AT91C_BASE_TC0->TC_SR;
 
-	if( driver_param.enable_watchdog )
-	{
-		driver_param.watchdog++;
-
-		if( driver_param.watchdog == driver_param.watchdog_limit )
-		{
-			controlVelocity_init( );
-			controlPWM_init(  );
-
-			return;
-		}
-	}
+	driver_param.watchdog ++;
 
 	if( driver_param.servo_level >= SERVO_LEVEL_TORQUE )
 	{											// servo_level 2(toque enable)
@@ -199,7 +188,6 @@ inline void controlVelocity_init(  )
 	
 	driver_param.cnt_updated = 0;
 	driver_param.watchdog = 0;
-	driver_param.enable_watchdog = 0;
 	driver_param.watchdog_limit = 600;
 	driver_param.servo_level = SERVO_LEVEL_STOP;
 	driver_param.admask = 0;

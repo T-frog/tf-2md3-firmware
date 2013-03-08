@@ -40,12 +40,7 @@
 // extern int getStackPointer( void );
 // extern int getIrqStackPointer( void );
 
-int watchdog = 0;
 int velcontrol = 0;
-
-static const Pin pinsLeds[] = { PINS_LEDS };
-
-static const unsigned int numLeds = PIO_LISTSIZE( pinsLeds );
 
 extern unsigned char languageIdStringDescriptor[];
 extern USBDDriverDescriptors cdcdSerialDriverDescriptors;
@@ -82,7 +77,8 @@ char connecting = 0;
 char connected = 0;
 
 // / List of pins that must be configured for use by the application.
-static const Pin pins[] = { PIN_PWM_ENABLE, PIN_PCK_PCK1 };
+static const Pin pins[] = { PIN_PWM_ENABLE, PIN_PCK_PCK1, PIN_LED_0, PIN_LED_1, PIN_LED_2 };
+static const Pin pinsLED[] = { PIN_LED_0, PIN_LED_1, PIN_LED_2 };
 
 // / VBus pin instance.
 static const Pin pinVbus = PIN_USB_VBUS;
@@ -92,6 +88,16 @@ const Pin pinPWMEnable = PIN_PWM_ENABLE;
 
 // / Buffer for storing incoming USB data.
 static unsigned char usbBuffer[DATABUFFERSIZE];
+
+
+void LED_on( int num )
+{
+	PIO_Clear(&pinsLED[num]);
+}
+void LED_off( int num )
+{
+	PIO_Set(&pinsLED[num]);
+}
 
 // ------------------------------------------------------------------------------
 // Main
@@ -106,6 +112,31 @@ void SRAM_Init(  )
 
 	AT91C_BASE_SMC->SMC2_CSR[0] =
 		1 | AT91C_SMC2_WSEN | ( 0 << 8 ) | AT91C_SMC2_BAT | AT91C_SMC2_DBW_16 | ( 0 << 24 ) | ( 1 << 28 );
+}
+
+static int FPGA_test( )
+{
+	THEVA.GENERAL.PWM.COUNT_ENABLE = 0;
+	THEVA.GENERAL.OUTPUT_ENABLE = 0;
+
+	do
+	{
+		THEVA.GENERAL.PWM.HALF_PERIOD = 1000;
+		if( (volatile TVREG)(THEVA.GENERAL.PWM.HALF_PERIOD) != 1000 )
+			break;
+		THEVA.GENERAL.PWM.HALF_PERIOD = 2000;
+		if( (volatile TVREG)(THEVA.GENERAL.PWM.HALF_PERIOD) != 2000 )
+			break;
+		THEVA.GENERAL.PWM.DEADTIME = 100;
+		if( (volatile TVREG)(THEVA.GENERAL.PWM.DEADTIME) != 100 )
+			break;
+		THEVA.GENERAL.PWM.DEADTIME = 30;
+		if( (volatile TVREG)(THEVA.GENERAL.PWM.DEADTIME) != 30 )
+			break;
+		return 1;
+	}
+	while( 0 );
+	return 0;
 }
 
 // ------------------------------------------------------------------------------
@@ -143,41 +174,6 @@ static void VBus_Configure( void )
 	ISR_Vbus( &pinVbus );
 }
 
-inline int natoi( unsigned char *buf, int size )
-{
-	int ret, i;
-	ret = 0;
-	for( i = 0; i < size; i++ )
-	{
-		if( '0' <= *buf && *buf <= '9' )
-		{
-			ret *= 16;
-			ret += *buf - '0';
-		}
-		else if( 'A' <= *buf && *buf <= 'F' )
-		{
-			ret *= 16;
-			ret += *buf - 'A' + 0xA;
-		}
-		buf++;
-	}
-	return ret;
-}
-
-inline int nitoa( unsigned char *buf, int data, int len )
-{
-	int i;
-	for( i = 0; i < len; i++ )
-	{
-		*buf = ( ( ( unsigned int )data >> ( ( len - i - 1 ) * 4 ) ) & 0xF ) + '0';
-		if( *buf > '9' )
-		{
-			*buf = *buf - '9' - 1 + 'A';
-		}
-		buf++;
-	}
-	return len;
-}
 
 // ------------------------------------------------------------------------------
 // / Callback invoked when data has been received on the USB.
@@ -189,15 +185,11 @@ static void UsbDataReceived( unsigned int unused, unsigned char status, unsigned
 	{
 		static int remain = 0;
 
-		// LED_Clear(USBD_LEDUSB);
-		PIO_Clear(&pinsLeds[USBD_LEDOTHER]);
+		LED_on( 2 );
 		remain = data_fetch( usbBuffer, received + remain );
 
 		CDCDSerialDriver_Read( usbBuffer + remain, DATABUFFERSIZE - remain, ( TransferCallback ) UsbDataReceived, 0 );
-		PIO_Set(&pinsLeds[USBD_LEDOTHER]);
-		// LED_Set(USBD_LEDUSB);
-		/* 
-		 * TRACE_ERROR( "%d %d\n", driver_param.watchdog, THEVA.GENERAL.PWM.COUNT_ENABLE); */
+
 		// Check if bytes have been discarded
 		if( ( received == DATABUFFERSIZE ) && ( remaining > 0 ) )
 		{
@@ -223,28 +215,43 @@ int main(  )
 {
 	short analog[16];
 	short enc_buf2[2];
+	int err_cnt;
+
+	// Configure IO
+	PIO_Configure( pins, PIO_LISTSIZE( pins ) );
+
+	LED_on( 0 );
+
+	switch( AT91C_BASE_RSTC->RSTC_RSR & AT91C_RSTC_RSTTYP )
+	{
+	case AT91C_RSTC_RSTTYP_SOFTWARE:
+	case AT91C_RSTC_RSTTYP_USER:
+		break;
+	default:
+		#ifdef PINS_CLEAR
+		{
+			static const Pin pinsClear[] = { PINS_CLEAR };
+			static const Pin pinsSet[] = { PINS_SET };
+			volatile int i;
+
+			AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDDIS;
+			AT91C_BASE_RSTC->RSTC_RMR = 0xA5000400;
+
+			PIO_Configure( pinsClear, PIO_LISTSIZE( pinsClear ) );
+			for( i = 0; i < 40000; i ++ );
+			LED_off( 0 );
+			PIO_Configure( pinsSet, PIO_LISTSIZE( pinsSet ) );
+			for( i = 0; i < 40000; i ++ );
+		}
+		#endif
+
+		AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST | AT91C_RSTC_PROCRST | AT91C_RSTC_PERRST;
+		while( 1 );
+		break;
+	}
 
 	// Enable user reset
 	AT91C_BASE_RSTC->RSTC_RMR = 0xA5000400 | AT91C_RSTC_URSTEN;
-
-	LED_Configure( USBD_LEDPOWER );
-	PIO_Clear( &pinsLeds[USBD_LEDPOWER] );
-
-	if( ( AT91C_BASE_RSTC->RSTC_RSR & AT91C_RSTC_RSTTYP ) != AT91C_RSTC_RSTTYP_SOFTWARE )
-	{
-		static const Pin pinsClear[] = { PINS_SRAM_CLEAR };
-		static const Pin pinsSet[] = { PINS_SRAM_SET };
-		volatile int i;
-
-		AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDDIS;
-		PIO_Configure( pinsClear, PIO_LISTSIZE( pinsClear ) );
-		for( i = 0; i < 50000; i ++ );
-		PIO_Set( &pinsLeds[USBD_LEDPOWER] );
-		PIO_Configure( pinsSet, PIO_LISTSIZE( pinsSet ) );
-		for( i = 0; i < 50000; i ++ );
-	
-		AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_PROCRST | AT91C_RSTC_PERRST;
-	}
 
 	TRACE_CONFIGURE( DBGU_STANDARD, 230400, BOARD_MCK );
 	printf( "-- Locomotion Board %s --\n\r", SOFTPACK_VERSION );
@@ -254,11 +261,47 @@ int main(  )
 	// If they are present, configure Vbus & Wake-up pins
 	PIO_InitializeInterrupts( 0 );
 
-	// Configure USART
-	PIO_Configure( pins, PIO_LISTSIZE( pins ) );
-
 	// Disable PWM Output
 	PIO_Set( &pinPWMEnable );
+
+	printf( "SRAM init\n\r" );
+	SRAM_Init(  );
+
+	err_cnt = 0;
+	while( (volatile TVREG)THEVA.GENERAL.ID != 0xA0 )
+	{
+		volatile int i;
+
+		#ifdef PINS_CLEAR
+		static const Pin pinsClear[] = { PINS_CLEAR };
+		static const Pin pinsSet[] = { PINS_SET };
+
+		AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDDIS;
+		PIO_Configure( pinsClear, PIO_LISTSIZE( pinsClear ) );
+		for( i = 0; i < 40000; i ++ );
+		PIO_Configure( pinsSet, PIO_LISTSIZE( pinsSet ) );
+		#endif
+
+		TRACE_ERROR( "Invalid FPGA %u !\n\r", THEVA.GENERAL.ID );
+		for( i = 0; i < 40000; i ++ );
+		err_cnt ++;
+
+		if( err_cnt > 2 )
+			AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST;
+	}
+
+	// FPGA test
+	printf( "FPGA test\n\r" );
+	if( !FPGA_test() )
+	{
+		volatile int i;
+
+		printf( "  Failed\n\r" );
+		LED_on( 0 );
+		LED_on( 1 );
+		for( i = 0; i < 80000; i ++ );
+		AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST;
+	}
 
 	// BOT driver initialization
 	{
@@ -285,17 +328,8 @@ int main(  )
 	cdcdSerialDriverDescriptors.numStrings = 3;
 	CDCDSerialDriver_Initialize(  );
 
-	LED_Configure( USBD_LEDPOWER );
-	LED_Configure( USBD_LEDUSB );
-	LED_Configure( USBD_LEDOTHER );
-
 	// connect if needed
 	VBus_Configure(  );
-	/* 
-	 * printf("sizeof(int) = %d\n\r", (int)sizeof(int) ); printf("sizeof(long int) = %d\n\r", (int)sizeof(long int) );
-	 * printf("sizeof(long) = %d\n\r", (int)sizeof(long) ); printf("sizeof(short) = %d\n\r", (int)sizeof(short) ); */
-	printf( "SRAM init\n\r" );
-	SRAM_Init(  );
 
 	printf( "PWM control init\n\r" );
 	// Configure PWM control
@@ -307,8 +341,6 @@ int main(  )
 
 	enc_buf2[0] = enc_buf2[1] = 0;
 
-	watchdog = 1;
-
 	if( *( int * )( 0x0017FF00 + sizeof ( driver_param ) + sizeof ( motor_param ) ) == 0xAACC )
 	{
 		memcpy( &driver_param, ( int * )( 0x0017FF00 ), sizeof ( driver_param ) );
@@ -319,22 +351,30 @@ int main(  )
 	AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDRSTEN | 0xFF00FF; // 1s
 	AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 	
+	LED_off( 0 );
+
 	// Driver loop
 	while( 1 )
 	{
 		// static int i;
 		// int j;
 
-		if( velcontrol == 0 )
+		AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
+
+		if( driver_param.servo_level >= SERVO_LEVEL_TORQUE )
 		{
-			AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
+			if( driver_param.watchdog >= driver_param.watchdog_limit )
+			{
+				controlVelocity_init( );
+				controlPWM_init(  );
+				LED_on( 1 );
+			}
+			else
+			{
+				LED_off( 1 );
+			}
 		}
 		data_analyze(  );
-		if( watchdog == 0 )
-		{
-			if( driver_param.servo_level >= SERVO_LEVEL_TORQUE )
-				watchdog = 1;
-		}
 		if( connecting )
 		{
 			if( USBD_GetState(  ) < USBD_STATE_CONFIGURED )
@@ -379,5 +419,6 @@ int main(  )
 			velcontrol = 0;
 			ISR_VelocityControl(  );
 		}
+		LED_off( 2 );
 	}
 }
