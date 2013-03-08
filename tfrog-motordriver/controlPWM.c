@@ -54,8 +54,6 @@ void controlPWM_config(  )
 {
 	static int i, j;
 
-	driver_param.enable_watchdog = 0;
-
 	driver_param.PWM_resolution = PWM_resolution;
 
 	PWM_abs_max = PWM_resolution - PWM_deadtime - 1;
@@ -542,7 +540,13 @@ void controlPWM_init(  )
 
 	// PWM Generator init
 	PWM_resolution = 1200;
-	PWM_deadtime = 20;
+	#if defined(tfrog_rev1)
+		PWM_deadtime = 18;
+	#elif defined(tfrog_rev5)
+		PWM_deadtime = 10;
+	#else
+		PWM_deadtime = 20;
+	#endif
 	THEVA.GENERAL.PWM.HALF_PERIOD = PWM_resolution;
 	THEVA.GENERAL.PWM.DEADTIME = PWM_deadtime;
 
