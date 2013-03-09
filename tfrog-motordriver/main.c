@@ -36,11 +36,13 @@
 #include "controlVelocity.h"
 #include "registerFPGA.h"
 #include "communication.h"
+#include "eeprom.h"
 
 // extern int getStackPointer( void );
 // extern int getIrqStackPointer( void );
 
 int velcontrol = 0;
+Tfrog_EEPROM_data saved_param = TFROG_EEPROM_DEFAULT;
 
 extern unsigned char languageIdStringDescriptor[];
 extern USBDDriverDescriptors cdcdSerialDriverDescriptors;
@@ -77,7 +79,11 @@ char connecting = 0;
 char connected = 0;
 
 // / List of pins that must be configured for use by the application.
-static const Pin pins[] = { PIN_PWM_ENABLE, PIN_PCK_PCK1, PIN_LED_0, PIN_LED_1, PIN_LED_2 };
+static const Pin pins[] = {
+	PIN_PWM_ENABLE,
+	PIN_PCK_PCK1,
+	PIN_LED_0, PIN_LED_1, PIN_LED_2
+};
 static const Pin pinsLED[] = { PIN_LED_0, PIN_LED_1, PIN_LED_2 };
 
 // / VBus pin instance.
@@ -113,6 +119,7 @@ void SRAM_Init(  )
 	AT91C_BASE_SMC->SMC2_CSR[0] =
 		1 | AT91C_SMC2_WSEN | ( 0 << 8 ) | AT91C_SMC2_BAT | AT91C_SMC2_DBW_16 | ( 0 << 24 ) | ( 1 << 28 );
 }
+
 
 static int FPGA_test( )
 {
@@ -266,6 +273,7 @@ int main(  )
 
 	printf( "SRAM init\n\r" );
 	SRAM_Init(  );
+	EEPROM_Init(  );
 
 	err_cnt = 0;
 	while( (volatile TVREG)THEVA.GENERAL.ID != 0xA0 )
@@ -278,12 +286,12 @@ int main(  )
 
 		AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDDIS;
 		PIO_Configure( pinsClear, PIO_LISTSIZE( pinsClear ) );
-		for( i = 0; i < 40000; i ++ );
+		for( i = 0; i < 30000; i ++ );
 		PIO_Configure( pinsSet, PIO_LISTSIZE( pinsSet ) );
 		#endif
 
 		TRACE_ERROR( "Invalid FPGA %u !\n\r", THEVA.GENERAL.ID );
-		for( i = 0; i < 40000; i ++ );
+		for( i = 0; i < 30000; i ++ );
 		err_cnt ++;
 
 		if( err_cnt > 2 )
@@ -299,7 +307,7 @@ int main(  )
 		printf( "  Failed\n\r" );
 		LED_on( 0 );
 		LED_on( 1 );
-		for( i = 0; i < 80000; i ++ );
+		for( i = 0; i < 60000; i ++ );
 		AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST;
 	}
 
@@ -328,6 +336,53 @@ int main(  )
 	cdcdSerialDriverDescriptors.numStrings = 3;
 	CDCDSerialDriver_Initialize(  );
 
+	{
+		Tfrog_EEPROM_data data_default = TFROG_EEPROM_DEFAULT;
+
+		#if defined(tfrog_rev1)
+		data_default.PWM_deadtime = 18;
+		#elif defined(tfrog_rev5)
+		data_default.PWM_deadtime = 10;
+		#else
+		data_default.PWM_deadtime = 20;
+		#endif
+
+		switch( EEPROM_Read( 0x000, &saved_param, sizeof(Tfrog_EEPROM_data) ) )
+		{
+		case -1:
+			// No EEPROM
+			printf( "No EEPROM\n\r" );
+			saved_param = data_default;
+			break;
+		case -2:
+		case -3:
+			// Read Error
+			TRACE_ERROR( "EEPROM Read Error!\n\r" );
+			AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST;
+			break;
+		default:
+			if( saved_param.key != TFROG_EEPROM_KEY )
+			{
+				char zero = 0;
+
+				saved_param = data_default;
+
+				EEPROM_Write( TFROG_EEPROM_ROBOTPARAM_ADDR, &zero, 1 );
+				msleep( 5 );
+				EEPROM_Write( 0, &data_default, sizeof(data_default) );
+
+				LED_on( 0 );
+				LED_on( 1 );
+				LED_on( 2 );
+				msleep( 200 );
+
+				AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST;
+			}
+			break;
+		}
+
+	}
+
 	// connect if needed
 	VBus_Configure(  );
 
@@ -340,12 +395,6 @@ int main(  )
 	controlVelocity_init(  );
 
 	enc_buf2[0] = enc_buf2[1] = 0;
-
-	if( *( int * )( 0x0017FF00 + sizeof ( driver_param ) + sizeof ( motor_param ) ) == 0xAACC )
-	{
-		memcpy( &driver_param, ( int * )( 0x0017FF00 ), sizeof ( driver_param ) );
-		memcpy( motor_param, ( int * )( 0x0017FF00 + sizeof ( driver_param ) ), sizeof ( motor_param ) );
-	}
 
 	// Enable watchdog
 	AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDRSTEN | 0xFF00FF; // 1s

@@ -15,6 +15,7 @@
 #include "registerFPGA.h"
 #include "controlVelocity.h"
 #include "controlPWM.h"
+#include "eeprom.h"
 
 unsigned char send_buf[1024];
 unsigned char receive_buf[2048];
@@ -22,14 +23,13 @@ int w_receive_buf = 0;
 int r_receive_buf = 0;
 unsigned long send_buf_pos = 0;
 extern const Pin pinPWMEnable;
-extern int PWM_resolution;
-extern int PWM_deadtime;
+extern Tfrog_EEPROM_data saved_param;
 
-inline int natoi( unsigned char *buf, int size )
+inline int hextoi( char *buf )
 {
-	int ret, i;
+	int ret;
 	ret = 0;
-	for( i = 0; i < size; i++ )
+	for( ; *buf; )
 	{
 		if( '0' <= *buf && *buf <= '9' )
 		{
@@ -46,7 +46,23 @@ inline int natoi( unsigned char *buf, int size )
 	return ret;
 }
 
-inline int nhex( unsigned char *buf, int data, int len )
+inline int atoi( char *buf )
+{
+	int ret;
+	ret = 0;
+	for( ; *buf; )
+	{
+		if( '0' <= *buf && *buf <= '9' )
+		{
+			ret *= 10;
+			ret += *buf - '0';
+		}
+		buf++;
+	}
+	return ret;
+}
+
+inline int nhex( char *buf, int data, int len )
 {
 	int i;
 	for( i = 0; i < len; i++ )
@@ -62,32 +78,59 @@ inline int nhex( unsigned char *buf, int data, int len )
 	return len;
 }
 
-inline int itoa10( unsigned char *buf, int data )
+inline int itoa10( char *buf, int data )
 {
 	int i;
 	int len;
 	char txt[16];
+	int sign = 0;
+
+	if( data < 0 )
+	{
+		sign = 1;
+		data = -data;
+		buf[ 0 ] = '-';
+	}
 	for( i = 0; data; i++ )
 	{
 		txt[i] = data % 10 + '0';
 		data = data / 10;
 	}
+	if( i == 0 )
+	{
+		txt[i] = '0';
+		i ++;
+	}
 	len = i;
 	for( i = 0; i < len; i ++ )
 	{
-		buf[ len - i - 1 ] = txt[ i ];
+		buf[ sign + len - i - 1 ] = txt[ i ];
 	}
-	buf[len] = 0;
+	buf[ sign + len ] = 0;
 	return len;
 }
 
-inline void send( char *buf )
+inline int send( char *buf )
 {
+	int i = 0;
 	for( ; *buf; buf++ )
 	{
 		send_buf[send_buf_pos] = ( unsigned char )( *buf );
 		send_buf_pos++;
+		i ++;
 	}
+	return i;
+}
+
+inline int nsend( char *buf, int len )
+{
+	int i;
+	for( i = 0; i < len && *buf; i ++, buf ++ )
+	{
+		send_buf[send_buf_pos] = ( unsigned char )( *buf );
+		send_buf_pos++;
+	}
+	return i;
 }
 
 inline void flush( void )
@@ -310,7 +353,7 @@ inline int data_analyze(  )
 				line[len - 1] = 0;
 				extended_command_analyze( ( char * )line );
 				len = 0;
-				r_receive_buf = r_buf;
+				r_receive_buf = r_buf + 1;
 				state = STATE_IDLE;
 			}
 			break;
@@ -323,7 +366,7 @@ inline int data_analyze(  )
 				data_len = decord( line, len - 1, rawdata, 16 );
 				command_analyze( rawdata, data_len );
 				len = 0;
-				r_receive_buf = r_buf;
+				r_receive_buf = r_buf + 1;
 				state = STATE_IDLE;
 			}
 			break;
@@ -339,6 +382,7 @@ inline int data_analyze(  )
 	return 0;
 }
 
+int ext_continue = -1;
 // //////////////////////////////////////////////////
 /* 受信したYPSpur拡張コマンドの解析 */
 inline int extended_command_analyze( char *data )
@@ -349,33 +393,202 @@ inline int extended_command_analyze( char *data )
 	if( driver_param.servo_level != SERVO_LEVEL_STOP )
 		return 0;
 
+	if( ext_continue >= 0 )
+	{
+		char val[10];
+		int len;
+		int i;
+
+		if( data[0] == 0 )
+		{
+			char zero = 0;
+			msleep( 5 );
+			EEPROM_Write( TFROG_EEPROM_ROBOTPARAM_ADDR + ext_continue,
+						&zero, 1 );
+			send( data );
+			send( "\n00P\n" );
+			itoa10( val, ext_continue );
+			send( val );
+			send( " bytes saved\n\n" );
+			flush(  );
+			ext_continue = -1;
+			return 1;
+		}
+
+		i = strlen( data );
+		data[i] = '\n';
+		len = EEPROM_Write( TFROG_EEPROM_ROBOTPARAM_ADDR + ext_continue, 
+					data, strlen( data ) + 1 );
+		data[i] = 0;
+		if( len < 0 )
+		{
+			char zero = 0;
+			msleep( 5 );
+			EEPROM_Write( TFROG_EEPROM_ROBOTPARAM_ADDR + ext_continue,
+						&zero, 1 );
+			send( data );
+			send( "\n01Q\nFailed (" );
+			itoa10( val, ext_continue );
+			send( val );
+			send( " bytes saved)\n\n" );
+			flush(  );
+			ext_continue = -1;
+			return 0;
+		}
+
+		msleep( 5 );
+		ext_continue += len;
+		return 1;
+	}
+
+
 	send_buf_pos = 0;
 	if( strstr( data, "VV" ) == data )
 	{
+		char val[10];
 		send( data );
 		send( "\n00P\nVEND:" );
 		send( YP_VENDOR_NAME );
 		send( "; \nPROD:" );
-		send( YP_PRODUCT_NAME );
+		send( BOARD_NAME );
 		send( "; \nFIRM:" );
 		send( YP_FIRMWARE_NAME );
 		send( "; \nPROT:" );
 		send( YP_PROTOCOL_NAME );
-		send( "; \nSERI:Reserved; \n\n" );
+		send( "; \nSERI:" );
+		nhex( val, saved_param.serial_no, 8 );
+		send( val );
+		send( "; \n\n" );
 
 	}
 	else if( strstr( data, "PP" ) == data )
 	{
-		char val[8];
+		char val[10];
 		send( data );
-		send( "\n00P\nPWMRES:" );
-		itoa10( (unsigned char*)val, PWM_resolution );
+		send( "\n00P\nNAME:" );
+		send( saved_param.robot_name );
+		send( "; \nPWMRES:" );
+		itoa10( val, saved_param.PWM_resolution );
 		send( val );
 		send( "; \nMOTORNUM:" );
 		send( YP_DRIVERPARAM_MOTORNUM );
 		send( "; \nTORQUEUNIT:" );
 		send( YP_DRIVERPARAM_TORQUEUNIT );
+		send( "; \nDEADTIME:" );
+		itoa10( val, saved_param.PWM_deadtime );
+		send( val );
 		send( "; \n\n" );
+	}
+	else if( strstr( data, "GETROBOTPARAM" ) == data )
+	{
+		char epval[1536];
+		int stat;
+		int i;
+
+		stat = EEPROM_Read( TFROG_EEPROM_ROBOTPARAM_ADDR, epval, 1500 );
+
+		send( data );
+		if( stat > 0 )
+		{
+			send( "\n00P\n" );
+		}
+		else
+		{
+			send( "\n01Q\n" );
+		}
+		for( i = 0; i < stat; i += 256 )
+		{
+			if( nsend( epval + i, 256 ) < 256 ) break;
+			flush( );
+		}
+		send( "\n\n" );
+	}
+	else if( strstr( data, "SETROBOTPARAM" ) == data )
+	{
+		ext_continue = 0;
+		send( data );
+		send( "\n00P\n\n" );
+	}
+	else if( strstr( data, "$EEPROMDUMP" ) == data )
+	{
+		char val[3];
+		char epval[256];
+		int i, j;
+
+		send( data );
+		send( "\n00P\n" );
+
+		for( j = 0; j < 8; j ++ )
+		{
+			EEPROM_Read( 256 * j, epval, 256 );
+			for( i = 0; i < 256; i ++ )
+			{
+				nhex( val, epval[i], 2 );
+				send( val );
+			}
+			send( "\n" );
+			if( j == 7 ) break;
+			flush();
+		}
+		send( "\n" );
+	}
+	else if( strstr( data, "$EEPROMERACE" ) == data )
+	{
+		int i;
+		char clear[16];
+
+		for( i = 0; i < 16; i ++ ) clear[i] = 0xFF;
+
+		for( i = 0; i < 2048; i += 16 )
+		{
+			msleep( 5 );
+			EEPROM_Write( i, &clear, 16 );
+			AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
+		}
+
+		send( data );
+		send( "\n00P\n\n" );
+	}
+	else if( strstr( data, "$SETSERIALNO" ) == data )
+	{
+		saved_param.serial_no = hextoi( data + 12 );
+
+		send( data );
+		send( "\n00P\n\n" );
+	}
+	else if( strstr( data, "$SETNAME" ) == data )
+	{
+		strcpy( saved_param.robot_name, data + 8 );
+
+		send( data );
+		send( "\n00P\n\n" );
+	}
+	else if( strstr( data, "$SETPWMRESOLUTION" ) == data )
+	{
+		saved_param.PWM_resolution = atoi( data + 17 );
+
+		send( data );
+		send( "\n00P\n\n" );
+	}
+	else if( strstr( data, "$SETPWMDEADTIME" ) == data )
+	{
+		saved_param.PWM_deadtime = atoi( data + 15 );
+
+		send( data );
+		send( "\n00P\n\n" );
+	}
+	else if( strstr( data, "$EEPROMSAVE" ) == data )
+	{
+		if( EEPROM_Write( 0, &saved_param, sizeof(saved_param) ) < 0 )
+		{
+			send( data );
+			send( "\n01Q\n\n" );
+		}
+		else
+		{
+			send( data );
+			send( "\n00P\n\n" );
+		}
 	}
 	else if( strstr( data, "$TESTENC" ) == data )
 	{
@@ -400,121 +613,14 @@ inline int extended_command_analyze( char *data )
 		send( "\n" );
 
 		send( "ANG " );
-		nhex( (unsigned char*)num, THEVA.MOTOR[0].ENCODER, 4 );
+		nhex( num, THEVA.MOTOR[0].ENCODER, 4 );
 		num[4] = 0;
 		send( num );
 		send( "," );
-		nhex( (unsigned char*)num, THEVA.MOTOR[1].ENCODER, 4 );
+		nhex( num, THEVA.MOTOR[1].ENCODER, 4 );
 		num[4] = 0;
 		send( num );
 
-		send( "\n\n" );
-	}
-	else if( strstr( data, "$TEST1U" ) == data )
-	{
-		THEVA.GENERAL.PWM.HALF_PERIOD = 4800;
-		THEVA.GENERAL.PWM.DEADTIME = 100;
-		PIO_Clear( &pinPWMEnable );
-		AIC_DisableIT( AT91C_ID_IRQ0 );
-
-		THEVA.MOTOR[0].PWM[0].H = 2400;
-		THEVA.MOTOR[0].PWM[1].H = 0;
-		THEVA.MOTOR[0].PWM[2].H = 0;
-		THEVA.MOTOR[0].PWM[0].L = 4800;
-		THEVA.MOTOR[0].PWM[1].L = 0;
-		THEVA.MOTOR[0].PWM[2].L = 0;
-		THEVA.MOTOR[1].PWM[0].H = 0;
-		THEVA.MOTOR[1].PWM[1].H = 0;
-		THEVA.MOTOR[1].PWM[2].H = 0;
-		THEVA.MOTOR[1].PWM[0].L = 0;
-		THEVA.MOTOR[1].PWM[1].L = 0;
-		THEVA.MOTOR[1].PWM[2].L = 0;
-		send( data );
-		send( "\n\n" );
-	}
-	else if( strstr( data, "$TEST1V" ) == data )
-	{
-		THEVA.MOTOR[0].PWM[0].H = 0;
-		THEVA.MOTOR[0].PWM[1].H = 2400;
-		THEVA.MOTOR[0].PWM[2].H = 0;
-		THEVA.MOTOR[0].PWM[0].L = 0;
-		THEVA.MOTOR[0].PWM[1].L = 4800;
-		THEVA.MOTOR[0].PWM[2].L = 0;
-		THEVA.MOTOR[1].PWM[0].H = 0;
-		THEVA.MOTOR[1].PWM[1].H = 0;
-		THEVA.MOTOR[1].PWM[2].H = 0;
-		THEVA.MOTOR[1].PWM[0].L = 0;
-		THEVA.MOTOR[1].PWM[1].L = 0;
-		THEVA.MOTOR[1].PWM[2].L = 0;
-		send( data );
-		send( "\n\n" );
-	}
-	else if( strstr( data, "$TEST1W" ) == data )
-	{
-		THEVA.MOTOR[0].PWM[0].H = 0;
-		THEVA.MOTOR[0].PWM[1].H = 0;
-		THEVA.MOTOR[0].PWM[2].H = 2400;
-		THEVA.MOTOR[0].PWM[0].L = 0;
-		THEVA.MOTOR[0].PWM[1].L = 0;
-		THEVA.MOTOR[0].PWM[2].L = 4800;
-		THEVA.MOTOR[1].PWM[0].H = 0;
-		THEVA.MOTOR[1].PWM[1].H = 0;
-		THEVA.MOTOR[1].PWM[2].H = 0;
-		THEVA.MOTOR[1].PWM[0].L = 0;
-		THEVA.MOTOR[1].PWM[1].L = 0;
-		THEVA.MOTOR[1].PWM[2].L = 0;
-		send( data );
-		send( "\n\n" );
-	}
-	else if( strstr( data, "$TEST2U" ) == data )
-	{
-		THEVA.MOTOR[0].PWM[0].H = 0;
-		THEVA.MOTOR[0].PWM[1].H = 0;
-		THEVA.MOTOR[0].PWM[2].H = 0;
-		THEVA.MOTOR[0].PWM[0].L = 0;
-		THEVA.MOTOR[0].PWM[1].L = 0;
-		THEVA.MOTOR[0].PWM[2].L = 0;
-		THEVA.MOTOR[1].PWM[0].H = 2400;
-		THEVA.MOTOR[1].PWM[1].H = 0;
-		THEVA.MOTOR[1].PWM[2].H = 0;
-		THEVA.MOTOR[1].PWM[0].L = 4800;
-		THEVA.MOTOR[1].PWM[1].L = 0;
-		THEVA.MOTOR[1].PWM[2].L = 0;
-		send( data );
-		send( "\n\n" );
-	}
-	else if( strstr( data, "$TEST2V" ) == data )
-	{
-		THEVA.MOTOR[0].PWM[0].H = 0;
-		THEVA.MOTOR[0].PWM[1].H = 0;
-		THEVA.MOTOR[0].PWM[2].H = 0;
-		THEVA.MOTOR[0].PWM[0].L = 0;
-		THEVA.MOTOR[0].PWM[1].L = 0;
-		THEVA.MOTOR[0].PWM[2].L = 0;
-		THEVA.MOTOR[1].PWM[0].H = 0;
-		THEVA.MOTOR[1].PWM[1].H = 2400;
-		THEVA.MOTOR[1].PWM[2].H = 0;
-		THEVA.MOTOR[1].PWM[0].L = 0;
-		THEVA.MOTOR[1].PWM[1].L = 4800;
-		THEVA.MOTOR[1].PWM[2].L = 0;
-		send( data );
-		send( "\n\n" );
-	}
-	else if( strstr( data, "$TEST2W" ) == data )
-	{
-		THEVA.MOTOR[0].PWM[0].H = 0;
-		THEVA.MOTOR[0].PWM[1].H = 0;
-		THEVA.MOTOR[0].PWM[2].H = 0;
-		THEVA.MOTOR[0].PWM[0].L = 0;
-		THEVA.MOTOR[0].PWM[1].L = 0;
-		THEVA.MOTOR[0].PWM[2].L = 0;
-		THEVA.MOTOR[1].PWM[0].H = 0;
-		THEVA.MOTOR[1].PWM[1].H = 0;
-		THEVA.MOTOR[1].PWM[2].H = 2400;
-		THEVA.MOTOR[1].PWM[0].L = 0;
-		THEVA.MOTOR[1].PWM[1].L = 0;
-		THEVA.MOTOR[1].PWM[2].L = 4800;
-		send( data );
 		send( "\n\n" );
 	}
 	else if( strstr( data, "ADMASK" ) == data )
@@ -631,17 +737,6 @@ inline int extended_command_analyze( char *data )
 		// sci_init( tmp );
 		// sci_start( ); // start SCI
 		// cnt_updated = 0;
-	}
-	else if( strstr( data, "STORE" ) == data )
-	{
-		int chk = 0xAACC;
-		AT91C_BASE_EFC1->EFC_FMR = AT91C_MC_FWS_1FWS;
-		memcpy( ( int * )0x0017FF00, &driver_param, sizeof ( driver_param ) );
-		memcpy( ( int * )( 0x0017FF00 + sizeof ( driver_param ) ), motor_param, sizeof ( motor_param ) );
-		memcpy( ( int * )( 0x0017FF00 + sizeof ( driver_param ) + sizeof ( motor_param ) ), &chk, sizeof ( chk ) );
-		AT91C_BASE_EFC1->EFC_FCR = AT91C_MC_FCMD_START_PROG | ( 0x3FF << 8 );
-		send( data );
-		send( "\n00P\n\n" );
 	}
 	else
 	{

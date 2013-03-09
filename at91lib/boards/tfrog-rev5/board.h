@@ -82,7 +82,7 @@
 /// - BOARD_NAME
 
 /// Name of the board.
-#define BOARD_NAME "Tfrog-Motordriver rev.5" 
+#define BOARD_NAME "T-frog Motor Driver rev.5" 
 /// Board definition.
 #define tfrog_rev5
 /// Family definition.
@@ -205,6 +205,10 @@
 #define PIN_PWM_CYCLE     {1 << 19, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_PERIPH_A, PIO_PULLUP}
 #define PIN_PWM_CYCLE2    {1 << 20, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_PERIPH_A, PIO_PULLUP}
 #define PIN_PCK_PCK1      {1 << 17, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_PERIPH_A, PIO_DEFAULT}
+
+#define PINS_EEPROM_TWD    {0x00000008, AT91C_BASE_PIOA, AT91C_ID_PIOA, PIO_OUTPUT_1, PIO_PULLUP | PIO_OPENDRAIN}
+#define PINS_EEPROM_TWCK   {0x00000010, AT91C_BASE_PIOA, AT91C_ID_PIOA, PIO_OUTPUT_1, PIO_PULLUP | PIO_OPENDRAIN}
+#define PINS_EEPROM        {0x00000018, AT91C_BASE_PIOA, AT91C_ID_PIOA, PIO_PERIPH_A, PIO_PULLUP | PIO_OPENDRAIN}
 
 
 #define RAMFUNC __attribute__ ((long_call, section (".ramfunc")))

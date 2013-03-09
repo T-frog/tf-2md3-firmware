@@ -65,12 +65,10 @@ typedef enum
 #define YP_FIRMWARE_NAME "2013.03.08"
 /* parametor files dir */
 #define YP_PARAMS_DIR "robot-params"
-/* product */
-#define YP_PRODUCT_NAME "Yamabico Project - Spur"
 /* protocol */
 #define YP_PROTOCOL_NAME "YPP:05:00"
 /* vendor */
-#define YP_VENDOR_NAME "Univ. of Tsukuba - Intelligent Robot Lab."
+#define YP_VENDOR_NAME "T-frog Prject"
 
 /* Driver parameters */
 #define YP_DRIVERPARAM_MOTORNUM "2"

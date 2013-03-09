@@ -60,7 +60,7 @@ void ISR_VelocityControl(  )
 				{
 					static int vel_buf[2] = { 0, 0 };
 					motor[i].ref.vel_buf = motor[i].ref.vel;
-					motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - vel_buf[i] ) / motor[i].ref.vel_interval;
+					motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - vel_buf[i] ) /** 100000*/ / motor[i].ref.vel_interval;
 
 					vel_buf[i] = motor[i].ref.vel_buf;
 					motor[i].ref.vel_interval = 0;

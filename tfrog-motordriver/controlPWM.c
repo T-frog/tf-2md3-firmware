@@ -20,6 +20,7 @@
 #include "controlPWM.h"
 #include "controlVelocity.h"
 #include "power.h"
+#include "eeprom.h"
 
 static const Pin pinsLeds[] = { PINS_LEDS };
 
@@ -43,6 +44,7 @@ int PWM_resolution = 0;
 int PWM_deadtime;
 
 extern int velcontrol;
+extern Tfrog_EEPROM_data saved_param;
 
 int _abs( int x )
 {
@@ -539,14 +541,9 @@ void controlPWM_init(  )
 	AIC_EnableIT( AT91C_ID_IRQ0 );
 
 	// PWM Generator init
-	PWM_resolution = 1200;
-	#if defined(tfrog_rev1)
-		PWM_deadtime = 18;
-	#elif defined(tfrog_rev5)
-		PWM_deadtime = 10;
-	#else
-		PWM_deadtime = 20;
-	#endif
+	PWM_resolution = saved_param.PWM_resolution;
+	PWM_deadtime = saved_param.PWM_deadtime;
+
 	THEVA.GENERAL.PWM.HALF_PERIOD = PWM_resolution;
 	THEVA.GENERAL.PWM.DEADTIME = PWM_deadtime;
 
