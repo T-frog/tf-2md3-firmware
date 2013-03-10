@@ -3,8 +3,8 @@
 
 void msleep( int ms );
 void EEPROM_Init(  );
-int EEPROM_Read( int addr, void *data, int len );
-int EEPROM_Write( int addr, void *data, int len );
+RAMFUNC int EEPROM_Read( int addr, void *data, int len );
+RAMFUNC int EEPROM_Write( int addr, void *data, int len );
 
 
 typedef struct _Tfrog_EEPROM_data

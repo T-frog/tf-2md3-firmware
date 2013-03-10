@@ -17,8 +17,8 @@
 #include "controlPWM.h"
 #include "eeprom.h"
 
-unsigned char send_buf[1024];
-unsigned char receive_buf[2048];
+unsigned char send_buf[2048];
+unsigned char receive_buf[1024];
 int w_receive_buf = 0;
 int r_receive_buf = 0;
 unsigned long send_buf_pos = 0;
@@ -131,6 +131,11 @@ inline int nsend( char *buf, int len )
 		send_buf_pos++;
 	}
 	return i;
+}
+
+inline void sendclear( void )
+{
+	send_buf_pos = 0;
 }
 
 inline void flush( void )
@@ -300,7 +305,7 @@ inline int data_fetch( unsigned char *data, int len )
 		receive_buf[w_receive_buf] = *data;
 		w_receive_buf++;
 		data++;
-		if( w_receive_buf >= 2048 )
+		if( w_receive_buf >= 1024 )
 			w_receive_buf = 0;
 		if( w_receive_buf == r_receive_buf )
 		{
@@ -373,7 +378,7 @@ inline int data_analyze(  )
 		}
 		data++;
 		r_buf++;
-		if( r_buf >= 2048 )
+		if( r_buf >= 1024 )
 		{
 			r_buf = 0;
 			data = receive_buf;
@@ -397,7 +402,7 @@ inline int extended_command_analyze( char *data )
 	{
 		char val[10];
 		int len;
-		int i;
+		int wrote;
 
 		if( data[0] == 0 )
 		{
@@ -415,12 +420,13 @@ inline int extended_command_analyze( char *data )
 			return 1;
 		}
 
-		i = strlen( data );
-		data[i] = '\n';
-		len = EEPROM_Write( TFROG_EEPROM_ROBOTPARAM_ADDR + ext_continue, 
-					data, strlen( data ) + 1 );
-		data[i] = 0;
-		if( len < 0 )
+		len = strlen( data );
+		data[len] = '\n';
+		msleep( 5 );
+		wrote = EEPROM_Write( TFROG_EEPROM_ROBOTPARAM_ADDR + ext_continue, 
+					data, len + 1 );
+		data[len] = 0;
+		if( wrote < 0 )
 		{
 			char zero = 0;
 			msleep( 5 );
@@ -436,8 +442,7 @@ inline int extended_command_analyze( char *data )
 			return 0;
 		}
 
-		msleep( 5 );
-		ext_continue += len;
+		ext_continue += len + 1;
 		return 1;
 	}
 
@@ -479,31 +484,32 @@ inline int extended_command_analyze( char *data )
 		send( val );
 		send( "; \n\n" );
 	}
-	else if( strstr( data, "GETROBOTPARAM" ) == data )
+	else if( strstr( data, "GETEMBEDDEDPARAM" ) == data )
 	{
-		char epval[1536];
-		int stat;
+		char epval[256];
+		int len;
 		int i;
 
-		stat = EEPROM_Read( TFROG_EEPROM_ROBOTPARAM_ADDR, epval, 1500 );
-
 		send( data );
-		if( stat > 0 )
+		send( "\n" );
+		flush( );
+		send( "00P\n" );
+		for( i = 0; i < 1792; i += 256 )
 		{
-			send( "\n00P\n" );
-		}
-		else
-		{
-			send( "\n01Q\n" );
-		}
-		for( i = 0; i < stat; i += 256 )
-		{
-			if( nsend( epval + i, 256 ) < 256 ) break;
-			flush( );
+			len = EEPROM_Read( TFROG_EEPROM_ROBOTPARAM_ADDR + i, epval, 256 );
+			if( len < 0 )
+			{
+				sendclear();
+				send( "01Q\n\n" );
+				break;				
+			}
+			if( nsend( epval, 256 ) < 256 ) break;
+			AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 		}
 		send( "\n\n" );
+		flush( );
 	}
-	else if( strstr( data, "SETROBOTPARAM" ) == data )
+	else if( strstr( data, "SETEMBEDDEDPARAM" ) == data )
 	{
 		ext_continue = 0;
 		send( data );
@@ -529,6 +535,7 @@ inline int extended_command_analyze( char *data )
 			send( "\n" );
 			if( j == 7 ) break;
 			flush();
+			AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 		}
 		send( "\n" );
 	}

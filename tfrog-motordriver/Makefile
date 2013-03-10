@@ -34,8 +34,15 @@
 
 # Chip & board used for compilation
 # (can be overriden by adding CHIP=chip and BOARD=board to the command-line)
-CHIP  = at91sam7se512
 BOARD ?= tfrog-rev5
+
+chip = case "$(BOARD)" in \
+	tfrog-rev5) echo at91sam7se256;;\
+	tfrog-rev4) echo at91sam7se512;;\
+	*) echo at91sam7se512;;\
+esac
+CHIP := $(shell $(chip))
+
 
 # Trace level used for compilation
 # (can be overriden by adding TRACE_LEVEL=#number to the command-line)
@@ -77,8 +84,9 @@ SIZE = $(CROSS_COMPILE)size
 OBJCOPY = $(CROSS_COMPILE)objcopy
 
 # Flags
-INCLUDES = -I$(AT91LIB)/boards/$(BOARD) -I$(AT91LIB)/peripherals 
+INCLUDES = -I$(AT91LIB)/boards/$(BOARD) -I$(AT91LIB)/peripherals
 INCLUDES += -I$(AT91LIB)/components -I$(AT91LIB)/usb/device -I$(AT91LIB)
+INCLUDES += -I$(AT91LIB)/memories
 
 CFLAGS = -Wall -mlong-calls #-ffunction-sections
 CFLAGS += $(OPTIMIZATION) $(INCLUDES) -D$(CHIP) -DTRACE_LEVEL=$(TRACE_LEVEL)
@@ -93,13 +101,14 @@ LDFLAGS = $(OPTIMIZATION) -nostartfiles -Wl,--gc-sections -L/usr/local/arm/arm-e
 USB = $(AT91LIB)/usb
 UTILITY = $(AT91LIB)/utility
 PERIPH = $(AT91LIB)/peripherals
+MEM = $(AT91LIB)/memories
 BOARDS = $(AT91LIB)/boards
 
 VPATH += $(USB)/device/cdc-serial $(USB)/device/core $(USB)/common/core
 VPATH += $(USB)/common/cdc
 VPATH += $(UTILITY)
-VPATH += $(PERIPH)/dbgu $(PERIPH)/aic $(PERIPH)/usart $(PERIPH)/pio $(PERIPH)/pmc
-#VPATH += $(PERIPH)/cp15
+VPATH += $(PERIPH)/dbgu $(PERIPH)/aic $(PERIPH)/usart $(PERIPH)/pio $(PERIPH)/pmc $(PERIPH)/efc $(PERIPH)/eefc
+VPATH += $(MEM)/flash
 VPATH += $(BOARDS)/$(BOARD) $(BOARDS)/$(BOARD)/$(CHIP)
 
 # Objects built from C source files
@@ -118,12 +127,13 @@ C_OBJECTS += USBGenericRequest.o USBGetDescriptorRequest.o
 C_OBJECTS += USBSetConfigurationRequest.o USBFeatureRequest.o
 C_OBJECTS += USBEndpointDescriptor.o USBConfigurationDescriptor.o
 C_OBJECTS += led.o string.o stdio.o
-C_OBJECTS += aic.o dbgu.o usart.o pio.o pio_it.o pmc.o
+C_OBJECTS += flashd_efc.o flashd_eefc.o
+C_OBJECTS += aic.o dbgu.o usart.o pio.o pio_it.o pmc.o efc.o eefc.o 
 C_OBJECTS += board_memories.o
 C_OBJECTS += board_lowlevel.o
-C_OBJECTS += power.o
+C_OBJECTS += power.o math.o
 C_OBJECTS += eeprom.o
-C_OBJECTS += controlVelocity.o controlPWM.o communication.o # mathSin2000.o mathSin2048.o 
+C_OBJECTS += controlVelocity.o controlPWM.o communication.o
 C_OBJECTS += fixpawd.o fixpawd_math.o
 
 # Objects built from Assembly source files
@@ -165,5 +175,6 @@ endef
 $(foreach MEMORY, $(MEMORIES), $(eval $(call RULES,$(MEMORY))))
 
 clean:
-	-rm -f $(OBJ)/*.o $(BIN)/*.bin $(BIN)/*.elf
+	-rm -f $(OBJ)/*.o $(BIN)/*.elf
+#$(BIN)/*.bin
 

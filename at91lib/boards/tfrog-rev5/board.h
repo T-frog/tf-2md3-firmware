@@ -64,8 +64,8 @@
 //         Headers
 //------------------------------------------------------------------------------
 
-#if defined(at91sam7se512)
-    #include "at91sam7se512/AT91SAM7SE512.h"
+#if defined(at91sam7se256)
+    #include "at91sam7se256/AT91SAM7SE256.h"
 #else
     #error Board does not support the specified chip.
 #endif
@@ -117,6 +117,9 @@
 /// Track and hold Acquisition Time min (in ns)
 #define ADC_TRACK_HOLD_TIME_MIN   600
 
+
+
+#define BOARD_FLASH_EFC
 
 //------------------------------------------------------------------------------
 /// ¥page "SAM7SE-EK - USB device"
@@ -210,6 +213,7 @@
 #define PINS_EEPROM_TWCK   {0x00000010, AT91C_BASE_PIOA, AT91C_ID_PIOA, PIO_OUTPUT_1, PIO_PULLUP | PIO_OPENDRAIN}
 #define PINS_EEPROM        {0x00000018, AT91C_BASE_PIOA, AT91C_ID_PIOA, PIO_PERIPH_A, PIO_PULLUP | PIO_OPENDRAIN}
 
+#define FLASH_USERDATA_START   ((char*)0x0013F800)
 
 #define RAMFUNC __attribute__ ((long_call, section (".ramfunc")))
 

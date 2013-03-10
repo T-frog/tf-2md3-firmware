@@ -119,6 +119,9 @@
 #define ADC_TRACK_HOLD_TIME_MIN   600
 
 
+
+#define BOARD_FLASH_EFC
+
 //------------------------------------------------------------------------------
 /// ¥page "SAM7SE-EK - USB device"
 /// This page lists constants describing several characteristics (controller
@@ -192,6 +195,8 @@
 
 
 #define RAMFUNC __attribute__ ((long_call, section (".ramfunc")))
+
+#define FLASH_USERDATA_START   ((char*)0x0017F800)
 
 
 #endif //#ifndef BOARD_H

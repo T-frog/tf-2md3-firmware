@@ -30,6 +30,21 @@ static const unsigned int numLeds = PIO_LISTSIZE( pinsLeds );
 // / PWM Enable pin instance.
 static const Pin pinPWMEnable = PIN_PWM_ENABLE;
 
+
+typedef struct
+{
+	int k[4];
+	int x;
+} Filter1st;
+
+Filter1st accelf[2];
+
+int Filter1st_Filter( Filter1st *filter, int input )
+{
+	filter->x = filter->k[0] * input + ( filter->k[1] * filter->x ) / 256;
+	return ( filter->k[2] * input + ( filter->k[3] * filter->x ) / 256 ) / 256;
+}
+
 // ------------------------------------------------------------------------------
 // / Velocity control loop (1ms)
 // ------------------------------------------------------------------------------
@@ -60,7 +75,7 @@ void ISR_VelocityControl(  )
 				{
 					static int vel_buf[2] = { 0, 0 };
 					motor[i].ref.vel_buf = motor[i].ref.vel;
-					motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - vel_buf[i] ) /** 100000*/ / motor[i].ref.vel_interval;
+					motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - vel_buf[i] ) * 100000 / motor[i].ref.vel_interval;
 
 					vel_buf[i] = motor[i].ref.vel_buf;
 					motor[i].ref.vel_interval = 0;
@@ -86,8 +101,8 @@ void ISR_VelocityControl(  )
 			}
 
 			// PWSでの相互の影響を考慮したフィードフォワード
-			s_a = ( toq_pi[0] + motor[0].ref.vel_diff ) / 16;
-			s_b = ( toq_pi[1] + motor[1].ref.vel_diff ) / 16;
+			s_a = ( toq_pi[0] + Filter1st_Filter( &accelf[0], motor[0].ref.vel_diff ) ) / 16;
+			s_b = ( toq_pi[1] + Filter1st_Filter( &accelf[1], motor[1].ref.vel_diff ) ) / 16;
 
 			toq[0] = ( s_a * driver_param.Kdynamics[0]
 					   + s_b * driver_param.Kdynamics[2] + motor[0].ref.vel_buf * driver_param.Kdynamics[4] ) / 256;
@@ -185,7 +200,14 @@ void ISR_VelocityControl(  )
 inline void controlVelocity_init(  )
 {
 	int i;
-	
+
+	accelf[0].k[3] = ( -1 / ( 1.0 + 2 * 10 ) ) * 256;
+	accelf[0].k[2] = (  1 / ( 1.0 + 2 * 10 ) ) * 256;
+	accelf[0].k[1] = ( -( 1.0 - 2 * 10 ) / ( 1.0 + 2 * 10 ) ) * 256;
+	accelf[0].k[0] = ( -( 1.0 - 2 * 10 ) / ( 1.0 + 2 * 10 ) - 1.0 ) * 256;
+	accelf[0].x = 0;
+	accelf[1] = accelf[0];
+
 	driver_param.cnt_updated = 0;
 	driver_param.watchdog = 0;
 	driver_param.watchdog_limit = 600;
