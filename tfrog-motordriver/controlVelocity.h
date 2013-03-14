@@ -58,8 +58,11 @@ typedef struct _DriverParam
 	int PWM_max;								// clock
 	int PWM_min;								// clock
 	int PWM_resolution;							// clock
-	int integ_max;								// 
-	int integ_min;								// 
+	int integ_max;								// cnt
+	int integ_min;								// cnt
+	int vsrc_rated;
+	int vsrc_rated_inv32768;
+	int vsrc;
 	int Kdynamics[6];
 	YPSpur_servo_level servo_level;
 	unsigned short watchdog_limit;

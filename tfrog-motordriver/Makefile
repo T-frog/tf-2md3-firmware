@@ -132,7 +132,7 @@ C_OBJECTS += aic.o dbgu.o usart.o pio.o pio_it.o pmc.o efc.o eefc.o
 C_OBJECTS += board_memories.o
 C_OBJECTS += board_lowlevel.o
 C_OBJECTS += power.o math.o
-C_OBJECTS += eeprom.o
+C_OBJECTS += eeprom.o adc.o
 C_OBJECTS += controlVelocity.o controlPWM.o communication.o
 C_OBJECTS += fixpawd.o fixpawd_math.o
 

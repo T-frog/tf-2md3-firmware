@@ -477,8 +477,6 @@ inline int extended_command_analyze( char *data )
 		send( val );
 		send( "; \nMOTORNUM:" );
 		send( YP_DRIVERPARAM_MOTORNUM );
-		send( "; \nTORQUEUNIT:" );
-		send( YP_DRIVERPARAM_TORQUEUNIT );
 		send( "; \nDEADTIME:" );
 		itoa10( val, saved_param.PWM_deadtime );
 		send( val );
@@ -898,6 +896,17 @@ inline int command_analyze( unsigned char *data, int len )
 		break;
 	case PARAM_enc_rev:
 		motor_param[imotor].enc_rev = i.integer;
+	case PARAM_vsrc:
+		// ad = 1024 * ( vsrc * VSRC_DIV ) / 3.3
+		driver_param.vsrc_rated = 310 * ( i.integer * VSRC_DIV ) / 256;
+		if( driver_param.vsrc_rated > 1024 )
+		{
+			driver_param.vsrc_rated = 0;
+		}
+		else
+		{
+			driver_param.vsrc_rated_inv32768 = 32768 / driver_param.vsrc_rated;
+		}
 	default:
 		return 0;
 	}

@@ -37,6 +37,7 @@
 #include "registerFPGA.h"
 #include "communication.h"
 #include "eeprom.h"
+#include "adc.h"
 
 // extern int getStackPointer( void );
 // extern int getIrqStackPointer( void );
@@ -311,6 +312,9 @@ int main(  )
 		AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST;
 	}
 
+	printf( "ADC init\n\r" );
+	ADC_Init(  );
+
 	// BOT driver initialization
 	{
 		const char manufacturer[] = { "T-frog project" };
@@ -401,6 +405,8 @@ int main(  )
 	AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 	
 	LED_off( 0 );
+	ADC_Start();
+	driver_param.vsrc = 0;
 
 	// Driver loop
 	while( 1 )
@@ -446,13 +452,20 @@ int main(  )
 		if( driver_param.cnt_updated >= 5 )
 		{
 			unsigned short mask;
+			int i;
 			// static long cnt = 0;
 			/* 約5msおき */
 
 			mask = driver_param.admask;			// analog_mask;
 			if( driver_param.io_mask )
 				mask |= 0x100;
+			for( i = 0; i < 8; i ++ )
+			{
+				analog[i] = ( i << 12 ) | ADC_Read( i );
+			}
 			analog[8] = ( 15 << 12 ) | THEVA.PORT[0];
+			driver_param.vsrc = analog[ 0 ] & 0x03FF;
+
 			data_send( ( short )( ( short )motor[0].enc_buf - ( short )enc_buf2[0] ),
 					   ( short )( ( short )motor[1].enc_buf - ( short )enc_buf2[1] ),
 					   motor[0].ref.rate_buf, motor[1].ref.rate_buf, analog, mask );
@@ -461,6 +474,7 @@ int main(  )
 			enc_buf2[1] = motor[1].enc_buf;
 
 			driver_param.cnt_updated = 0;
+			ADC_Start();
 		}
 
 		if( velcontrol == 1 )

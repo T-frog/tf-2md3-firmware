@@ -199,5 +199,8 @@
 #define FLASH_USERDATA_START   ((char*)0x0017F800)
 
 
+#define VSRC_DIV         10/84
+
+
 #endif //#ifndef BOARD_H
 

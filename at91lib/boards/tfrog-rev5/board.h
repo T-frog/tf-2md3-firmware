@@ -218,5 +218,7 @@
 #define RAMFUNC __attribute__ ((long_call, section (".ramfunc")))
 
 
+#define VSRC_DIV         10/130
+
 #endif //#ifndef BOARD_H
 

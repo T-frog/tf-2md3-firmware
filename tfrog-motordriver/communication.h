@@ -51,6 +51,7 @@ typedef enum
 	PARAM_toq_limit,
 	PARAM_enc_rev,
 	PARAM_motor_phase,
+	PARAM_vsrc,
 	PARAM_servo = 64,
 	PARAM_watch_dog_limit,
 	PARAM_io_dir = 96,
@@ -62,7 +63,7 @@ typedef enum
 #define COMMUNICATION_END_BYTE		0x0a
 
 /* firmware */
-#define YP_FIRMWARE_NAME "2013.03.08"
+#define YP_FIRMWARE_NAME "2013.03.14"
 /* parametor files dir */
 #define YP_PARAMS_DIR "robot-params"
 /* protocol */
@@ -72,7 +73,6 @@ typedef enum
 
 /* Driver parameters */
 #define YP_DRIVERPARAM_MOTORNUM "2"
-#define YP_DRIVERPARAM_TORQUEUNIT "100000"
 
 
 int data_analyze(  );
