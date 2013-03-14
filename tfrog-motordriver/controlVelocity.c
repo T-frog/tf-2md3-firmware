@@ -65,9 +65,10 @@ void ISR_VelocityControl(  )
 		static int toq[2], out_pwm[2];
 
 		if( driver_param.servo_level >= SERVO_LEVEL_VELOCITY )
-		{										// servo_level 3 (speed enable)
-
+		{
+			// servo_level 3 (speed enable)
 			static int toq_pi[2], s_a, s_b;
+
 			for( i = 0; i < 2; i++ )
 			{
 				motor[i].ref.vel_interval++;
@@ -75,7 +76,8 @@ void ISR_VelocityControl(  )
 				{
 					static int vel_buf[2] = { 0, 0 };
 					motor[i].ref.vel_buf = motor[i].ref.vel;
-					motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - vel_buf[i] ) * 100000 / motor[i].ref.vel_interval;
+					motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - vel_buf[i] ) * 1000000 / motor[i].ref.vel_interval;
+					// [cnt/msms] * 1000[ms/s] * 1000[ms/s] = [cnt/ss]
 
 					vel_buf[i] = motor[i].ref.vel_buf;
 					motor[i].ref.vel_interval = 0;
@@ -95,22 +97,24 @@ void ISR_VelocityControl(  )
 					motor[i].error_integ = driver_param.integ_min;
 				}
 
-				// PI制御分
-				toq_pi[i]  = motor[i].error * motor_param[i].Kp;
-				toq_pi[i] += motor[i].error_integ * motor_param[i].Ki;
+				// PI制御分 単位：加速度[cnt/ss]
+				toq_pi[i]  = motor[i].error * 1000 * motor_param[i].Kp; // [cnt/ms] * 1000[ms/s] * Kp[1/s] = [cnt/ss]
+				toq_pi[i] += motor[i].error_integ * motor_param[i].Ki; // [cnt] * Ki[1/ss] = [cnt/ss]
 			}
 
 			// PWSでの相互の影響を考慮したフィードフォワード
 			s_a = ( toq_pi[0] + Filter1st_Filter( &accelf[0], motor[0].ref.vel_diff ) ) / 16;
 			s_b = ( toq_pi[1] + Filter1st_Filter( &accelf[1], motor[1].ref.vel_diff ) ) / 16;
 
+			// Kdynamics[TORQUE_UNIT 2pi/cntrev kgf m m], s_a/s_b[cnt/s]
 			toq[0] = ( s_a * driver_param.Kdynamics[0]
 					   + s_b * driver_param.Kdynamics[2] + motor[0].ref.vel_buf * driver_param.Kdynamics[4] ) / 256;
 			toq[1] = ( s_b * driver_param.Kdynamics[1]
 					   + s_a * driver_param.Kdynamics[3] + motor[1].ref.vel_buf * driver_param.Kdynamics[5] ) / 256;
 		}
 		else
-		{										// servo_level 2(toque enable)
+		{
+			// servo_level 2(toque enable)
 			toq[0] = 0;
 			toq[1] = 0;
 		}
@@ -200,11 +204,11 @@ void ISR_VelocityControl(  )
 inline void controlVelocity_init(  )
 {
 	int i;
-
-	accelf[0].k[3] = ( -1 / ( 1.0 + 2 * 10 ) ) * 256;
-	accelf[0].k[2] = (  1 / ( 1.0 + 2 * 10 ) ) * 256;
-	accelf[0].k[1] = ( -( 1.0 - 2 * 10 ) / ( 1.0 + 2 * 10 ) ) * 256;
-	accelf[0].k[0] = ( -( 1.0 - 2 * 10 ) / ( 1.0 + 2 * 10 ) - 1.0 ) * 256;
+	
+	accelf[0].k[3] = (int)( ( -1.0 / ( 1.0 + 2.0 * 5.0 ) ) * 256.0 );
+	accelf[0].k[2] = - accelf[0].k[3];
+	accelf[0].k[1] = (int)( ( ( 1.0 - 2.0 * 5.0 ) * ( -1.0 / ( 1.0 + 2.0 * 5.0 ) ) ) * 256.0 );
+	accelf[0].k[0] = - accelf[0].k[1] - 256;
 	accelf[0].x = 0;
 	accelf[1] = accelf[0];
 
