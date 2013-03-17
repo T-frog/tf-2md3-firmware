@@ -83,4 +83,16 @@ int data_send( short cnt1, short cnt2, short pwm1, short pwm2, short *analog, un
 int decord( unsigned char *src, int len, unsigned char *dst, int buf_max );
 int encode( unsigned char *src, int len, unsigned char *dst, int buf_max );
 
+
+
+RAMFUNC int hextoi( char *buf );
+RAMFUNC int atoi( char *buf );
+RAMFUNC int nhex( char *buf, int data, int len );
+RAMFUNC int itoa10( char *buf, int data );
+RAMFUNC int send( char *buf );
+RAMFUNC int nsend( char *buf, int len );
+RAMFUNC void sendclear( void );
+RAMFUNC void flush( void );
+
+
 #endif

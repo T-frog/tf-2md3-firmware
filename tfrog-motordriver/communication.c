@@ -17,15 +17,18 @@
 #include "controlPWM.h"
 #include "eeprom.h"
 
-unsigned char send_buf[2048];
-unsigned char receive_buf[1024];
-int w_receive_buf = 0;
-int r_receive_buf = 0;
-unsigned long send_buf_pos = 0;
+#define SEND_BUF_LEN  2048
+#define RECV_BUF_LEN  1024
+
+unsigned char send_buf[SEND_BUF_LEN];
+unsigned char receive_buf[RECV_BUF_LEN];
+volatile int w_receive_buf = 0;
+volatile int r_receive_buf = 0;
+volatile unsigned long send_buf_pos = 0;
 extern const Pin pinPWMEnable;
 extern Tfrog_EEPROM_data saved_param;
 
-inline int hextoi( char *buf )
+int hextoi( char *buf )
 {
 	int ret;
 	ret = 0;
@@ -46,7 +49,7 @@ inline int hextoi( char *buf )
 	return ret;
 }
 
-inline int atoi( char *buf )
+int atoi( char *buf )
 {
 	int ret;
 	ret = 0;
@@ -62,7 +65,7 @@ inline int atoi( char *buf )
 	return ret;
 }
 
-inline int nhex( char *buf, int data, int len )
+int nhex( char *buf, int data, int len )
 {
 	int i;
 	for( i = 0; i < len; i++ )
@@ -78,7 +81,7 @@ inline int nhex( char *buf, int data, int len )
 	return len;
 }
 
-inline int itoa10( char *buf, int data )
+int itoa10( char *buf, int data )
 {
 	int i;
 	int len;
@@ -110,59 +113,60 @@ inline int itoa10( char *buf, int data )
 	return len;
 }
 
-inline int send( char *buf )
+int send( char *buf )
 {
 	int i = 0;
 	for( ; *buf; buf++ )
 	{
 		send_buf[send_buf_pos] = ( unsigned char )( *buf );
 		send_buf_pos++;
+		if( send_buf_pos >= SEND_BUF_LEN || send_buf[send_buf_pos] == '\n' ) flush();
 		i ++;
 	}
 	return i;
 }
 
-inline int nsend( char *buf, int len )
+int nsend( char *buf, int len )
 {
 	int i;
 	for( i = 0; i < len && *buf; i ++, buf ++ )
 	{
 		send_buf[send_buf_pos] = ( unsigned char )( *buf );
 		send_buf_pos++;
+		if( send_buf_pos >= SEND_BUF_LEN || send_buf[send_buf_pos] == '\n' ) flush();
 	}
 	return i;
 }
 
-inline void sendclear( void )
+void flush( void )
 {
-	send_buf_pos = 0;
-}
-
-inline void flush( void )
-{
-	static int itry = 0;
-	if( send_buf_pos == 0 )
+	int len;
+	
+	len = send_buf_pos;
+	send_buf[len] = 0;
+	if( len == 0 )
 		return;
 	while( 1 )
 	{
-		if( CDCDSerialDriver_Write( send_buf, send_buf_pos, 0, 0 ) != USBD_STATUS_SUCCESS )
+		char ret;
+		ret = CDCDSerialDriver_Write( send_buf, len, 0, 0 );
+		if( ret == USBD_STATUS_LOCKED )
 		{
-			itry++;
-			if( itry > 0 )
-			{
-				send_buf[send_buf_pos] = 0;
-				TRACE_ERROR( "Send Failed\n\r%s\n\r", send_buf );
-				break;
-			}
+			continue;
+		}
+		else if( ret != USBD_STATUS_SUCCESS )
+		{
+			TRACE_ERROR( "Send Failed\n\r%s\n\r", send_buf );
+			break;
 		}
 		else
 		{
+			send_buf_pos -= len;
 			break;
 		}
 	}
 	// CDCDSerialDriver_Write(send_buf, send_buf_pos, 0, 0);
 	// printf("%u\n\r",send_buf_pos);
-	send_buf_pos = 0;
 }
 
 /**
@@ -284,7 +288,7 @@ inline int data_send( short cnt1, short cnt2, short pwm1, short pwm2, short *ana
 	// 変換
 	send_buf_pos = 0;
 	send_buf[0] = COMMUNICATION_START_BYTE;
-	encode_len = encode( ( unsigned char * )data, len, send_buf + 1, 1024 - 2 );
+	encode_len = encode( ( unsigned char * )data, len, send_buf + 1, RECV_BUF_LEN - 2 );
 	if( encode_len < 0 )
 		return encode_len;
 	send_buf[encode_len + 1] = COMMUNICATION_END_BYTE;
@@ -305,7 +309,7 @@ inline int data_fetch( unsigned char *data, int len )
 		receive_buf[w_receive_buf] = *data;
 		w_receive_buf++;
 		data++;
-		if( w_receive_buf >= 1024 )
+		if( w_receive_buf >= RECV_BUF_LEN )
 			w_receive_buf = 0;
 		if( w_receive_buf == r_receive_buf )
 		{
@@ -325,7 +329,7 @@ inline int data_fetch( unsigned char *data, int len )
 
 inline int data_analyze(  )
 {
-	unsigned char line[64];
+	unsigned char line[256];
 	unsigned char *data;
 	int r_buf, len;
 	enum
@@ -378,7 +382,7 @@ inline int data_analyze(  )
 		}
 		data++;
 		r_buf++;
-		if( r_buf >= 1024 )
+		if( r_buf >= RECV_BUF_LEN )
 		{
 			r_buf = 0;
 			data = receive_buf;
@@ -392,7 +396,6 @@ int ext_continue = -1;
 /* 受信したYPSpur拡張コマンドの解析 */
 inline int extended_command_analyze( char *data )
 {
-	// char line[64];
 	static int i;
 
 	if( driver_param.servo_level != SERVO_LEVEL_STOP )
@@ -447,7 +450,6 @@ inline int extended_command_analyze( char *data )
 	}
 
 
-	send_buf_pos = 0;
 	if( strstr( data, "VV" ) == data )
 	{
 		char val[10];
@@ -490,22 +492,24 @@ inline int extended_command_analyze( char *data )
 
 		send( data );
 		send( "\n" );
-		flush( );
-		send( "00P\n" );
-		for( i = 0; i < 1792; i += 256 )
+		len = EEPROM_Read( TFROG_EEPROM_ROBOTPARAM_ADDR, epval, 256 );
+		if( len < 0 )
 		{
-			len = EEPROM_Read( TFROG_EEPROM_ROBOTPARAM_ADDR + i, epval, 256 );
-			if( len < 0 )
-			{
-				sendclear();
-				send( "01Q\n\n" );
-				break;				
-			}
-			if( nsend( epval, 256 ) < 256 ) break;
-			AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
+			send( "01Q\n\n" );
 		}
-		send( "\n\n" );
-		flush( );
+		else
+		{
+			send( "00P\n" );
+			flush( );
+			for( i = 0; i < 1792; i += 256 )
+			{
+				len = EEPROM_Read( TFROG_EEPROM_ROBOTPARAM_ADDR + i, epval, 256 );
+				if( nsend( epval, 256 ) < 256 ) break;
+				AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
+				flush( );
+			}
+			send( "\n\n" );
+		}
 	}
 	else if( strstr( data, "SETEMBEDDEDPARAM" ) == data )
 	{
@@ -746,9 +750,14 @@ inline int extended_command_analyze( char *data )
 	else
 	{
 		if( data[0] == 0 || data[0] == '\n' || data[0] == '\r' )
-			return 0;
-		send( data );
-		send( "\n0Ee\n\n" );
+		{
+			flush(  );
+		}
+		else
+		{
+			send( data );
+			send( "\n0Ee\n\n" );
+		}
 	}
 	flush(  );
 

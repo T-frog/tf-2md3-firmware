@@ -35,7 +35,7 @@ void msleep( int ms )
 
 void EEPROM_Init(  )
 {
-#if defined( PINS_EEPROM )
+#if defined( tfrog_rev5 )
 	static const Pin pinsEEPROM[] = { PINS_EEPROM };
 	static const Pin pinsEEPROM_reset[] = { PINS_EEPROM_TWD, PINS_EEPROM_TWCK };
 	int i;
@@ -73,14 +73,14 @@ void EEPROM_Init(  )
 		char dummy[8];
 		EEPROM_Read( 0, dummy, 8 );
 	}
-#elif defined( FLASH_USERDATA_START )
+#elif defined( tfrog_rev4 )
 	FLASHD_Initialize( BOARD_MCK );
 #endif
 }
 
 int EEPROM_Read( int addr, void *data, int len )
 {
-#if defined( PINS_EEPROM )
+#if defined( tfrog_rev5 )
 	int page;
 	int recieved;
 
@@ -120,7 +120,7 @@ int EEPROM_Read( int addr, void *data, int len )
 		}
 	}
 	while( 1 );
-#elif defined( FLASH_USERDATA_START )
+#elif defined( tfrog_rev4 )
 	memcpy( data, ( void * )( FLASH_USERDATA_START + addr ), len );
 	return len;
 #endif
@@ -129,7 +129,7 @@ int EEPROM_Read( int addr, void *data, int len )
 
 int EEPROM_Write( int addr, void *data, int len )
 {
-#if defined( PINS_EEPROM )
+#if defined( tfrog_rev5 )
 	int page, addr_l;
 	int sent;
 
@@ -178,7 +178,7 @@ int EEPROM_Write( int addr, void *data, int len )
 	}
 	while( 1 );
 	return -2;
-#elif defined( FLASH_USERDATA_START )
+#elif defined( tfrog_rev4 )
 	FLASHD_Write( FLASH_USERDATA_START + addr, data, len );
 	return len;
 #endif
