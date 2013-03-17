@@ -38,6 +38,7 @@
 #include "communication.h"
 #include "eeprom.h"
 #include "adc.h"
+#include "filter.h"
 
 // extern int getStackPointer( void );
 // extern int getIrqStackPointer( void );
@@ -224,6 +225,7 @@ int main(  )
 	short analog[16];
 	short enc_buf2[2];
 	int err_cnt;
+	Filter1st voltf;
 
 	// Configure IO
 	PIO_Configure( pins, PIO_LISTSIZE( pins ) );
@@ -407,6 +409,7 @@ int main(  )
 	LED_off( 0 );
 	ADC_Start();
 	driver_param.vsrc = 0;
+	Filter1st_CreateLPF( &voltf, 10 ); // 50ms
 
 	// Driver loop
 	while( 1 )
@@ -464,7 +467,7 @@ int main(  )
 				analog[i] = ( i << 12 ) | ADC_Read( i );
 			}
 			analog[8] = ( 15 << 12 ) | THEVA.PORT[0];
-			driver_param.vsrc = analog[ 0 ] & 0x03FF;
+			driver_param.vsrc = Filter1st_Filter( &voltf, (int)( analog[ 0 ] & 0x03FF ) );
 
 			data_send( ( short )( ( short )motor[0].enc_buf - ( short )enc_buf2[0] ),
 					   ( short )( ( short )motor[1].enc_buf - ( short )enc_buf2[1] ),
@@ -475,6 +478,15 @@ int main(  )
 
 			driver_param.cnt_updated = 0;
 			ADC_Start();
+
+			if( driver_param.vsrc < driver_param.vsrc_rated / 4 )
+			{
+				driver_param.vsrc_factor = 0;
+			}
+			else
+			{
+				driver_param.vsrc_factor = driver_param.vsrc_rated * 32768 / driver_param.vsrc;
+			}
 		}
 
 		if( velcontrol == 1 )

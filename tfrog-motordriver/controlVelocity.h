@@ -61,7 +61,7 @@ typedef struct _DriverParam
 	int integ_max;								// cnt
 	int integ_min;								// cnt
 	int vsrc_rated;
-	int vsrc_rated_inv32768;
+	int vsrc_factor;
 	int vsrc;
 	int Kdynamics[6];
 	YPSpur_servo_level servo_level;

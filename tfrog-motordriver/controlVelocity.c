@@ -16,6 +16,7 @@
 #include "controlPWM.h"
 #include "controlVelocity.h"
 #include "registerFPGA.h"
+#include "filter.h"
 
 MotorState motor[2];
 MotorParam motor_param[2];
@@ -30,20 +31,7 @@ static const unsigned int numLeds = PIO_LISTSIZE( pinsLeds );
 // / PWM Enable pin instance.
 static const Pin pinPWMEnable = PIN_PWM_ENABLE;
 
-
-typedef struct
-{
-	int k[4];
-	int x;
-} Filter1st;
-
 Filter1st accelf[2];
-
-int Filter1st_Filter( Filter1st *filter, int input )
-{
-	filter->x = ( filter->k[0] * input + filter->k[1] * filter->x ) / 256;
-	return ( filter->k[2] * input + filter->k[3] * filter->x ) / 256;
-}
 
 // ------------------------------------------------------------------------------
 // / Velocity control loop (1ms)
@@ -206,11 +194,7 @@ inline void controlVelocity_init(  )
 #define ACCEL_FILTER_TIME  15.0
 	int i;
 	
-	accelf[0].k[3] = (int)( ( -1.0 / ( 1.0 + 2.0 * ACCEL_FILTER_TIME ) ) * 256.0 );
-	accelf[0].k[2] = - accelf[0].k[3];
-	accelf[0].k[1] = (int)( ( ( 1.0 - 2.0 * ACCEL_FILTER_TIME ) * ( -1.0 / ( 1.0 + 2.0 * ACCEL_FILTER_TIME ) ) ) * 256.0 );
-	accelf[0].k[0] = - accelf[0].k[1] - 256;
-	accelf[0].x = 0;
+	Filter1st_CreateLPF( accelf, ACCEL_FILTER_TIME );
 	accelf[1] = accelf[0];
 
 	driver_param.cnt_updated = 0;

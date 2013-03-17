@@ -264,14 +264,22 @@ void FIQ_PWMPeriod(  )
 		}
 		for( j = 0; j < 2; j++ )
 		{
-			int rate;
+			int rate, rate0;
 
 
-			rate = motor[j].ref.rate * PWM_init / 2048;
+			rate0 = rate = motor[j].ref.rate * PWM_init / 2048;
 
 			if( driver_param.vsrc_rated )
 			{
-				rate = rate * driver_param.vsrc * driver_param.vsrc_rated_inv32768 / 32768;
+				rate = rate * driver_param.vsrc_factor / 32768;
+				if( rate > PWM_resolution )
+				{
+					rate = PWM_resolution;
+				}
+				else if( rate < -PWM_resolution )
+				{
+					rate = -PWM_resolution;
+				}
 			}
 
 			if( cnt % 64 == 2 + j )
