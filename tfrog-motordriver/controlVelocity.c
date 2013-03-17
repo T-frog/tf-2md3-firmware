@@ -41,8 +41,8 @@ Filter1st accelf[2];
 
 int Filter1st_Filter( Filter1st *filter, int input )
 {
-	filter->x = filter->k[0] * input + ( filter->k[1] * filter->x ) / 256;
-	return ( filter->k[2] * input + ( filter->k[3] * filter->x ) / 256 ) / 256;
+	filter->x = ( filter->k[0] * input + filter->k[1] * filter->x ) / 256;
+	return ( filter->k[2] * input + filter->k[3] * filter->x ) / 256;
 }
 
 // ------------------------------------------------------------------------------
@@ -106,7 +106,7 @@ void ISR_VelocityControl(  )
 			s_a = ( toq_pi[0] + Filter1st_Filter( &accelf[0], motor[0].ref.vel_diff ) ) / 16;
 			s_b = ( toq_pi[1] + Filter1st_Filter( &accelf[1], motor[1].ref.vel_diff ) ) / 16;
 
-			// Kdynamics[TORQUE_UNIT 2pi/cntrev kgf m m], s_a/s_b[cnt/s]
+			// Kdynamics[TORQUE_UNIT 2pi/cntrev kgf m m], s_a/s_b[cnt/ss]
 			toq[0] = ( s_a * driver_param.Kdynamics[0]
 					   + s_b * driver_param.Kdynamics[2] + motor[0].ref.vel_buf * driver_param.Kdynamics[4] ) / 256;
 			toq[1] = ( s_b * driver_param.Kdynamics[1]
@@ -203,11 +203,12 @@ void ISR_VelocityControl(  )
 // ------------------------------------------------------------------------------
 inline void controlVelocity_init(  )
 {
+#define ACCEL_FILTER_TIME  15.0
 	int i;
 	
-	accelf[0].k[3] = (int)( ( -1.0 / ( 1.0 + 2.0 * 5.0 ) ) * 256.0 );
+	accelf[0].k[3] = (int)( ( -1.0 / ( 1.0 + 2.0 * ACCEL_FILTER_TIME ) ) * 256.0 );
 	accelf[0].k[2] = - accelf[0].k[3];
-	accelf[0].k[1] = (int)( ( ( 1.0 - 2.0 * 5.0 ) * ( -1.0 / ( 1.0 + 2.0 * 5.0 ) ) ) * 256.0 );
+	accelf[0].k[1] = (int)( ( ( 1.0 - 2.0 * ACCEL_FILTER_TIME ) * ( -1.0 / ( 1.0 + 2.0 * ACCEL_FILTER_TIME ) ) ) * 256.0 );
 	accelf[0].k[0] = - accelf[0].k[1] - 256;
 	accelf[0].x = 0;
 	accelf[1] = accelf[0];
