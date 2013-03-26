@@ -10,6 +10,7 @@
 #include <aic/aic.h>
 #include <usb/device/cdc-serial/CDCDSerialDriver.h>
 #include <usb/device/cdc-serial/CDCDSerialDriverDescriptors.h>
+#include <flash/flashd.h>
 
 #include "communication.h"
 #include "registerFPGA.h"
@@ -540,6 +541,29 @@ inline int extended_command_analyze( char *data )
 			AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 		}
 		send( "\n" );
+	}
+	else if( strstr( data, "$FLASHERACE" ) == data )
+	{
+		static int erace_flag = 0;
+		if( erace_flag == 0 && data[11] == 'A' )
+		{
+			erace_flag = 1;
+			send( data );
+			send( "\n00P\n\n" );
+		}
+		else if( erace_flag == 1 && data[11] == 'B' )
+		{
+			erace_flag = 0;
+			send( data );
+			send( "\n00P\n\n" );
+			FLASHD_ClearGPNVM( 2 );
+		}
+		else
+		{
+			erace_flag = 0;
+			send( data );
+			send( "\n01Q\n\n" );
+		}
 	}
 	else if( strstr( data, "$EEPROMERACE" ) == data )
 	{
