@@ -5,6 +5,4 @@ void controlPWM_init(  );
 RAMFUNC void controlPWM_config(  );
 RAMFUNC void FIQ_PWMPeriod(  );
 
-#define ZERO_TORQUE 5
-
 #endif

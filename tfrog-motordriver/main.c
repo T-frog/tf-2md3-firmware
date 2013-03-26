@@ -279,7 +279,7 @@ int main(  )
 	EEPROM_Init(  );
 
 	err_cnt = 0;
-	while( (volatile TVREG)THEVA.GENERAL.ID != 0xA0 )
+	while( ( (volatile TVREG)(THEVA.GENERAL.ID) & 0xFF ) != 0xA0 )
 	{
 		volatile int i;
 
@@ -299,6 +299,15 @@ int main(  )
 
 		if( err_cnt > 2 )
 			AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST;
+	}
+	// Checking FPGA-version
+	if( ( (volatile TVREG)(THEVA.GENERAL.ID) & 0xFF00 ) == 0x0000 )
+	{
+		driver_param.zero_torque = 5 * 65536;
+	}
+	else if( ( (volatile TVREG)(THEVA.GENERAL.ID) & 0xFF00 ) == 0x0001 )
+	{
+		driver_param.zero_torque = 0 * 65536;
 	}
 
 	// FPGA test

@@ -63,6 +63,7 @@ typedef struct _DriverParam
 	int vsrc_rated;
 	int vsrc_factor;
 	int vsrc;
+	int zero_torque;
 	int Kdynamics[6];
 	YPSpur_servo_level servo_level;
 	unsigned short watchdog_limit;

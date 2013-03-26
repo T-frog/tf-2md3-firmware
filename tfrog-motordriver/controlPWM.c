@@ -363,7 +363,7 @@ void FIQ_PWMPeriod(  )
 				break;
 			}
 		}
-		if( _abs( motor[0].ref.torque ) < 65536 * ZERO_TORQUE )
+		if( _abs( motor[0].ref.torque ) < driver_param.zero_torque )
 		{
 			for( i = 0; i < 3; i++ )
 			{
@@ -379,7 +379,7 @@ void FIQ_PWMPeriod(  )
 				THEVA.MOTOR[0].PWM[i].L = PWM_resolution;
 			}
 		}
-		if( _abs( motor[1].ref.torque ) < 65536 * ZERO_TORQUE )
+		if( _abs( motor[1].ref.torque ) < driver_param.zero_torque )
 		{
 			for( i = 0; i < 3; i++ )
 			{
