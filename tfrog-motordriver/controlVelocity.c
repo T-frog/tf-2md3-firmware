@@ -49,7 +49,8 @@ void ISR_VelocityControl(  )
 	driver_param.watchdog ++;
 
 	if( driver_param.servo_level >= SERVO_LEVEL_TORQUE )
-	{											// servo_level 2(toque enable)
+	{
+		// servo_level 2(toque enable)
 		static int toq[2], out_pwm[2];
 
 		if( driver_param.servo_level >= SERVO_LEVEL_VELOCITY )
@@ -106,6 +107,7 @@ void ISR_VelocityControl(  )
 			toq[0] = 0;
 			toq[1] = 0;
 		}
+
 		// 出力段
 		for( i = 0; i < 2; i++ )
 		{
@@ -159,6 +161,7 @@ void ISR_VelocityControl(  )
 				out_pwm[i] = driver_param.PWM_max - 1;
 			if( out_pwm[i] < driver_param.PWM_min + 1 )
 				out_pwm[i] = driver_param.PWM_min + 1;
+
 		}
 
 		// 出力
@@ -177,7 +180,7 @@ void ISR_VelocityControl(  )
 			pwm_sum[0] = 0;
 			pwm_sum[1] = 0;
 		}
-	}											// servo_level 2*/
+	}		// servo_level 2
 	else
 	{
 		motor[0].ref.rate = 0;

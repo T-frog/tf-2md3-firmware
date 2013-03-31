@@ -104,7 +104,7 @@ void controlPWM_config(  )
 		motor_param[i].enc_drev[4] = motor_param[i].enc_rev * 5 / 6;
 		motor_param[i].enc_drev[5] = motor_param[i].enc_rev;
 
-		motor_param[i].enc_10hz = motor_param[i].enc_rev * 10 * 4 / 1000;
+		motor_param[i].enc_10hz = motor_param[i].enc_rev * 10 * 16 / 1000;
 
 		phase90[i] = motor_param[i].enc_rev - motor_param[i].enc_rev / 4;
 		phase_offset[i][0] = motor_param[i].enc_rev / 3;
@@ -264,28 +264,27 @@ void FIQ_PWMPeriod(  )
 		}
 		for( j = 0; j < 2; j++ )
 		{
-			int rate, rate0;
+			int rate;
 
 
-			rate0 = rate = motor[j].ref.rate * PWM_init / 2048;
+			rate = motor[j].ref.rate * PWM_init / 2048;
 
 			if( driver_param.vsrc_rated )
 			{
 				rate = rate * driver_param.vsrc_factor / 32768;
-				if( rate > PWM_resolution )
+				if( rate >= PWM_resolution )
 				{
-					rate = PWM_resolution;
+					rate = PWM_resolution - 1;
 				}
-				else if( rate < -PWM_resolution )
+				else if( rate <= -PWM_resolution )
 				{
-					rate = -PWM_resolution;
+					rate = -PWM_resolution + 1;
 				}
 			}
 
 			if( cnt % 64 == 2 + j )
 			{
 				int diff;
-				
 				diff = motor_param[j].enc0tran - motor_param[j].enc0;
 				while( diff < -motor_param[j].enc_rev / 2 )
 					diff += motor_param[j].enc_rev;
@@ -406,67 +405,118 @@ void FIQ_PWMPeriod(  )
 
 		if( motor_param[i].motor_type != MOTOR_TYPE_DC )
 		{
+			char dir;
+
 			u = v = w = 0;
 			
 			if( hall[i] == _hall[i] ) continue;
+			dir = 0;
 
 			switch( hall[i] ^ _hall[i] )
 			{
 			case HALL_U:
 				if( !( _hall[i] & HALL_U ) )
-					u = 1;						// 正回転 U立ち上がり 0度
+					if( hall[i] & HALL_W )
+					{
+						// 正回転 U立ち上がり 0度
+						u = 1;
+					}
+					else
+					{
+						// 逆回転 U立ち上がり 180度
+						u = -1;
+						dir = 1;
+					}
 				else
-					u = -1;						// 正回転 U立ち下がり 180度
+					if( hall[i] & HALL_V )
+					{
+						// 正回転 U立ち下がり 180度
+						u = -1;
+					}
+					else
+					{
+						// 逆回転 U立ち下がり 0度
+						u = 1;
+						dir = 1;
+					}
 				break;
 			case HALL_V:
 				if( !( _hall[i] & HALL_V ) )
-					v = 1;						// 正回転 V立ち上がり 120度
+					if( hall[i] & HALL_U )
+					{
+						// 正回転 V立ち上がり 120度
+						v = 1;
+					}
+					else
+					{
+						// 逆回転 V立ち上がり 300度
+						v = -1;
+						dir = 1;
+					}
 				else
-					v = -1;						// 正回転 V立ち下がり 300度
+					if( hall[i] & HALL_W )
+					{
+						// 正回転 V立ち下がり 300度
+						v = -1;
+					}
+					else
+					{
+						// 逆回転 V立ち下がり 120度
+						v = 1;
+						dir = 1;
+					}
 				break;
 			case HALL_W:
 				if( !( _hall[i] & HALL_W ) )
-					w = 1;						// 正回転 W立ち上がり 240度
+					if( hall[i] & HALL_V )
+					{
+						// 正回転 W立ち上がり 240度
+						w = 1;
+					}
+					else
+					{
+						// 逆回転 W立ち上がり 60度
+						w = -1;
+						dir = 1;
+					}
 				else
-					w = -1;						// 正回転 W立ち下がり 60度
+					if( hall[i] & HALL_U )
+					{
+						// 正回転 W立ち下がり 60度
+						w = -1;
+					}
+					else
+					{
+						// 逆回転 W立ち下がり 240度
+						w = 1;
+						dir = 1;
+					}
 				break;
 			default:
 				// エラー
 				break;
 			}
 
-			// 逆回転
-			if( motor[i].dir < 0 )
-			{
-				u = -u;
-				v = -v;
-				w = -w;
-			}
-			else if( motor[i].dir == 0 )
-			{
-				continue;
-			}
-
 			// ホール素子は高速域では信頼できない
 			if( _abs( motor[i].vel ) > motor_param[i].enc_10hz )
 			{
-				//continue;
+				continue;
 			}
 
 			// ゼロ点計算
 
 			if( w == -1 )
-				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[0];
+				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[0] + dir;
 			else if( v == 1 )
-				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[1];
+				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[1] + dir;
 			else if( u == -1 )
-				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[2];
+				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[2] + dir;
 			else if( w == 1 )
-				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[3];
+				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[3] + dir;
 			else if( v == -1 )
-				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[4];
+				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[4] + dir;
 			else if( u == 1 )
-				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[5];
+				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[5] + dir;
 		}
 	}
 
@@ -493,6 +543,7 @@ void FIQ_PWMPeriod(  )
 			if( __vel < 0 ) motor[i].dir = -1;
 			else if( __vel > 0 ) motor[i].dir = 1;
 			else motor[i].dir = 0;
+			motor[i].vel1 = __vel;
 			
 			if( _abs( __vel ) < 4 )
 			{

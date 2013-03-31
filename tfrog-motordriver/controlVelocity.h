@@ -6,6 +6,7 @@
 typedef struct _MotorState
 {
 	int vel;									// count/ms
+	int vel1;									// count/ms
 	int pos;									// count
 	int enc_buf;								// count
 	unsigned short enc;

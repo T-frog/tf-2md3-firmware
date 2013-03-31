@@ -13,4 +13,5 @@ int Filter1st_CreateLPF( Filter1st *filter, float timeconst )
 	filter->k[1] = (int)( ( ( 1.0 - 2.0 * timeconst ) * ( -1.0 / ( 1.0 + 2.0 * timeconst ) ) ) * 256.0 );
 	filter->k[0] = - filter->k[1] - 256;
 	filter->x = 0;
+	return 1;
 }

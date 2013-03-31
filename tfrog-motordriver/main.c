@@ -305,7 +305,7 @@ int main(  )
 	{
 		driver_param.zero_torque = 5 * 65536;
 	}
-	else if( ( (volatile TVREG)(THEVA.GENERAL.ID) & 0xFF00 ) == 0x0001 )
+	else if( ( (volatile TVREG)(THEVA.GENERAL.ID) & 0xFF00 ) == 0x0100 )
 	{
 		driver_param.zero_torque = 0 * 65536;
 	}
