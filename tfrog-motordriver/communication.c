@@ -18,7 +18,7 @@
 #include "controlPWM.h"
 #include "eeprom.h"
 
-#define SEND_BUF_LEN  2048
+#define SEND_BUF_LEN  1024
 #define RECV_BUF_LEN  1024
 
 unsigned char send_buf[SEND_BUF_LEN];
@@ -556,6 +556,7 @@ inline int extended_command_analyze( char *data )
 			erace_flag = 0;
 			send( data );
 			send( "\n00P\n\n" );
+			flush( );
 			FLASHD_ClearGPNVM( 2 );
 		}
 		else
