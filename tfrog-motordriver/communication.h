@@ -16,11 +16,12 @@ typedef union _Integer2
 // typedef 
 typedef enum _YPSpur_servo_level
 {
+	SERVO_LEVEL_OPENFREE = -1,
 	SERVO_LEVEL_STOP = 0,
 	SERVO_LEVEL_COUNTER,
 	SERVO_LEVEL_TORQUE,
 	SERVO_LEVEL_VELOCITY,
-	SERVO_LEVEL_POSITION						// n/a
+	SERVO_LEVEL_POSITION // not used
 } YPSpur_servo_level;
 
 typedef enum
@@ -63,11 +64,11 @@ typedef enum
 #define COMMUNICATION_END_BYTE		0x0a
 
 /* firmware */
-#define YP_FIRMWARE_NAME "2013.03.14"
+#define YP_FIRMWARE_NAME "2013.03.31"
 /* parametor files dir */
 #define YP_PARAMS_DIR "robot-params"
 /* protocol */
-#define YP_PROTOCOL_NAME "YPP:05:00"
+#define YP_PROTOCOL_NAME "YPP:06:00"
 /* vendor */
 #define YP_VENDOR_NAME "T-frog Prject"
 

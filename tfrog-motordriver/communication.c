@@ -898,22 +898,22 @@ inline int command_analyze( unsigned char *data, int len )
 	case PARAM_servo:
 		if( driver_param.servo_level < SERVO_LEVEL_TORQUE && i.integer >= SERVO_LEVEL_TORQUE )
 		{
-			// printf("initialized\n\r" );
 			controlPWM_config(  );
 
 			THEVA.GENERAL.PWM.COUNT_ENABLE = 1;
 			THEVA.GENERAL.OUTPUT_ENABLE = 1;
 
 			PIO_Clear( &pinPWMEnable );
-			// printf("PWM Period: %d\n\r", THEVA.GENERAL.PWM.HALF_PERIOD);
-			// printf("PWM Deadtime: %d\n\r", THEVA.GENERAL.PWM.DEADTIME);
-
-			// AIC_EnableIT(AT91C_ID_TC0);
 		}
 		if( driver_param.servo_level < SERVO_LEVEL_VELOCITY && i.integer >= SERVO_LEVEL_VELOCITY )
-		{										// servo levelが速度制御に推移した
+		{
+			// servo levelが速度制御に推移した
 			motor[0].error_integ = 0;
 			motor[1].error_integ = 0;
+		}
+		if( i.integer == SERVO_LEVEL_OPENFREE )
+		{
+			THEVA.GENERAL.OUTPUT_ENABLE = 0;
 		}
 		driver_param.servo_level = i.integer;
 		break;

@@ -476,7 +476,6 @@ int main(  )
 				analog[i] = ( i << 12 ) | ADC_Read( i );
 			}
 			analog[8] = ( 15 << 12 ) | THEVA.PORT[0];
-			driver_param.vsrc = Filter1st_Filter( &voltf, (int)( analog[ 0 ] & 0x03FF ) );
 
 			data_send( ( short )( ( short )motor[0].enc_buf - ( short )enc_buf2[0] ),
 					   ( short )( ( short )motor[1].enc_buf - ( short )enc_buf2[1] ),
@@ -486,6 +485,7 @@ int main(  )
 			enc_buf2[1] = motor[1].enc_buf;
 
 			driver_param.cnt_updated = 0;
+			driver_param.vsrc = Filter1st_Filter( &voltf, (int)( analog[ 0 ] & 0x03FF ) );
 			ADC_Start();
 
 			if( driver_param.vsrc < driver_param.vsrc_rated / 4 )
