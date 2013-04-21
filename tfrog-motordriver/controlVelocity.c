@@ -12,6 +12,7 @@
 #include <usb/device/cdc-serial/CDCDSerialDriver.h>
 #include <usb/device/cdc-serial/CDCDSerialDriverDescriptors.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "controlPWM.h"
 #include "controlVelocity.h"
@@ -32,6 +33,7 @@ static const unsigned int numLeds = PIO_LISTSIZE( pinsLeds );
 static const Pin pinPWMEnable = PIN_PWM_ENABLE;
 
 Filter1st accelf[2];
+Filter1st accelf0;
 
 // ------------------------------------------------------------------------------
 // / Velocity control loop (1ms)
@@ -41,6 +43,7 @@ void ISR_VelocityControl(  )
 	// volatile unsigned int status;
 	static int pwm_sum[2] = { 0, 0 };
 	static int i;
+	static int vel_control_init = 0;
 
 	// PIO_Clear(&pinsLeds[USBD_LEDOTHER]);
 
@@ -51,24 +54,26 @@ void ISR_VelocityControl(  )
 	if( driver_param.servo_level >= SERVO_LEVEL_TORQUE )
 	{
 		// servo_level 2(toque enable)
-		static int toq[2], out_pwm[2];
+		static int64_t toq[2];
+		static int out_pwm[2];
 
-		if( driver_param.servo_level >= SERVO_LEVEL_VELOCITY )
+		if( driver_param.servo_level >= SERVO_LEVEL_VELOCITY && 
+			driver_param.servo_level != SERVO_LEVEL_OPENFREE )
 		{
 			// servo_level 3 (speed enable)
-			static int toq_pi[2], s_a, s_b;
+			static int64_t toq_pi[2], s_a, s_b;
 
 			for( i = 0; i < 2; i++ )
 			{
 				motor[i].ref.vel_interval++;
 				if( motor[i].ref.vel_changed )
 				{
-					static int vel_buf[2] = { 0, 0 };
 					motor[i].ref.vel_buf = motor[i].ref.vel;
-					motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - vel_buf[i] ) * 1000000 / motor[i].ref.vel_interval;
+					motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - motor[i].ref.vel_buf_prev )
+						 * 1000000 / motor[i].ref.vel_interval;
 					// [cnt/msms] * 1000[ms/s] * 1000[ms/s] = [cnt/ss]
 
-					vel_buf[i] = motor[i].ref.vel_buf;
+					motor[i].ref.vel_buf_prev = motor[i].ref.vel_buf;
 					motor[i].ref.vel_interval = 0;
 
 					motor[i].ref.vel_changed = 0;
@@ -90,6 +95,7 @@ void ISR_VelocityControl(  )
 				toq_pi[i]  = motor[i].error * 1000 * motor_param[i].Kp; // [cnt/ms] * 1000[ms/s] * Kp[1/s] = [cnt/ss]
 				toq_pi[i] += motor[i].error_integ * motor_param[i].Ki; // [cnt] * Ki[1/ss] = [cnt/ss]
 			}
+			vel_control_init = 1;
 
 			// PWSでの相互の影響を考慮したフィードフォワード
 			s_a = ( toq_pi[0] + Filter1st_Filter( &accelf[0], motor[0].ref.vel_diff ) ) / 16;
@@ -106,6 +112,15 @@ void ISR_VelocityControl(  )
 			// servo_level 2(toque enable)
 			toq[0] = 0;
 			toq[1] = 0;
+			vel_control_init = 0;
+			motor[0].ref.vel_buf_prev = motor[0].vel;
+			motor[1].ref.vel_buf_prev = motor[1].vel;
+			motor[0].ref.vel_buf = motor[0].vel;
+			motor[1].ref.vel_buf = motor[1].vel;
+			motor[0].ref.vel = motor[0].vel;
+			motor[1].ref.vel = motor[1].vel;
+			Filter1st_Filter( &accelf[0], 0 );
+			Filter1st_Filter( &accelf[1], 0 );
 		}
 
 		// 出力段
@@ -185,6 +200,15 @@ void ISR_VelocityControl(  )
 	{
 		motor[0].ref.rate = 0;
 		motor[1].ref.rate = 0;
+		vel_control_init = 0;
+		motor[0].ref.vel_buf_prev = motor[0].vel;
+		motor[1].ref.vel_buf_prev = motor[1].vel;
+		motor[0].ref.vel_buf = motor[0].vel;
+		motor[1].ref.vel_buf = motor[1].vel;
+		motor[0].ref.vel = motor[0].vel;
+		motor[1].ref.vel = motor[1].vel;
+		Filter1st_Filter( &accelf[0], 0 );
+		Filter1st_Filter( &accelf[1], 0 );
 	}
 	// PIO_Set(&pinsLeds[USBD_LEDOTHER]);
 }
@@ -196,9 +220,9 @@ inline void controlVelocity_init(  )
 {
 #define ACCEL_FILTER_TIME  15.0
 	int i;
-	
-	Filter1st_CreateLPF( accelf, ACCEL_FILTER_TIME );
-	accelf[1] = accelf[0];
+
+	Filter1st_CreateLPF( &accelf0, ACCEL_FILTER_TIME );
+	accelf[0] = accelf[1] = accelf0;
 
 	driver_param.cnt_updated = 0;
 	driver_param.watchdog = 0;
@@ -210,6 +234,8 @@ inline void controlVelocity_init(  )
 	for( i = 0; i < 2; i ++ )
 	{
 		motor[i].ref.vel = 0;
+		motor[i].ref.vel_buf = 0;
+		motor[i].ref.vel_buf_prev = 0;
 		motor[i].ref.vel_diff = 0;
 		motor[i].error_integ = 0;
 		motor_param[i].motor_type = MOTOR_TYPE_AC3;

@@ -654,6 +654,16 @@ inline int extended_command_analyze( char *data )
 		nhex( num, THEVA.MOTOR[1].ENCODER, 4 );
 		num[4] = 0;
 		send( num );
+		send( "\n" );
+
+		send( "SPD " );
+		nhex( num, THEVA.MOTOR[0].SPEED, 4 );
+		num[4] = 0;
+		send( num );
+		send( "," );
+		nhex( num, THEVA.MOTOR[1].SPEED, 4 );
+		num[4] = 0;
+		send( num );
 
 		send( "\n\n" );
 	}
@@ -911,9 +921,15 @@ inline int command_analyze( unsigned char *data, int len )
 			motor[0].error_integ = 0;
 			motor[1].error_integ = 0;
 		}
-		if( i.integer == SERVO_LEVEL_OPENFREE )
+		if( driver_param.servo_level != SERVO_LEVEL_OPENFREE && i.integer == SERVO_LEVEL_OPENFREE )
 		{
 			THEVA.GENERAL.OUTPUT_ENABLE = 0;
+			PIO_Set( &pinPWMEnable );
+		}
+		if( driver_param.servo_level == SERVO_LEVEL_OPENFREE && i.integer != SERVO_LEVEL_OPENFREE )
+		{
+			THEVA.GENERAL.OUTPUT_ENABLE = 1;
+			PIO_Clear( &pinPWMEnable );
 		}
 		driver_param.servo_level = i.integer;
 		break;

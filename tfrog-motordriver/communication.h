@@ -16,12 +16,12 @@ typedef union _Integer2
 // typedef 
 typedef enum _YPSpur_servo_level
 {
-	SERVO_LEVEL_OPENFREE = -1,
 	SERVO_LEVEL_STOP = 0,
 	SERVO_LEVEL_COUNTER,
 	SERVO_LEVEL_TORQUE,
 	SERVO_LEVEL_VELOCITY,
-	SERVO_LEVEL_POSITION // not used
+	SERVO_LEVEL_POSITION, // not used
+	SERVO_LEVEL_OPENFREE
 } YPSpur_servo_level;
 
 typedef enum

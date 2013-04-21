@@ -2,7 +2,7 @@
 
 int Filter1st_Filter( Filter1st *filter, int input )
 {
-	filter->x = ( filter->k[0] * input + filter->k[1] * filter->x ) / 256;
+	filter->x = filter->k[0] * input / 256 + filter->k[1] * filter->x / 256;
 	return ( filter->k[2] * input + filter->k[3] * filter->x ) / 256;
 }
 

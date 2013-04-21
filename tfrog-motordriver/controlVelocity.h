@@ -10,12 +10,14 @@ typedef struct _MotorState
 	int pos;									// count
 	int enc_buf;								// count
 	unsigned short enc;
+	unsigned short spd;
 	short dir;
 
 	struct
 	{
 		int vel;								// count/ms
 		int vel_buf;							// count/ms
+		int vel_buf_prev;						// count/ms
 		int vel_interval;
 		int vel_diff;							// count/ms
 		int torque;								// 1/100000 Nm
@@ -25,6 +27,8 @@ typedef struct _MotorState
 	} ref;
 	int error;
 	int error_integ;
+
+	int syserr_val;
 } MotorState;
 
 typedef struct _MotorParam
@@ -73,6 +77,7 @@ typedef struct _DriverParam
 	unsigned short admask;
 	unsigned short io_dir;
 	unsigned short io_mask;
+	unsigned short fpga_version;
 } DriverParam;
 
 extern MotorState motor[2];

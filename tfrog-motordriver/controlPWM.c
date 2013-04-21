@@ -164,6 +164,7 @@ void controlPWM_config(  )
 void FIQ_PWMPeriod(  )
 {
 	static unsigned short enc[2];
+	static unsigned short spd[2];
 	static unsigned short _enc[2];
 	static unsigned short hall[2];
 	static unsigned short _hall[2];
@@ -174,7 +175,7 @@ void FIQ_PWMPeriod(  )
 
 	// AT91C_BASE_AIC->AIC_ICCR = 1 << AT91C_ID_IRQ0;
 
-	if( driver_param.servo_level < SERVO_LEVEL_TORQUE )
+	if( driver_param.servo_level == SERVO_LEVEL_STOP )
 	{
 		// Short-mode brake
 		for( i = 0; i < 3*2; i ++ )
@@ -190,8 +191,8 @@ void FIQ_PWMPeriod(  )
 	motor[0].enc = enc[0] = THEVA.MOTOR[0].ENCODER;
 	motor[1].enc = enc[1] = THEVA.MOTOR[1].ENCODER;
 
-	hall[0] = *( unsigned short * )&THEVA.MOTOR[0].ROT_DETECTER;
-	hall[1] = *( unsigned short * )&THEVA.MOTOR[1].ROT_DETECTER;
+	hall[0] = *(unsigned short *)&THEVA.MOTOR[0].ROT_DETECTER;
+	hall[1] = *(unsigned short *)&THEVA.MOTOR[1].ROT_DETECTER;
 
 	if( !init )
 	{
@@ -362,36 +363,38 @@ void FIQ_PWMPeriod(  )
 				break;
 			}
 		}
-		if( _abs( motor[0].ref.torque ) < driver_param.zero_torque )
 		{
-			for( i = 0; i < 3; i++ )
+			if( _abs( motor[0].ref.torque ) < driver_param.zero_torque )
 			{
-				THEVA.MOTOR[0].PWM[i].H = 0;
-				THEVA.MOTOR[0].PWM[i].L = 0;
+				for( i = 0; i < 3; i++ )
+				{
+					THEVA.MOTOR[0].PWM[i].H = 0;
+					THEVA.MOTOR[0].PWM[i].L = 0;
+				}
 			}
-		}
-		else
-		{
-			for( i = 0; i < 3; i++ )
+			else
 			{
-				THEVA.MOTOR[0].PWM[i].H = pwm[0][i];
-				THEVA.MOTOR[0].PWM[i].L = PWM_resolution;
+				for( i = 0; i < 3; i++ )
+				{
+					THEVA.MOTOR[0].PWM[i].H = pwm[0][i];
+					THEVA.MOTOR[0].PWM[i].L = PWM_resolution;
+				}
 			}
-		}
-		if( _abs( motor[1].ref.torque ) < driver_param.zero_torque )
-		{
-			for( i = 0; i < 3; i++ )
+			if( _abs( motor[1].ref.torque ) < driver_param.zero_torque )
 			{
-				THEVA.MOTOR[1].PWM[i].H = 0;
-				THEVA.MOTOR[1].PWM[i].L = 0;
+				for( i = 0; i < 3; i++ )
+				{
+					THEVA.MOTOR[1].PWM[i].H = 0;
+					THEVA.MOTOR[1].PWM[i].L = 0;
+				}
 			}
-		}
-		else
-		{
-			for( i = 0; i < 3; i++ )
+			else
 			{
-				THEVA.MOTOR[1].PWM[i].H = pwm[1][i];
-				THEVA.MOTOR[1].PWM[i].L = PWM_resolution;
+				for( i = 0; i < 3; i++ )
+				{
+					THEVA.MOTOR[1].PWM[i].H = pwm[1][i];
+					THEVA.MOTOR[1].PWM[i].L = PWM_resolution;
+				}
 			}
 		}
 	}
@@ -532,6 +535,9 @@ void FIQ_PWMPeriod(  )
 		int vel;
 		
 		velcontrol = 1;
+
+		motor[0].spd = spd[0] = THEVA.MOTOR[0].SPEED;
+		motor[1].spd = spd[1] = THEVA.MOTOR[1].SPEED;
 		for( i = 0; i < 2; i++ )
 		{
 			int j, n;
@@ -539,38 +545,35 @@ void FIQ_PWMPeriod(  )
 			
 			__vel = ( short )( enc[i] - __enc[i] );
 			_vel[i][cnt] = __vel;
-			j = cnt;
 			if( __vel < 0 ) motor[i].dir = -1;
 			else if( __vel > 0 ) motor[i].dir = 1;
 			else motor[i].dir = 0;
 			motor[i].vel1 = __vel;
 			
-			if( _abs( __vel ) < 4 )
+			if( spd[i] < 48000 / 8 && driver_param.fpga_version > 0 )
 			{
-				vel = 0;
-				for( n = 0; n < 16; n ++ ) vel += _vel[i][n];
-			}
-			else if( _abs( __vel ) < 8 )
-			{
-				vel = 0;
-				for( n = 0; n < 8; n ++ )
+				int dir;
+
+				dir = motor[i].dir;
+				if( dir == 0 )
 				{
-					vel += _vel[i][j];
-					if( j == 0 ) j = 15;
-					else j--;
+					j = cnt;
+					for( n = 0; n < 16 - spd[i] / 256; n ++ )
+					{
+						if( _vel[i][j] > 0 )
+						{
+							dir = 1;
+						}
+						else if( _vel[i][j] < 0 )
+						{
+							dir = -1;
+						}
+						if( j == 0 ) j = 15;
+						else j--;
+					}
 				}
-				vel *= 2;
-			}
-			else if( _abs( __vel ) < 16 )
-			{
-				vel = 0;
-				for( n = 0; n < 4; n ++ )
-				{
-					vel += _vel[i][j];
-					if( j == 0 ) j = 15;
-					else j--;
-				}
-				vel *= 4;
+				vel = dir * (int)spd[i] / 256;
+				motor[i].dir = dir;
 			}
 			else
 			{

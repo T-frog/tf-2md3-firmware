@@ -27,7 +27,8 @@ typedef volatile struct _REG_GENERAL
 typedef volatile struct _REG_MOTOR
 {
 	TVREG ENCODER;								// 0x0 エンコーダ4逓倍アップダウンカウント値
-	TVREG Reserved0[2];							// 0x1-0x2 予約
+	TVREG SPEED;									// 0x1 エンコーダスピード
+	TVREG Reserved0[1];							// 0x2 予約
 	struct
 	{
 		unsigned HALL:3;						// - ホール素子状態

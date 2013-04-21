@@ -300,14 +300,18 @@ int main(  )
 		if( err_cnt > 2 )
 			AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST;
 	}
+
+	printf( "FPGA ID: %x\n\r", (volatile TVREG)(THEVA.GENERAL.ID) );
 	// Checking FPGA-version
 	if( ( (volatile TVREG)(THEVA.GENERAL.ID) & 0xFF00 ) == 0x0000 )
 	{
 		driver_param.zero_torque = 5 * 65536;
+		driver_param.fpga_version = 0;
 	}
 	else if( ( (volatile TVREG)(THEVA.GENERAL.ID) & 0xFF00 ) == 0x0100 )
 	{
 		driver_param.zero_torque = 0 * 65536;
+		driver_param.fpga_version = 1;
 	}
 
 	// FPGA test
@@ -441,6 +445,7 @@ int main(  )
 				LED_off( 1 );
 			}
 		}
+
 		data_analyze(  );
 		if( connecting )
 		{
