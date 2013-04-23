@@ -915,11 +915,12 @@ inline int command_analyze( unsigned char *data, int len )
 
 			PIO_Clear( &pinPWMEnable );
 		}
-		if( driver_param.servo_level < SERVO_LEVEL_VELOCITY && i.integer >= SERVO_LEVEL_VELOCITY )
+		if( ( driver_param.servo_level < SERVO_LEVEL_VELOCITY || driver_param.servo_level == SERVO_LEVEL_OPENFREE ) && 
+			( i.integer >= SERVO_LEVEL_VELOCITY && i.integer != SERVO_LEVEL_OPENFREE ) )
 		{
 			// servo levelが速度制御に推移した
-			motor[0].error_integ = 0;
-			motor[1].error_integ = 0;
+			motor[0].control_init = 1;
+			motor[1].control_init = 1;
 		}
 		if( driver_param.servo_level != SERVO_LEVEL_OPENFREE && i.integer == SERVO_LEVEL_OPENFREE )
 		{

@@ -43,7 +43,6 @@ void ISR_VelocityControl(  )
 	// volatile unsigned int status;
 	static int pwm_sum[2] = { 0, 0 };
 	static int i;
-	static int vel_control_init = 0;
 
 	// PIO_Clear(&pinsLeds[USBD_LEDOTHER]);
 
@@ -69,9 +68,17 @@ void ISR_VelocityControl(  )
 				if( motor[i].ref.vel_changed )
 				{
 					motor[i].ref.vel_buf = motor[i].ref.vel;
-					motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - motor[i].ref.vel_buf_prev )
-						 * 1000000 / motor[i].ref.vel_interval;
-					// [cnt/msms] * 1000[ms/s] * 1000[ms/s] = [cnt/ss]
+					if( motor[i].control_init )
+					{
+						motor[i].ref.vel_diff = 0;
+						motor[i].control_init = 0;
+					}
+					else
+					{
+						motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - motor[i].ref.vel_buf_prev )
+							 * 1000000 / motor[i].ref.vel_interval;
+						// [cnt/msms] * 1000[ms/s] * 1000[ms/s] = [cnt/ss]
+					}
 
 					motor[i].ref.vel_buf_prev = motor[i].ref.vel_buf;
 					motor[i].ref.vel_interval = 0;
@@ -80,8 +87,16 @@ void ISR_VelocityControl(  )
 				}
 
 				// 積分
-				motor[i].error = motor[i].ref.vel_buf - motor[i].vel;
-				motor[i].error_integ += motor[i].error;
+				if( motor[i].control_init )
+				{
+					motor[i].error = 0;
+					motor[i].error_integ = 0;
+				}
+				else
+				{
+					motor[i].error = motor[i].ref.vel_buf - motor[i].vel;
+					motor[i].error_integ += motor[i].error;
+				}
 				if( motor[i].error_integ > driver_param.integ_max )
 				{
 					motor[i].error_integ = driver_param.integ_max;
@@ -95,7 +110,6 @@ void ISR_VelocityControl(  )
 				toq_pi[i]  = motor[i].error * 1000 * motor_param[i].Kp; // [cnt/ms] * 1000[ms/s] * Kp[1/s] = [cnt/ss]
 				toq_pi[i] += motor[i].error_integ * motor_param[i].Ki; // [cnt] * Ki[1/ss] = [cnt/ss]
 			}
-			vel_control_init = 1;
 
 			// PWSでの相互の影響を考慮したフィードフォワード
 			s_a = ( toq_pi[0] + Filter1st_Filter( &accelf[0], motor[0].ref.vel_diff ) ) / 16;
@@ -112,13 +126,14 @@ void ISR_VelocityControl(  )
 			// servo_level 2(toque enable)
 			toq[0] = 0;
 			toq[1] = 0;
-			vel_control_init = 0;
 			motor[0].ref.vel_buf_prev = motor[0].vel;
 			motor[1].ref.vel_buf_prev = motor[1].vel;
 			motor[0].ref.vel_buf = motor[0].vel;
 			motor[1].ref.vel_buf = motor[1].vel;
 			motor[0].ref.vel = motor[0].vel;
 			motor[1].ref.vel = motor[1].vel;
+			motor[0].error_integ = motor[1].error_integ = 0;
+			motor[0].ref.vel_diff = motor[1].ref.vel_diff = 0;
 			Filter1st_Filter( &accelf[0], 0 );
 			Filter1st_Filter( &accelf[1], 0 );
 		}
@@ -200,7 +215,6 @@ void ISR_VelocityControl(  )
 	{
 		motor[0].ref.rate = 0;
 		motor[1].ref.rate = 0;
-		vel_control_init = 0;
 		motor[0].ref.vel_buf_prev = motor[0].vel;
 		motor[1].ref.vel_buf_prev = motor[1].vel;
 		motor[0].ref.vel_buf = motor[0].vel;
@@ -238,6 +252,7 @@ inline void controlVelocity_init(  )
 		motor[i].ref.vel_buf_prev = 0;
 		motor[i].ref.vel_diff = 0;
 		motor[i].error_integ = 0;
+		motor[i].control_init = 0;
 		motor_param[i].motor_type = MOTOR_TYPE_AC3;
 		motor_param[i].enc_rev = 0;
 	}

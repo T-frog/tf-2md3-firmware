@@ -27,8 +27,7 @@ typedef struct _MotorState
 	} ref;
 	int error;
 	int error_integ;
-
-	int syserr_val;
+	char control_init;
 } MotorState;
 
 typedef struct _MotorParam
