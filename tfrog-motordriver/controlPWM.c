@@ -41,10 +41,19 @@ int PWM_abs_min = 0;
 int PWM_center = 0;
 int PWM_init = 0;
 int PWM_resolution = 0;
+int PWM_thinning = 0;
 int PWM_deadtime;
 
-extern int velcontrol;
 extern Tfrog_EEPROM_data saved_param;
+
+
+void normalize( int *val, int min, int max, int resolution )
+{
+	while( *val < min )
+		*val += resolution;
+	while( *val >= max )
+		*val -= resolution;
+}
 
 int _abs( int x )
 {
@@ -54,7 +63,14 @@ int _abs( int x )
 
 void controlPWM_config(  )
 {
-	static int i, j;
+	int i, j;
+
+	PWM_resolution = saved_param.PWM_resolution;
+	PWM_thinning = 2000 / PWM_resolution;
+	PWM_deadtime = saved_param.PWM_deadtime;
+
+	THEVA.GENERAL.PWM.HALF_PERIOD = PWM_resolution;
+	THEVA.GENERAL.PWM.DEADTIME = PWM_deadtime;
 
 	driver_param.PWM_resolution = PWM_resolution;
 
@@ -160,20 +176,27 @@ void controlPWM_config(  )
 // ------------------------------------------------------------------------------
 // / PWM control interrupt (every PWM period) 20us/50us
 // ------------------------------------------------------------------------------
-// void FIQ_PWMPeriod( const Pin *pPin )
 void FIQ_PWMPeriod(  )
 {
-	static unsigned short enc[2];
-	static unsigned short spd[2];
+	int i;
+	unsigned short enc[2];
+	unsigned short hall[2];
 	static unsigned short _enc[2];
-	static unsigned short hall[2];
 	static unsigned short _hall[2];
-	// static int test = 0;
-	static int i;
+	static int _sign[2] = { 0, 0 };
 	static int init = 0;
 	static int cnt = 0;
 
-	// AT91C_BASE_AIC->AIC_ICCR = 1 << AT91C_ID_IRQ0;
+	{
+		// PWM周波数が高い場合は処理を間引く
+		// PWM_resolution 1000以下で一回間引き
+		static int thin = 0;
+
+		thin ++;
+		if( thin < PWM_thinning ) return;
+		thin = 0;
+	}
+	
 
 	if( driver_param.servo_level == SERVO_LEVEL_STOP )
 	{
@@ -183,16 +206,35 @@ void FIQ_PWMPeriod(  )
 			THEVA.MOTOR[i%2].PWM[i/2].H = PWM_resolution;
 			THEVA.MOTOR[i%2].PWM[i/2].L = PWM_resolution;
 		}
+		PWM_init = 0;
 		init = 0;
 		return;
 	}
-	// PIO_Clear( &pinsLeds[USBD_LEDPOWER] );
 
-	motor[0].enc = enc[0] = THEVA.MOTOR[0].ENCODER;
-	motor[1].enc = enc[1] = THEVA.MOTOR[1].ENCODER;
+	for( i = 0; i < 2; i ++ )
+	{
+		unsigned short s;
+		int __vel;
 
-	hall[0] = *(unsigned short *)&THEVA.MOTOR[0].ROT_DETECTER;
-	hall[1] = *(unsigned short *)&THEVA.MOTOR[1].ROT_DETECTER;
+		motor[i].enc = enc[i] = THEVA.MOTOR[i].ENCODER;
+		hall[i] = *(unsigned short *)&THEVA.MOTOR[i].ROT_DETECTER;
+		s = THEVA.MOTOR[i].SPEED;
+		__vel = ( short )( enc[i] - _enc[i] );
+
+		if( __vel < 0 )
+			_sign[i] = -1;
+		else if( __vel > 0 )
+			_sign[i] = 1;
+
+		if( s < 256 * 16 * 4 )
+		{
+			if( _sign[i] > 0 )
+				motor[i].spd_sum += s;
+			else if( _sign[i] < 0 )
+				motor[i].spd_sum -= s;
+			motor[i].spd_num ++;
+		}
+	}
 
 	if( !init )
 	{
@@ -205,22 +247,17 @@ void FIQ_PWMPeriod(  )
 		return;
 	}
 
-	motor[0].pos += ( short )( enc[0] - _enc[0] );
-	motor[1].pos += ( short )( enc[1] - _enc[1] );
-	if( motor[0].pos >= motor_param[0].enc_rev )
-		motor[0].pos -= motor_param[0].enc_rev;
-	if( motor[1].pos >= motor_param[1].enc_rev )
-		motor[1].pos -= motor_param[1].enc_rev;
-	if( motor[0].pos < 0 )
-		motor[0].pos += motor_param[0].enc_rev;
-	if( motor[1].pos < 0 )
-		motor[1].pos += motor_param[1].enc_rev;
+	for( i = 0; i < 2; i ++ )
+	{
+		motor[i].pos += ( short )( enc[i] - _enc[i] );
+		normalize( &motor[i].pos, 0, motor_param[i].enc_rev, motor_param[i].enc_rev );
+	}
 
 	// PWM計算
 	{
-		static int pwm[2][3];
-		static int phase[3];
-		static int j;
+		int pwm[2][3];
+		int phase[3];
+		int j;
 
 		if( PWM_init < 2048 )
 		{
@@ -233,32 +270,20 @@ void FIQ_PWMPeriod(  )
 				if( hall[i] & HALL_U )
 				{
 					if( hall[i] & HALL_V )
-					{
 						motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 5 / 12;	// 150度
-					}
 					else if( hall[i] & HALL_W )
-					{
 						motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 1 / 12;	// 30度
-					}
 					else
-					{
 						motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 3 / 12;	// 90度
-					}
 				}
 				else
 				{
 					if( !( hall[i] & HALL_V ) )
-					{
 						motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 11 / 12;	// 330度
-					}
 					else if( !( hall[i] & HALL_W ) )
-					{
 						motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 7 / 12;	// 210度
-					}
 					else
-					{
 						motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 9 / 12;	// 270度
-					}
 				}
 				motor_param[i].enc0tran = motor_param[i].enc0;
 			}
@@ -267,30 +292,22 @@ void FIQ_PWMPeriod(  )
 		{
 			int rate;
 
-
 			rate = motor[j].ref.rate * PWM_init / 2048;
 
 			if( driver_param.vsrc_rated )
 			{
 				rate = rate * driver_param.vsrc_factor / 32768;
 				if( rate >= PWM_resolution )
-				{
 					rate = PWM_resolution - 1;
-				}
 				else if( rate <= -PWM_resolution )
-				{
 					rate = -PWM_resolution + 1;
-				}
 			}
 
 			if( cnt % 64 == 2 + j )
 			{
 				int diff;
 				diff = motor_param[j].enc0tran - motor_param[j].enc0;
-				while( diff < -motor_param[j].enc_rev / 2 )
-					diff += motor_param[j].enc_rev;
-				while( diff >= motor_param[j].enc_rev / 2 )
-					diff -= motor_param[j].enc_rev;
+				normalize( &diff, -motor_param[j].enc_rev / 2, motor_param[j].enc_rev / 2, motor_param[j].enc_rev );
 
 				if( diff == 0 )
 				{
@@ -313,7 +330,7 @@ void FIQ_PWMPeriod(  )
 			{
 			case MOTOR_TYPE_DC:
 				{
-					static int pwmt;
+					int pwmt;
 					pwmt = PWM_center + rate / 2;
 					if( pwmt < PWM_abs_min )
 						pwmt = PWM_abs_min;
@@ -330,22 +347,13 @@ void FIQ_PWMPeriod(  )
 				break;
 			case MOTOR_TYPE_AC3:
 				phase[2] = ( ( motor[j].pos - motor_param[j].enc0tran ) ) - phase90[j];
-				while( phase[2] < 0 )
-					phase[2] += motor_param[j].enc_rev;
-				while( phase[2] >= motor_param[j].enc_rev )
-					phase[2] -= motor_param[j].enc_rev;
+				normalize( &phase[2], 0, motor_param[j].enc_rev, motor_param[j].enc_rev );
 
 				phase[1] = phase[2] - phase_offset[j][0];
-				while( phase[1] < 0 )
-					phase[1] += motor_param[j].enc_rev;
-				while( phase[1] >= motor_param[j].enc_rev )
-					phase[1] -= motor_param[j].enc_rev;
+				normalize( &phase[1], 0, motor_param[j].enc_rev, motor_param[j].enc_rev );
 
 				phase[0] = phase[2] - phase_offset[j][1];
-				while( phase[0] < 0 )
-					phase[0] += motor_param[j].enc_rev;
-				while( phase[0] >= motor_param[j].enc_rev )
-					phase[0] -= motor_param[j].enc_rev;
+				normalize( &phase[0], 0, motor_param[j].enc_rev, motor_param[j].enc_rev );
 
 				{
 					for( i = 0; i < 3; i++ )
@@ -363,37 +371,22 @@ void FIQ_PWMPeriod(  )
 				break;
 			}
 		}
+		for( j = 0; j < 2; j++ )
 		{
-			if( _abs( motor[0].ref.torque ) < driver_param.zero_torque )
+			if( _abs( motor[j].ref.torque ) < driver_param.zero_torque )
 			{
 				for( i = 0; i < 3; i++ )
 				{
-					THEVA.MOTOR[0].PWM[i].H = 0;
-					THEVA.MOTOR[0].PWM[i].L = 0;
+					THEVA.MOTOR[j].PWM[i].H = 0;
+					THEVA.MOTOR[j].PWM[i].L = 0;
 				}
 			}
 			else
 			{
 				for( i = 0; i < 3; i++ )
 				{
-					THEVA.MOTOR[0].PWM[i].H = pwm[0][i];
-					THEVA.MOTOR[0].PWM[i].L = PWM_resolution;
-				}
-			}
-			if( _abs( motor[1].ref.torque ) < driver_param.zero_torque )
-			{
-				for( i = 0; i < 3; i++ )
-				{
-					THEVA.MOTOR[1].PWM[i].H = 0;
-					THEVA.MOTOR[1].PWM[i].L = 0;
-				}
-			}
-			else
-			{
-				for( i = 0; i < 3; i++ )
-				{
-					THEVA.MOTOR[1].PWM[i].H = pwm[1][i];
-					THEVA.MOTOR[1].PWM[i].L = PWM_resolution;
+					THEVA.MOTOR[j].PWM[i].H = pwm[j][i];
+					THEVA.MOTOR[j].PWM[i].L = PWM_resolution;
 				}
 			}
 		}
@@ -402,9 +395,7 @@ void FIQ_PWMPeriod(  )
 	// ゼロ点計算
 	for( i = 0; i < 2; i++ )
 	{
-		static char u;
-		static char v;
-		static char w;
+		char u, v, w;
 
 		if( motor_param[i].motor_type != MOTOR_TYPE_DC )
 		{
@@ -421,25 +412,21 @@ void FIQ_PWMPeriod(  )
 				if( !( _hall[i] & HALL_U ) )
 					if( hall[i] & HALL_W )
 					{
-						// 正回転 U立ち上がり 0度
-						u = 1;
+						u = 1; // 正回転 U立ち上がり 0度
 					}
 					else
 					{
-						// 逆回転 U立ち上がり 180度
-						u = -1;
+						u = -1; // 逆回転 U立ち上がり 180度
 						dir = 1;
 					}
 				else
 					if( hall[i] & HALL_V )
 					{
-						// 正回転 U立ち下がり 180度
-						u = -1;
+						u = -1; // 正回転 U立ち下がり 180度
 					}
 					else
 					{
-						// 逆回転 U立ち下がり 0度
-						u = 1;
+						u = 1; // 逆回転 U立ち下がり 0度
 						dir = 1;
 					}
 				break;
@@ -447,25 +434,21 @@ void FIQ_PWMPeriod(  )
 				if( !( _hall[i] & HALL_V ) )
 					if( hall[i] & HALL_U )
 					{
-						// 正回転 V立ち上がり 120度
-						v = 1;
+						v = 1; // 正回転 V立ち上がり 120度
 					}
 					else
 					{
-						// 逆回転 V立ち上がり 300度
-						v = -1;
+						v = -1; // 逆回転 V立ち上がり 300度
 						dir = 1;
 					}
 				else
 					if( hall[i] & HALL_W )
 					{
-						// 正回転 V立ち下がり 300度
-						v = -1;
+						v = -1; // 正回転 V立ち下がり 300度
 					}
 					else
 					{
-						// 逆回転 V立ち下がり 120度
-						v = 1;
+						v = 1; // 逆回転 V立ち下がり 120度
 						dir = 1;
 					}
 				break;
@@ -473,25 +456,21 @@ void FIQ_PWMPeriod(  )
 				if( !( _hall[i] & HALL_W ) )
 					if( hall[i] & HALL_V )
 					{
-						// 正回転 W立ち上がり 240度
-						w = 1;
+						w = 1; // 正回転 W立ち上がり 240度
 					}
 					else
 					{
-						// 逆回転 W立ち上がり 60度
-						w = -1;
+						w = -1; // 逆回転 W立ち上がり 60度
 						dir = 1;
 					}
 				else
 					if( hall[i] & HALL_U )
 					{
-						// 正回転 W立ち下がり 60度
-						w = -1;
+						w = -1; // 正回転 W立ち下がり 60度
 					}
 					else
 					{
-						// 逆回転 W立ち下がり 240度
-						w = 1;
+						w = 1; // 逆回転 W立ち下がり 240度
 						dir = 1;
 					}
 				break;
@@ -502,9 +481,7 @@ void FIQ_PWMPeriod(  )
 
 			// ホール素子は高速域では信頼できない
 			if( _abs( motor[i].vel ) > motor_param[i].enc_10hz )
-			{
 				continue;
-			}
 
 			// ゼロ点計算
 
@@ -526,73 +503,8 @@ void FIQ_PWMPeriod(  )
 	_hall[0] = hall[0];
 	_hall[1] = hall[1];
 
-	
-	if( cnt++ % 20 == 0 )
-	{
-		static int _vel[2][16] = { {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} };
-		static unsigned short __enc[2];
-		static unsigned char cnt = 0;
-		int vel;
-		
-		velcontrol = 1;
-
-		motor[0].spd = spd[0] = THEVA.MOTOR[0].SPEED;
-		motor[1].spd = spd[1] = THEVA.MOTOR[1].SPEED;
-		for( i = 0; i < 2; i++ )
-		{
-			int j, n;
-			int __vel;
-			
-			__vel = ( short )( enc[i] - __enc[i] );
-			_vel[i][cnt] = __vel;
-			if( __vel < 0 ) motor[i].dir = -1;
-			else if( __vel > 0 ) motor[i].dir = 1;
-			else motor[i].dir = 0;
-			motor[i].vel1 = __vel;
-			
-			if( spd[i] < 48000 / 8 && driver_param.fpga_version > 0 )
-			{
-				int dir;
-
-				dir = motor[i].dir;
-				if( dir == 0 )
-				{
-					j = cnt;
-					for( n = 0; n < 16 - spd[i] / 256; n ++ )
-					{
-						if( _vel[i][j] > 0 )
-						{
-							dir = 1;
-						}
-						else if( _vel[i][j] < 0 )
-						{
-							dir = -1;
-						}
-						if( j == 0 ) j = 15;
-						else j--;
-					}
-				}
-				vel = dir * (int)spd[i] / 256;
-				motor[i].dir = dir;
-			}
-			else
-			{
-				vel = __vel * 16;
-			}
-			
-			motor[i].vel = vel;
-			__enc[i] = enc[i];
-			motor[i].enc_buf = enc[i];
-		}
-		cnt++;
-		if( cnt >= 16 )
-			cnt = 0;
-	}
-
 	_enc[0] = enc[0];
 	_enc[1] = enc[1];
-
-	// PIO_Set( &pinsLeds[USBD_LEDPOWER] );
 
 	return;
 }
@@ -605,11 +517,12 @@ void controlPWM_init(  )
 	int i;
 
 	PIO_Configure( &pinPWMCycle2, 1 );
-	AIC_ConfigureIT( AT91C_ID_IRQ0, 0 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, ( void ( * )( void ) )FIQ_PWMPeriod );
+	AIC_ConfigureIT( AT91C_ID_IRQ0, 5 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, ( void ( * )( void ) )FIQ_PWMPeriod );
 	AIC_EnableIT( AT91C_ID_IRQ0 );
 
 	// PWM Generator init
 	PWM_resolution = saved_param.PWM_resolution;
+	PWM_thinning = 2000 / PWM_resolution;
 	PWM_deadtime = saved_param.PWM_deadtime;
 
 	THEVA.GENERAL.PWM.HALF_PERIOD = PWM_resolution;

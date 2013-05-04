@@ -86,7 +86,6 @@ static const Pin pins[] = {
 	PIN_PCK_PCK1,
 	PIN_LED_0, PIN_LED_1, PIN_LED_2
 };
-static const Pin pinsLED[] = { PIN_LED_0, PIN_LED_1, PIN_LED_2 };
 
 // / VBus pin instance.
 static const Pin pinVbus = PIN_USB_VBUS;
@@ -97,15 +96,6 @@ const Pin pinPWMEnable = PIN_PWM_ENABLE;
 // / Buffer for storing incoming USB data.
 static unsigned char usbBuffer[DATABUFFERSIZE];
 
-
-void LED_on( int num )
-{
-	PIO_Clear(&pinsLED[num]);
-}
-void LED_off( int num )
-{
-	PIO_Set(&pinsLED[num]);
-}
 
 // ------------------------------------------------------------------------------
 // Main
@@ -361,7 +351,7 @@ int main(  )
 		#if defined(tfrog_rev1)
 		data_default.PWM_deadtime = 18;
 		#elif defined(tfrog_rev5)
-		data_default.PWM_deadtime = 10;
+		data_default.PWM_deadtime = 7;
 		#else
 		data_default.PWM_deadtime = 20;
 		#endif
@@ -405,13 +395,16 @@ int main(  )
 	// connect if needed
 	VBus_Configure(  );
 
-	printf( "PWM control init\n\r" );
-	// Configure PWM control
-	controlPWM_init(  );
+	driver_param.vsrc = 0;
+	Filter1st_CreateLPF( &voltf, 10 ); // 50ms
 
 	printf( "Velocity Control init\n\r" );
 	// Configure velocity control loop
 	controlVelocity_init(  );
+
+	printf( "PWM control init\n\r" );
+	// Configure PWM control
+	controlPWM_init(  );
 
 	enc_buf2[0] = enc_buf2[1] = 0;
 
@@ -421,8 +414,6 @@ int main(  )
 	
 	LED_off( 0 );
 	ADC_Start();
-	driver_param.vsrc = 0;
-	Filter1st_CreateLPF( &voltf, 10 ); // 50ms
 
 	// Driver loop
 	while( 1 )
@@ -438,11 +429,11 @@ int main(  )
 			{
 				controlVelocity_init( );
 				controlPWM_init(  );
-				LED_on( 1 );
+				LED_on( 0 );
 			}
 			else
 			{
-				LED_off( 1 );
+				LED_off( 0 );
 			}
 		}
 

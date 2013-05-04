@@ -7,6 +7,7 @@
 #include <pio/pio_it.h>
 #include <aic/aic.h>
 #include <tc/tc.h>
+#include <pmc/pmc.h>
 #include <utility/trace.h>
 #include <utility/led.h>
 #include <usb/device/cdc-serial/CDCDSerialDriver.h>
@@ -14,6 +15,7 @@
 #include <string.h>
 #include <stdint.h>
 
+#include "power.h"
 #include "controlPWM.h"
 #include "controlVelocity.h"
 #include "registerFPGA.h"
@@ -24,6 +26,7 @@ MotorParam motor_param[2];
 DriverParam driver_param;
 
 extern int watchdog;
+extern int velcontrol;
 
 static const Pin pinsLeds[] = { PINS_LEDS };
 
@@ -37,12 +40,13 @@ Filter1st accelf0;
 
 // ------------------------------------------------------------------------------
 // / Velocity control loop (1ms)
+//   Called from main loop
 // ------------------------------------------------------------------------------
 void ISR_VelocityControl(  )
 {
 	// volatile unsigned int status;
 	static int pwm_sum[2] = { 0, 0 };
-	static int i;
+	int i;
 
 	// PIO_Clear(&pinsLeds[USBD_LEDOTHER]);
 
@@ -53,14 +57,14 @@ void ISR_VelocityControl(  )
 	if( driver_param.servo_level >= SERVO_LEVEL_TORQUE )
 	{
 		// servo_level 2(toque enable)
-		static int64_t toq[2];
-		static int out_pwm[2];
+		int64_t toq[2];
+		int64_t out_pwm[2];
 
 		if( driver_param.servo_level >= SERVO_LEVEL_VELOCITY && 
 			driver_param.servo_level != SERVO_LEVEL_OPENFREE )
 		{
 			// servo_level 3 (speed enable)
-			static int64_t toq_pi[2], s_a, s_b;
+			int64_t toq_pi[2], s_a, s_b;
 
 			for( i = 0; i < 2; i++ )
 			{
@@ -227,10 +231,92 @@ void ISR_VelocityControl(  )
 	// PIO_Set(&pinsLeds[USBD_LEDOTHER]);
 }
 
+void timer0_vel_calc( )
+{
+	static int _vel[2][16] = { {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} };
+	static unsigned short __enc[2];
+	static unsigned char cnt = 0;
+	unsigned short enc[2];
+	int _nspd[2];
+	int _spd[2];
+	int i;
+	volatile unsigned int dummy;
+
+	dummy = AT91C_BASE_TC0->TC_SR;
+	dummy = dummy;
+	
+	LED_on(1);
+	for( i = 0; i < 2; i++ )
+	{
+		enc[i] = motor[i].enc;
+		_nspd[i] = motor[i].spd_num;
+		_spd[i]  = motor[i].spd_sum;
+		motor[i].spd_num = 0;
+		motor[i].spd_sum = 0;
+	}
+
+	for( i = 0; i < 2; i++ )
+	{
+		int j, n;
+		int __vel;
+		int vel;
+
+		__vel = ( short )( enc[i] - __enc[i] );
+		_vel[i][cnt] = __vel;
+		if( __vel < 0 ) motor[i].dir = -1;
+		else if( __vel > 0 ) motor[i].dir = 1;
+		else motor[i].dir = 0;
+		motor[i].vel1 = __vel;
+		motor[i].spd = _spd[i] / _nspd[i];
+		
+		if( _nspd[i] > 2 && driver_param.fpga_version > 0 )
+		{
+			int dir;
+
+			dir = motor[i].dir;
+			if( dir == 0 )
+			{
+				j = cnt;
+				for( n = 0; n < 16 - _abs( motor[i].spd ) / 256; n ++ )
+				{
+					if( _vel[i][j] > 0 )
+					{
+						dir = 1;
+					}
+					else if( _vel[i][j] < 0 )
+					{
+						dir = -1;
+					}
+					if( j == 0 ) j = 15;
+					else j--;
+				}
+			}
+			vel = motor[i].spd / 256;
+			motor[i].dir = dir;
+		}
+		else
+		{
+			motor[i].spd = 1000 * 256;
+			vel = __vel * 16;
+		}
+		
+		motor[i].vel = vel;
+		__enc[i] = enc[i];
+		motor[i].enc_buf = enc[i];
+	}
+	cnt++;
+	if( cnt >= 16 )
+		cnt = 0;
+
+	LED_off(1);
+
+	velcontrol = 1;
+}
+
 // ------------------------------------------------------------------------------
 // / Configure velocity control loop
 // ------------------------------------------------------------------------------
-inline void controlVelocity_init(  )
+void controlVelocity_init(  )
 {
 #define ACCEL_FILTER_TIME  15.0
 	int i;
@@ -256,4 +342,28 @@ inline void controlVelocity_init(  )
 		motor_param[i].motor_type = MOTOR_TYPE_AC3;
 		motor_param[i].enc_rev = 0;
 	}
+
+	{
+		volatile unsigned int dummy;
+
+		AT91C_BASE_PMC->PMC_PCER = 1 << AT91C_ID_TC0;
+
+		AT91C_BASE_TC0->TC_CCR = AT91C_TC_CLKDIS;
+		AT91C_BASE_TC0->TC_IDR = 0xFFFFFFFF;
+		dummy = AT91C_BASE_TC0->TC_SR;
+		dummy = dummy;
+
+		// MCK/32 * 1500 -> 1ms
+		AT91C_BASE_TC0->TC_CMR = AT91C_TC_CLKS_TIMER_DIV3_CLOCK | AT91C_TC_WAVE | AT91C_TC_WAVESEL_UP_AUTO;
+		AT91C_BASE_TC0->TC_CCR = AT91C_TC_CLKEN;
+		AT91C_BASE_TC0->TC_RC  = 1500;
+		AT91C_BASE_TC0->TC_IER = AT91C_TC_CPCS;
+
+		AIC_ConfigureIT( AT91C_ID_TC0, 0 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, ( void ( * )( void ) )timer0_vel_calc );
+		AIC_EnableIT( AT91C_ID_TC0 );
+
+		AT91C_BASE_TC0->TC_CCR = AT91C_TC_SWTRG;
+	}
+
 }
+

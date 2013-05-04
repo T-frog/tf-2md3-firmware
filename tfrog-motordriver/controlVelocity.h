@@ -9,8 +9,10 @@ typedef struct _MotorState
 	int vel1;									// count/ms
 	int pos;									// count
 	int enc_buf;								// count
+	int spd;
+	int spd_sum;
+	int spd_num;
 	unsigned short enc;
-	unsigned short spd;
 	short dir;
 
 	struct
@@ -85,5 +87,6 @@ extern DriverParam driver_param;
 
 void controlVelocity_init(  );
 RAMFUNC void ISR_VelocityControl(  );
+RAMFUNC void timer0_vel_calc(  );
 
 #endif
