@@ -143,18 +143,6 @@ static int FPGA_test( )
 // ------------------------------------------------------------------------------
 static void ISR_Vbus( const Pin * pPin )
 {
-	// Check current level on VBus
-	if( PIO_Get( &pinVbus ) )
-	{
-		TRACE_INFO( "VBUS conn\n\r" );
-		USBD_Connect(  );
-		connecting = 1;
-	}
-	else
-	{
-		TRACE_INFO( "VBUS discon\n\r" );
-		USBD_Disconnect(  );
-	}
 }
 
 // ------------------------------------------------------------------------------
@@ -163,14 +151,14 @@ static void ISR_Vbus( const Pin * pPin )
 // ------------------------------------------------------------------------------
 static void VBus_Configure( void )
 {
-	TRACE_INFO( "VBus configuration\n\r" );
+//	TRACE_INFO( "VBus configuration\n\r" );
 
 	// Configure PIO
 	PIO_Configure( &pinVbus, 1 );
-	PIO_ConfigureIt( &pinVbus, ISR_Vbus );
-	PIO_EnableIt( &pinVbus );
+//	PIO_ConfigureIt( &pinVbus, ISR_Vbus );
+//	PIO_EnableIt( &pinVbus );
 
-	ISR_Vbus( &pinVbus );
+//	ISR_Vbus( &pinVbus );
 }
 
 
@@ -216,6 +204,9 @@ int main(  )
 	short enc_buf2[2];
 	int err_cnt;
 	Filter1st voltf;
+	int vbuslv = 0;
+	int vbus = 0;
+	int _vbus = 0;
 
 	// Configure IO
 	PIO_Configure( pins, PIO_LISTSIZE( pins ) );
@@ -437,6 +428,36 @@ int main(  )
 			}
 		}
 
+		// Check current level on VBus
+		if( PIO_Get( &pinVbus ) )
+		{
+			if( vbuslv < 0 ) vbuslv = 0;
+			else if( vbuslv <= 10 ) vbuslv ++;
+		}
+		else
+		{
+			if( vbuslv > 0 ) vbuslv = 0;
+			else if( vbuslv >= -10 ) vbuslv --;
+		}
+		if( vbuslv > 10 ) vbus = 1;
+		else if( vbuslv < -10 ) vbus = 0;
+		
+		if( vbus != _vbus )
+		{
+			if( vbus == 1 )
+			{
+				TRACE_INFO( "VBUS conn\n\r" );
+				USBD_Connect(  );
+				connecting = 1;
+			}
+			else
+			{
+				TRACE_INFO( "VBUS discon\n\r" );
+				USBD_Disconnect(  );
+			}
+		}
+		_vbus = vbus;
+		
 		data_analyze(  );
 		if( connecting )
 		{
