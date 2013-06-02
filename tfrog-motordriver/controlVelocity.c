@@ -184,8 +184,14 @@ void ISR_VelocityControl(  )
 			}
 			else
 			{
-				out_pwm[i]  = ( motor[i].vel * motor_param[i].Kvolt ) / 16;
+				out_pwm[i]  = ( (int64_t)motor[i].vel * motor_param[i].Kvolt ) / 16;
 			}
+			// PWMでクリッピング
+			if( out_pwm[i] > driver_param.PWM_max * 65536 )
+				out_pwm[i] = driver_param.PWM_max * 65536;
+			if( out_pwm[i] < driver_param.PWM_min * 65536 )
+				out_pwm[i] = driver_param.PWM_min * 65536;
+
 			motor[i].ref.torque = toq[i] * motor_param[i].Kcurrent;
 			out_pwm[i] += motor[i].ref.torque;
 			out_pwm[i] /= 65536;
