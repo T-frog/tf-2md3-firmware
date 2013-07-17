@@ -44,6 +44,14 @@
 // extern int getStackPointer( void );
 // extern int getIrqStackPointer( void );
 
+#if defined( tfrog_rev5 )
+	#warning "T-frog driver rev.5"
+#endif
+#if defined( tfrog_rev4 )
+	#warning "T-frog driver rev.4"
+#endif
+
+
 int velcontrol = 0;
 Tfrog_EEPROM_data saved_param = TFROG_EEPROM_DEFAULT;
 
@@ -225,16 +233,21 @@ int main(  )
 		{
 			static const Pin pinsClear[] = { PINS_CLEAR };
 			static const Pin pinsSet[] = { PINS_SET };
-			volatile int i;
 
 			AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDDIS;
 			AT91C_BASE_RSTC->RSTC_RMR = 0xA5000400;
 
 			PIO_Configure( pinsClear, PIO_LISTSIZE( pinsClear ) );
-			for( i = 0; i < 40000; i ++ );
+			msleep( 50 );
 			LED_off( 0 );
 			PIO_Configure( pinsSet, PIO_LISTSIZE( pinsSet ) );
-			for( i = 0; i < 40000; i ++ );
+			msleep( 50 );
+			LED_on( 0 );
+			PIO_Configure( pinsClear, PIO_LISTSIZE( pinsClear ) );
+			msleep( 50 );
+			LED_off( 0 );
+			PIO_Configure( pinsSet, PIO_LISTSIZE( pinsSet ) );
+			msleep( 50 );
 		}
 		#endif
 
@@ -281,9 +294,11 @@ int main(  )
 		err_cnt ++;
 
 		if( err_cnt > 2 )
-			AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST;
+		{
+			AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST | AT91C_RSTC_PROCRST | AT91C_RSTC_PERRST;
+			while( 1 );
+		}
 	}
-
 	printf( "FPGA ID: %x\n\r", (volatile TVREG)(THEVA.GENERAL.ID) );
 	// Checking FPGA-version
 	if( ( (volatile TVREG)(THEVA.GENERAL.ID) & 0xFF00 ) == 0x0000 )
@@ -301,13 +316,12 @@ int main(  )
 	printf( "FPGA test\n\r" );
 	if( !FPGA_test() )
 	{
-		volatile int i;
-
 		printf( "  Failed\n\r" );
 		LED_on( 0 );
+		msleep( 200 );
 		LED_on( 1 );
-		for( i = 0; i < 60000; i ++ );
-		AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST;
+		AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST | AT91C_RSTC_PROCRST | AT91C_RSTC_PERRST;
+			while( 1 );
 	}
 
 	printf( "ADC init\n\r" );
@@ -360,7 +374,8 @@ int main(  )
 		case -3:
 			// Read Error
 			TRACE_ERROR( "EEPROM Read Error!\n\r" );
-			AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST;
+			AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST | AT91C_RSTC_PROCRST | AT91C_RSTC_PERRST;
+			while( 1 );
 			break;
 		default:
 			if( saved_param.key != TFROG_EEPROM_KEY )
@@ -378,11 +393,13 @@ int main(  )
 				LED_on( 2 );
 				msleep( 200 );
 
-				AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST;
+				AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST | AT91C_RSTC_PROCRST | AT91C_RSTC_PERRST;
+				while( 1 );
 			}
 			break;
 		}
-
+		THEVA.GENERAL.PWM.HALF_PERIOD = saved_param.PWM_resolution;
+		THEVA.GENERAL.PWM.DEADTIME = saved_param.PWM_deadtime;
 	}
 
 	// connect if needed
@@ -408,13 +425,34 @@ int main(  )
 	LED_off( 0 );
 	ADC_Start();
 
+	err_cnt = 0;
+	driver_param.low_voltage = 0;
 	// Driver loop
 	while( 1 )
 	{
-		// static int i;
-		// int j;
-
+		static int err_chk = 0;
 		AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
+
+		if( err_chk ++ % 20 )
+		{
+			if( (volatile int)THEVA.GENERAL.PWM.HALF_PERIOD != saved_param.PWM_resolution ||
+				 (volatile int)THEVA.GENERAL.PWM.DEADTIME != saved_param.PWM_deadtime )
+			{
+				err_cnt ++;
+				controlPWM_init( );
+			}
+			else
+			{
+				err_cnt = 0;
+			}
+			if( err_cnt > 3 )
+			{
+				TRACE_ERROR( "FPGA-Value Error!\n\r" );
+				msleep( 50 );
+				AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST | AT91C_RSTC_PROCRST | AT91C_RSTC_PERRST;
+				while( 1 );
+			}
+		}
 
 		if( driver_param.servo_level >= SERVO_LEVEL_TORQUE )
 		{
@@ -534,5 +572,38 @@ int main(  )
 			ISR_VelocityControl(  );
 		}
 		LED_off( 2 );
+
+		if( DBGU_IsRxReady() )
+		{
+			int i = 1;
+			switch( DBGU_GetChar() )
+			{
+			case '0':
+				i = 0;
+			case '1':
+				printf( "vel:%d\n",				motor[i].vel );
+				printf( "vel1:%d\n",				motor[i].vel1 );
+				printf( "pos:%d\n",				motor[i].pos );
+				printf( "enc_buf:%d\n",			motor[i].enc_buf );
+				printf( "spd:%d\n",				motor[i].spd );
+				printf( "spd_sum:%d\n",			motor[i].spd_sum );
+				printf( "spd_num:%d\n",			motor[i].spd_num );
+				printf( "enc:%d\n",				motor[i].enc );
+				printf( "dir:%d\n",				motor[i].dir );
+				printf( "ref.vel:%d\n",				motor[i].ref.vel );
+				printf( "ref.vel_buf:%d\n",			motor[i].ref.vel_buf );
+				printf( "ref.vel_buf_prev:%d\n",	motor[i].ref.vel_buf_prev );
+				printf( "ref.vel_interval:%d\n",	motor[i].ref.vel_interval );
+				printf( "ref.vel_diff:%d\n",		motor[i].ref.vel_diff );
+				printf( "ref.torque:%d\n",			motor[i].ref.torque );
+				printf( "ref.rate:%d\n",			motor[i].ref.rate );
+				printf( "ref.rate_buf:%d\n",		motor[i].ref.rate_buf );
+				printf( "ref.vel_changed:%d\n",	motor[i].ref.vel_changed );
+				printf( "error:%d\n",			motor[i].error );
+				printf( "error_integ:%d\n",		motor[i].error_integ );
+				printf( "control_init:%d\n",	motor[i].control_init );
+				break;
+			}
+		}
 	}
 }
