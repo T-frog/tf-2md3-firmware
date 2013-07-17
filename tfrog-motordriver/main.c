@@ -38,6 +38,7 @@
 #include "communication.h"
 #include "eeprom.h"
 #include "adc.h"
+#include "io.h"
 #include "filter.h"
 
 // extern int getStackPointer( void );
@@ -84,6 +85,7 @@ char connected = 0;
 static const Pin pins[] = {
 	PIN_PWM_ENABLE,
 	PIN_PCK_PCK1,
+	PINS_USERIO,
 	PIN_LED_0, PIN_LED_1, PIN_LED_2
 };
 
@@ -486,13 +488,16 @@ int main(  )
 			/* 約5msおき */
 
 			mask = driver_param.admask;			// analog_mask;
-			if( driver_param.io_mask )
+			if( driver_param.io_mask[0] )
 				mask |= 0x100;
+			if( driver_param.io_mask[1] )
+				mask |= 0x200;
 			for( i = 0; i < 8; i ++ )
 			{
 				analog[i] = ( i << 12 ) | ADC_Read( i );
 			}
-			analog[8] = ( 15 << 12 ) | THEVA.PORT[0];
+			analog[8] = ( 15 << 12 ) | get_io_data();
+			analog[9] = ( 14 << 12 ) | THEVA.PORT[0];
 
 			data_send( ( short )( ( short )motor[0].enc_buf - ( short )enc_buf2[0] ),
 					   ( short )( ( short )motor[1].enc_buf - ( short )enc_buf2[1] ),

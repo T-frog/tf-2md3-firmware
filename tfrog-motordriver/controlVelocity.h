@@ -77,8 +77,9 @@ typedef struct _DriverParam
 	unsigned char cnt_updated;
 	unsigned short admask;
 	unsigned short io_dir;
-	unsigned short io_mask;
+	unsigned short io_mask[2];
 	unsigned short fpga_version;
+	unsigned char low_voltage;
 } DriverParam;
 
 extern MotorState motor[2];

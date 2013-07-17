@@ -335,7 +335,8 @@ void controlVelocity_init(  )
 	driver_param.watchdog_limit = 600;
 	driver_param.servo_level = SERVO_LEVEL_STOP;
 	driver_param.admask = 0;
-	driver_param.io_mask = 0;
+	driver_param.io_mask[0] = 0;
+	driver_param.io_mask[1] = 0;
 
 	for( i = 0; i < 2; i ++ )
 	{

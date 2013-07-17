@@ -17,6 +17,7 @@
 #include "controlVelocity.h"
 #include "controlPWM.h"
 #include "eeprom.h"
+#include "io.h"
 
 #define SEND_BUF_LEN  1024
 #define RECV_BUF_LEN  1024
@@ -678,7 +679,6 @@ inline int extended_command_analyze( char *data )
 			if( data[i] == '1' )
 				tmp |= 1;
 		}
-		// analog_mask = tmp;
 		driver_param.admask = tmp;
 		send( data );
 		send( "\n00P\n\n" );
@@ -686,7 +686,6 @@ inline int extended_command_analyze( char *data )
 	else if( strstr( data, "SETIODIR" ) == data )
 	{
 		unsigned char tmp;
-		// PE0-3(0-3), PB2-5(4-7)
 
 		tmp = 0;
 		for( i = 8; data[i] != 0 && data[i] != '\n' && data[i] != '\r'; i++ )
@@ -695,8 +694,7 @@ inline int extended_command_analyze( char *data )
 			if( data[i] == '1' )
 				tmp |= 1;
 		}
-		// PFC.PEIOR.WORD = ( PFC.PEIOR.WORD & 0xFFF0 ) | ( ( tmp & 0x0F ) << 0 );
-		// PFC.PBIOR.WORD = ( PFC.PBIOR.WORD & 0xFFC3 ) | ( ( tmp & 0xF0 ) >> 2 );
+		set_io_dir( tmp );
 		driver_param.io_dir = tmp;
 		send( data );
 		send( "\n00P\n\n" );
@@ -705,8 +703,7 @@ inline int extended_command_analyze( char *data )
 	{
 		unsigned short tmp;
 		char num[3];
-		// tmp = ( PE.DR.WORD & 0x0F ) | ( ( PB.DR.WORD & 0x3C ) << 2 );
-		tmp = 0;
+		tmp = get_io_data();
 		send( data );
 		send( "\n" );
 		if( ( tmp >> 4 ) > 9 )
@@ -731,15 +728,24 @@ inline int extended_command_analyze( char *data )
 	}
 	else if( strstr( data, "GETIO" ) == data )
 	{
-		if( data[5] == '1' )
+		switch( data[5] )
 		{
-			// dio_enable = 1;
-			driver_param.io_mask = 0xFF;
-		}
-		else
-		{
-			// dio_enable = 0;
-			driver_param.io_mask = 0;
+		case '1':
+			driver_param.io_mask[0] = 0xFF;
+			driver_param.io_mask[1] = 0;
+			break;
+		case '2':
+			driver_param.io_mask[1] = 0xFF;
+			driver_param.io_mask[0] = 0;
+			break;
+		case '3':
+			driver_param.io_mask[0] = 0xFF;
+			driver_param.io_mask[1] = 0xFF;
+			break;
+		default:
+			driver_param.io_mask[0] = 0;
+			driver_param.io_mask[1] = 0;
+			break;
 		}
 		send( data );
 		send( "\n00P\n\n" );
@@ -747,7 +753,6 @@ inline int extended_command_analyze( char *data )
 	else if( strstr( data, "OUTPUT" ) == data )
 	{
 		unsigned char tmp;
-		// PA18-21(0-3), PB2-5(4-7)
 
 		tmp = 0;
 		for( i = 6; data[i] != 0 && data[i] != '\n' && data[i] != '\r'; i++ )
@@ -756,17 +761,14 @@ inline int extended_command_analyze( char *data )
 			if( data[i] == '1' )
 				tmp |= 1;
 		}
-		// PE.DR.WORD = ( PE.DR.WORD & 0xFFF0 ) | ( ( tmp & 0x0F ) << 0 );
-		// PB.DR.WORD = ( PB.DR.WORD & 0xFFC3 ) | ( ( tmp & 0xF0 ) >> 2 );
+		set_io_data( tmp );
 		send( data );
 		send( "\n00P\n\n" );
 	}
 	else if( strstr( data, "SS" ) == data )
 	{
 		int tmp;
-		// volatile int lo;
 
-		// cnt_updated = 0;
 		tmp = 0;
 		for( i = 2; data[i] != 0 && data[i] != '\n' && data[i] != '\r'; i++ )
 		{
@@ -775,12 +777,6 @@ inline int extended_command_analyze( char *data )
 		}
 		send( data );
 		send( "\n00P\n\n" );
-		// 送信終了まで待機
-		// while( SCI_send_rp[channel] != SCI_send_wp[channel] );
-		// for ( lo = 0; lo < 10000; lo++ ); /* wait more than 1bit time */
-		// sci_init( tmp );
-		// sci_start( ); // start SCI
-		// cnt_updated = 0;
 	}
 	else
 	{
@@ -939,8 +935,10 @@ inline int command_analyze( unsigned char *data, int len )
 		break;
 	case PARAM_io_dir:
 		driver_param.io_dir = i.integer;
+		set_io_dir( driver_param.io_dir );
 		break;
 	case PARAM_io_data:
+		set_io_data( i.integer );
 		break;
 	case PARAM_ad_mask:
 		driver_param.admask = i.integer;
