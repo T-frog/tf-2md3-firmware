@@ -518,6 +518,14 @@ int main(  )
 			{
 				driver_param.vsrc_factor = driver_param.vsrc_rated * 32768 / driver_param.vsrc;
 			}
+			if( driver_param.vsrc > 310 * 8 * VSRC_DIV )
+			{
+				if( driver_param.low_voltage < 100 ) driver_param.low_voltage ++;
+			}
+			else
+			{
+				driver_param.low_voltage = 0;
+			}
 		}
 
 		if( velcontrol == 1 )
