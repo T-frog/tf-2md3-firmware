@@ -82,10 +82,11 @@
 /// - BOARD_NAME
 
 /// Name of the board.
-#define BOARD_NAME "T-frog Motor Driver rev.1" 
+#define BOARD_NAME "T-frog Motor Driver rev.5" 
 /// Board definition.
 #define theva_rev1 
 #define tfrog_rev1 
+#define tfrog_rev4 
 /// Family definition.
 #define at91sam7se 
 //------------------------------------------------------------------------------
@@ -185,6 +186,9 @@
     {0x000000FE, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_PERIPH_B, PIO_DEFAULT}, \
     {0x0000FFFF, AT91C_BASE_PIOC, AT91C_ID_PIOC, PIO_PERIPH_A, PIO_DEFAULT}, \
     {0x00E00000, AT91C_BASE_PIOC, AT91C_ID_PIOC, PIO_PERIPH_B, PIO_DEFAULT}
+
+#define PINS_USERIO  \
+    {0x0021C701, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_INPUT, PIO_DEFAULT}
 //------------------------------------------------------------------------------
 
 #define PIN_PWM_ENABLE    {1 << 16, AT91C_BASE_PIOC, AT91C_ID_PIOC, PIO_OUTPUT_1, PIO_DEFAULT}
