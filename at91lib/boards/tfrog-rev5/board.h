@@ -205,6 +205,8 @@
 
 #define PINS_USERIO  \
     {0xFF000000, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_INPUT, PIO_DEFAULT}
+
+#define PINS_RS485  {0x000000E0, AT91C_BASE_PIOA, AT91C_ID_US0, PIO_PERIPH_A, PIO_DEFAULT}
 //------------------------------------------------------------------------------
 
 #define PIN_PWM_ENABLE    {1 << 16, AT91C_BASE_PIOC, AT91C_ID_PIOC, PIO_OUTPUT_1, PIO_DEFAULT}

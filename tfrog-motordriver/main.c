@@ -95,6 +95,7 @@ static const Pin pins[] = {
 	PIN_PWM_ENABLE,
 	PIN_PCK_PCK1,
 	PINS_USERIO,
+	PINS_RS485,
 	PIN_LED_0, PIN_LED_1, PIN_LED_2
 };
 
@@ -431,6 +432,15 @@ int main(  )
 	
 	LED_off( 0 );
 	ADC_Start();
+	
+#define RS485BUF_SIZE	256
+	char rs485buf[RS485BUF_SIZE];
+	printf( "RS485 init\n\r" );
+	AT91C_BASE_PMC->PMC_PCER = 1 << AT91C_ID_US0;
+	USART_Configure( AT91C_BASE_US0, AT91C_US_USMODE_RS485 | AT91C_US_CHRL_8_BITS, 115200, BOARD_MCK );
+	USART_SetTransmitterEnabled( AT91C_BASE_US0, 1 );
+	USART_SetReceiverEnabled( AT91C_BASE_US0, 1 );
+	USART_ReadBuffer( AT91C_BASE_US0, rs485buf, RS485BUF_SIZE );
 
 	err_cnt = 0;
 	driver_param.error.low_voltage = 0;
@@ -506,6 +516,71 @@ int main(  )
 			}
 		}
 		_vbus = vbus;
+		
+		{
+			static char buf[16];
+			static int nbuf = 0;
+			if( DBGU_IsRxReady() )
+			{
+				buf[nbuf] = DBGU_GetChar();
+				if( buf[nbuf] == '\n' || buf[nbuf] == '\r' )
+				{
+					int mn = 1;
+
+					buf[nbuf] = 0;
+					switch( buf[0] )
+					{
+					case '0':
+						mn = 0;
+					case '1':
+						printf( "vel:%d\n\r",				motor[mn].vel );
+						printf( "vel1:%d\n\r",				motor[mn].vel1 );
+						printf( "pos:%d\n\r",				motor[mn].pos );
+						printf( "enc_buf:%d\n\r",			motor[mn].enc_buf );
+						printf( "spd:%d\n\r",				motor[mn].spd );
+						printf( "spd_sum:%d\n\r",			motor[mn].spd_sum );
+						printf( "spd_num:%d\n\r",			motor[mn].spd_num );
+						printf( "enc:%d\n\r",				motor[mn].enc );
+						printf( "dir:%d\n\r",				motor[mn].dir );
+						printf( "ref.vel:%d\n\r",				motor[mn].ref.vel );
+						printf( "ref.vel_buf:%d\n\r",			motor[mn].ref.vel_buf );
+						printf( "ref.vel_buf_prev:%d\n\r",	motor[mn].ref.vel_buf_prev );
+						printf( "ref.vel_interval:%d\n\r",	motor[mn].ref.vel_interval );
+						printf( "ref.vel_diff:%d\n\r",		motor[mn].ref.vel_diff );
+						printf( "ref.torque:%d\n\r",			motor[mn].ref.torque );
+						printf( "ref.rate:%d\n\r",			motor[mn].ref.rate );
+						printf( "ref.rate_buf:%d\n\r",		motor[mn].ref.rate_buf );
+						printf( "ref.vel_changed:%d\n\r",	motor[mn].ref.vel_changed );
+						printf( "error:%d\n\r",			motor[mn].error );
+						printf( "error_integ:%d\n\r",		motor[mn].error_integ );
+						printf( "control_init:%d\n\r",	motor[mn].control_init );
+						break;
+					case 'r':
+						{
+							int len;
+							len = RS485BUF_SIZE - AT91C_BASE_US0->US_RCR;
+							rs485buf[len] = 0;
+							printf( "RS-485: received '%s' (%d)\n\r", rs485buf, len );
+							AT91C_BASE_US0->US_RCR = 0;
+							USART_ReadBuffer( AT91C_BASE_US0, rs485buf, RS485BUF_SIZE );
+						}
+						break;
+					case 'w':
+						{
+							printf( "RS-485: send '%s'\n\r", &buf[1] );
+							USART_WriteBuffer( AT91C_BASE_US0, &buf[1], nbuf - 1 );
+						}
+						break;
+					}
+					nbuf = 0;
+				}
+				else
+				{
+					nbuf ++;
+					if( nbuf > 15 ) nbuf = 15;
+				}
+			}
+		}
 		
 		data_analyze(  );
 		if( connecting )
@@ -620,38 +695,5 @@ int main(  )
 			}
 		}
 		LED_off( 2 );
-
-		if( DBGU_IsRxReady() )
-		{
-			int i = 1;
-			switch( DBGU_GetChar() )
-			{
-			case '0':
-				i = 0;
-			case '1':
-				printf( "vel:%d\n",				motor[i].vel );
-				printf( "vel1:%d\n",				motor[i].vel1 );
-				printf( "pos:%d\n",				motor[i].pos );
-				printf( "enc_buf:%d\n",			motor[i].enc_buf );
-				printf( "spd:%d\n",				motor[i].spd );
-				printf( "spd_sum:%d\n",			motor[i].spd_sum );
-				printf( "spd_num:%d\n",			motor[i].spd_num );
-				printf( "enc:%d\n",				motor[i].enc );
-				printf( "dir:%d\n",				motor[i].dir );
-				printf( "ref.vel:%d\n",				motor[i].ref.vel );
-				printf( "ref.vel_buf:%d\n",			motor[i].ref.vel_buf );
-				printf( "ref.vel_buf_prev:%d\n",	motor[i].ref.vel_buf_prev );
-				printf( "ref.vel_interval:%d\n",	motor[i].ref.vel_interval );
-				printf( "ref.vel_diff:%d\n",		motor[i].ref.vel_diff );
-				printf( "ref.torque:%d\n",			motor[i].ref.torque );
-				printf( "ref.rate:%d\n",			motor[i].ref.rate );
-				printf( "ref.rate_buf:%d\n",		motor[i].ref.rate_buf );
-				printf( "ref.vel_changed:%d\n",	motor[i].ref.vel_changed );
-				printf( "error:%d\n",			motor[i].error );
-				printf( "error_integ:%d\n",		motor[i].error_integ );
-				printf( "control_init:%d\n",	motor[i].control_init );
-				break;
-			}
-		}
 	}
 }
