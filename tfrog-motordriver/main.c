@@ -680,7 +680,7 @@ int main(  )
 						else
 							LED_off( 0 );
 						blink ++;
-						if( blink > 9 )
+						if( blink > 10 )
 						{
 							blink = 0;
 							errnum ++;
