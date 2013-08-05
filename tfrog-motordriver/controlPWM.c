@@ -401,13 +401,46 @@ void FIQ_PWMPeriod(  )
 		if( motor_param[i].motor_type != MOTOR_TYPE_DC )
 		{
 			char dir;
+			unsigned short halldiff;
 
 			u = v = w = 0;
+			halldiff = ( hall[i] ^ _hall[i] ) & 0x07; 
 			
-			if( hall[i] == _hall[i] ) continue;
+			if( halldiff == 0 ) continue;
 			dir = 0;
 
-			switch( hall[i] ^ _hall[i] )
+			if( ( hall[i] & 0x07 ) == ( HALL_U | HALL_V | HALL_W ) ||
+				( hall[i] & 0x07 ) == 0 ||
+				halldiff == 3 || halldiff >= 5 )
+			{
+				if( (hall[i] & 0x07) == ( HALL_U | HALL_V | HALL_W ) ) printf( "ENC error: 111\n\r" );
+				if( (hall[i] & 0x07) == 0 ) printf( "ENC error: 000\n\r" );
+				if( halldiff == 3 || halldiff >= 5 ) printf( "ENC error: %x->%x\n\r", _hall[i], hall[i] );
+				// ホール素子信号が全相1、全相0のとき
+				// ホース素子信号が2ビット以上変化したときはエラー
+				if( driver_param.error.hall[i] < 128 )
+						driver_param.error.hall[i] += 12;
+				if( driver_param.error.hall[i] > 12 )
+				{
+					// エラー検出後、1周以内に再度エラーがあれば停止
+					switch(i)
+					{
+					case 0:
+						driver_param.error_state |= ERROR_HALL1;
+						break;
+					case 1:
+						driver_param.error_state |= ERROR_HALL2;
+						break;
+					}
+				}
+				continue;
+			}
+			else
+			{
+				if( driver_param.error.hall[i] > 0 ) driver_param.error.hall[i] --;
+			}
+
+			switch( halldiff )
 			{
 			case HALL_U:
 				if( !( _hall[i] & HALL_U ) )
