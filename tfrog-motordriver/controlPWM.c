@@ -198,7 +198,8 @@ void FIQ_PWMPeriod(  )
 	}
 	
 
-	if( driver_param.servo_level == SERVO_LEVEL_STOP || driver_param.low_voltage < 100 )
+	if( driver_param.servo_level == SERVO_LEVEL_STOP || 
+		driver_param.error_state )
 	{
 		// Short-mode brake
 		for( i = 0; i < 3*2; i ++ )

@@ -79,8 +79,22 @@ typedef struct _DriverParam
 	unsigned short io_dir;
 	unsigned short io_mask[2];
 	unsigned short fpga_version;
-	unsigned char low_voltage;
+	struct
+	{
+		unsigned char low_voltage;
+		unsigned char hall[2];
+	} error;
+	enum
+	{
+		ERROR_NONE = 0,
+		ERROR_LOW_VOLTAGE	= 0x0001,
+		ERROR_HALL1			= 0x0002,
+		ERROR_HALL2			= 0x0004,
+		ERROR_WATCHDOG		= 0x0008
+	} error_state;
 } DriverParam;
+
+#define ERROR_NUM 4
 
 extern MotorState motor[2];
 extern MotorParam motor_param[2];

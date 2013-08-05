@@ -40,6 +40,7 @@
 #include "adc.h"
 #include "io.h"
 #include "filter.h"
+#include "errors.h"
 
 // extern int getStackPointer( void );
 // extern int getIrqStackPointer( void );
@@ -151,9 +152,11 @@ static int FPGA_test( )
 // ------------------------------------------------------------------------------
 // / Handles interrupts coming from PIO controllers.
 // ------------------------------------------------------------------------------
+/*
 static void ISR_Vbus( const Pin * pPin )
 {
 }
+*/
 
 // ------------------------------------------------------------------------------
 // / Configures the VBus pin to trigger an interrupt when the level on that pin
@@ -217,6 +220,10 @@ int main(  )
 	int vbuslv = 0;
 	int vbus = 0;
 	int _vbus = 0;
+	int err_chk = 0;
+	short mscnt = 0;
+	unsigned char errnum = 0;
+	unsigned char blink = 0;
 
 	// Configure IO
 	PIO_Configure( pins, PIO_LISTSIZE( pins ) );
@@ -426,11 +433,13 @@ int main(  )
 	ADC_Start();
 
 	err_cnt = 0;
-	driver_param.low_voltage = 0;
+	driver_param.error.low_voltage = 0;
+	driver_param.error.hall[0] = 0;
+	driver_param.error.hall[1] = 0;
+	driver_param.error_state = 0;
 	// Driver loop
 	while( 1 )
 	{
-		static int err_chk = 0;
 		AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 
 		if( err_chk ++ % 20 )
@@ -460,11 +469,11 @@ int main(  )
 			{
 				controlVelocity_init( );
 				controlPWM_init(  );
-				LED_on( 0 );
+				driver_param.error_state |= ERROR_WATCHDOG;
 			}
 			else
 			{
-				LED_off( 0 );
+				driver_param.error_state &= ~ERROR_WATCHDOG;
 			}
 		}
 
@@ -558,18 +567,57 @@ int main(  )
 			}
 			if( driver_param.vsrc > 310 * 8 * VSRC_DIV )
 			{
-				if( driver_param.low_voltage < 100 ) driver_param.low_voltage ++;
+				if( driver_param.error.low_voltage < 100 )
+						driver_param.error.low_voltage ++;
+				else
+						driver_param.error_state &= ~ERROR_LOW_VOLTAGE;
 			}
 			else
 			{
-				driver_param.low_voltage = 0;
+				driver_param.error.low_voltage = 0;
+				driver_param.error_state |= ERROR_LOW_VOLTAGE;
 			}
 		}
 
 		if( velcontrol == 1 )
 		{
+#define ERROR_BLINK_MS		200
 			velcontrol = 0;
 			ISR_VelocityControl(  );
+
+			if( mscnt ++ >= ERROR_BLINK_MS )
+			{
+				
+				mscnt = 0;
+				if( driver_param.error_state )
+				{
+					if( driver_param.error_state & ( 1 << errnum ) )
+					{
+						if( error_pat[errnum] & ( 1 << blink ) )
+							LED_on( 0 );
+						else
+							LED_off( 0 );
+						blink ++;
+						if( blink > 9 )
+						{
+							blink = 0;
+							errnum ++;
+						}
+					}
+					else
+					{
+						errnum ++;
+						if( errnum >= ERROR_NUM ) errnum = 0;
+						blink = 0;
+						LED_off( 0 );
+						mscnt = ERROR_BLINK_MS - 1;
+					}
+				}
+				else
+				{
+					LED_off( 0 );
+				}
+			}
 		}
 		LED_off( 2 );
 
