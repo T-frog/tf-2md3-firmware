@@ -151,6 +151,12 @@ void flush( void )
 	while( 1 )
 	{
 		char ret;
+		if( driver_param.watchdog >= driver_param.watchdog_limit )
+		{
+			TRACE_ERROR( "Send timeout\n\r" );
+			send_buf_pos = 0;
+			break;
+		}
 		ret = CDCDSerialDriver_Write( send_buf, len, 0, 0 );
 		if( ret == USBD_STATUS_LOCKED )
 		{
@@ -158,7 +164,7 @@ void flush( void )
 		}
 		else if( ret != USBD_STATUS_SUCCESS )
 		{
-			TRACE_ERROR( "Send Failed\n\r%s\n\r", send_buf );
+			TRACE_ERROR( "Send failed\n\r  buf: %s\n\r", send_buf );
 			break;
 		}
 		else

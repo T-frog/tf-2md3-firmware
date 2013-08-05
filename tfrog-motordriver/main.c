@@ -427,6 +427,7 @@ int main(  )
 	enc_buf2[0] = enc_buf2[1] = 0;
 
 	// Enable watchdog
+	printf( "Watchdog init\n\r" );
 	AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDRSTEN | 0xFF00FF; // 1s
 	AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 	
@@ -479,7 +480,11 @@ int main(  )
 			{
 				controlVelocity_init( );
 				controlPWM_init(  );
+				driver_param.error.hall[0] = 0;
+				driver_param.error.hall[1] = 0;
+				driver_param.error_state = 0;
 				driver_param.error_state |= ERROR_WATCHDOG;
+				TRACE_ERROR( "Watchdog - parameter init\n\r" );
 			}
 			else
 			{
@@ -588,6 +593,7 @@ int main(  )
 			if( USBD_GetState(  ) < USBD_STATE_CONFIGURED )
 				continue;
 
+			printf( "Start receiving data on the USB\n\r" );
 			// Start receiving data on the USB
 			CDCDSerialDriver_Read( usbBuffer, DATABUFFERSIZE, ( TransferCallback ) UsbDataReceived, 0 );
 			connecting = 0;
@@ -597,6 +603,7 @@ int main(  )
 		{
 			if( USBD_GetState(  ) < USBD_STATE_DEFAULT )
 			{
+				TRACE_ERROR( "USB disconnected\n\r" );
 				AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST;
 				while( 1 );
 			}

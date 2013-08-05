@@ -52,8 +52,6 @@ void ISR_VelocityControl(  )
 
 	// status = AT91C_BASE_TC0->TC_SR;
 
-	driver_param.watchdog ++;
-
 	if( driver_param.servo_level >= SERVO_LEVEL_TORQUE )
 	{
 		// servo_level 2(toque enable)
@@ -248,6 +246,11 @@ void timer0_vel_calc( )
 	int i;
 	volatile unsigned int dummy;
 
+	if( driver_param.servo_level > SERVO_LEVEL_STOP )
+	{
+		driver_param.watchdog ++;
+	}
+	
 	dummy = AT91C_BASE_TC0->TC_SR;
 	dummy = dummy;
 	
