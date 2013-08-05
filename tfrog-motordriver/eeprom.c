@@ -179,7 +179,7 @@ int EEPROM_Write( int addr, void *data, int len )
 	while( 1 );
 	return -2;
 #elif defined( tfrog_rev4 )
-	FLASHD_Write( FLASH_USERDATA_START + addr, data, len );
+	FLASHD_Write( (unsigned int)( FLASH_USERDATA_START + addr), data, len );
 	return len;
 #endif
 	return -1;
