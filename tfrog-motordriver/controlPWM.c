@@ -334,13 +334,13 @@ void FIQ_PWMPeriod(  )
 			case MOTOR_TYPE_DC:
 				{
 					int pwmt;
-					pwmt = PWM_center + rate / 2;
+					pwmt = PWM_center - rate / 2;
 					if( pwmt < PWM_abs_min )
 						pwmt = PWM_abs_min;
 					if( pwmt > PWM_abs_max )
 						pwmt = PWM_abs_max;
 					pwm[j][2] = pwmt;
-					pwmt = PWM_center - ( rate - rate / 2 );
+					pwmt = PWM_center + ( rate - rate / 2 );
 					if( pwmt < PWM_abs_min )
 						pwmt = PWM_abs_min;
 					if( pwmt > PWM_abs_max )
