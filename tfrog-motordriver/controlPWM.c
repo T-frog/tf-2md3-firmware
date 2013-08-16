@@ -289,6 +289,7 @@ void FIQ_PWMPeriod(  )
 				motor_param[i].enc0tran = motor_param[i].enc0;
 			}
 		}
+		cnt ++;
 		for( j = 0; j < 2; j++ )
 		{
 			int rate;
@@ -312,6 +313,7 @@ void FIQ_PWMPeriod(  )
 
 				if( diff == 0 )
 				{
+					motor_param[j].enc0tran = motor_param[j].enc0;
 				}
 				else if( diff > 0 )
 				{
