@@ -631,6 +631,30 @@ inline int extended_command_analyze( char *data )
 			send( "\n00P\n\n" );
 		}
 	}
+	else if( strstr( data, "$ENC0" ) == data )
+	{
+		char num[16];
+
+		send( data );
+		send( "\nANG0  " );
+		nhex( num, motor_param[0].enc0tran, 4 );
+		num[4] = 0;
+		send( num );
+		send( "," );
+		nhex( num, motor_param[1].enc0tran, 4 );
+		num[4] = 0;
+		send( num );
+		send( "\n" );
+		send( "ANG0T " );
+		nhex( num, motor_param[0].enc0, 4 );
+		num[4] = 0;
+		send( num );
+		send( "," );
+		nhex( num, motor_param[1].enc0, 4 );
+		num[4] = 0;
+		send( num );
+		send( "\n\n" );
+	}
 	else if( strstr( data, "$TESTENC" ) == data )
 	{
 		unsigned short tmp;
