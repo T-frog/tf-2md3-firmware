@@ -7,6 +7,7 @@
 #include <pio/pio_it.h>
 #include <aic/aic.h>
 #include <tc/tc.h>
+#include <stdint.h>
 #include <utility/trace.h>
 #include <utility/led.h>
 #include <usb/device/cdc-serial/CDCDSerialDriver.h>
@@ -292,17 +293,18 @@ void FIQ_PWMPeriod(  )
 		cnt ++;
 		for( j = 0; j < 2; j++ )
 		{
-			int rate;
+			int64_t rate;
 
 			rate = motor[j].ref.rate * PWM_init / 2048;
 
-			if( driver_param.vsrc_rated )
+			if( driver_param.vsrc_rated != 0 )
 			{
 				rate = rate * driver_param.vsrc_factor / 32768;
 				if( rate >= PWM_resolution )
 					rate = PWM_resolution - 1;
 				else if( rate <= -PWM_resolution )
 					rate = -PWM_resolution + 1;
+				motor[j].ref.rate2 = rate;
 			}
 
 			if( cnt % 64 == 2 + j )

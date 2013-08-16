@@ -24,6 +24,7 @@ typedef struct _MotorState
 		int vel_diff;							// count/ms
 		int torque;								// 1/100000 Nm
 		int rate;								// -PWM_max < rate < PWM_max
+		int rate2;								// 
 		int rate_buf;							// 
 		char vel_changed;
 	} ref;
