@@ -237,9 +237,7 @@ void ISR_VelocityControl(  )
 
 void timer0_vel_calc( )
 {
-	static int _vel[2][16] = { {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0} };
 	static unsigned short __enc[2];
-	static unsigned char cnt = 0;
 	unsigned short enc[2];
 	int _nspd[2];
 	int _spd[2];
@@ -266,56 +264,30 @@ void timer0_vel_calc( )
 
 	for( i = 0; i < 2; i++ )
 	{
-		int j, n;
 		int __vel;
 		int vel;
 
 		__vel = ( short )( enc[i] - __enc[i] );
-		_vel[i][cnt] = __vel;
-		if( __vel < 0 ) motor[i].dir = -1;
-		else if( __vel > 0 ) motor[i].dir = 1;
-		else motor[i].dir = 0;
 		motor[i].vel1 = __vel;
 		motor[i].spd = _spd[i] / _nspd[i];
 		
 		if( _nspd[i] > 2 && driver_param.fpga_version > 0 )
 		{
-			int dir;
-
-			dir = motor[i].dir;
-			if( dir == 0 )
-			{
-				j = cnt;
-				for( n = 0; n < 16 - _abs( motor[i].spd ) / 256; n ++ )
-				{
-					if( _vel[i][j] > 0 )
-					{
-						dir = 1;
-					}
-					else if( _vel[i][j] < 0 )
-					{
-						dir = -1;
-					}
-					if( j == 0 ) j = 15;
-					else j--;
-				}
-			}
 			vel = motor[i].spd / 256;
-			motor[i].dir = dir;
 		}
 		else
 		{
 			motor[i].spd = 1000 * 256;
 			vel = __vel * 16;
 		}
+		if( vel < 0 ) motor[i].dir = -1;
+		else if( vel > 0 ) motor[i].dir = 1;
+		else motor[i].dir = 0;
 		
 		motor[i].vel = vel;
 		__enc[i] = enc[i];
 		motor[i].enc_buf = enc[i];
 	}
-	cnt++;
-	if( cnt >= 16 )
-		cnt = 0;
 
 	LED_off(1);
 

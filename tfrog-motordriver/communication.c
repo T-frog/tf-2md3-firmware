@@ -697,6 +697,7 @@ inline int extended_command_analyze( char *data )
 		send( num );
 
 		send( "\n\n" );
+		send( num );
 	}
 	else if( strstr( data, "ADMASK" ) == data )
 	{

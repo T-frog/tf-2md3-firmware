@@ -525,44 +525,25 @@ int main(  )
 		{
 			static char buf[16];
 			static int nbuf = 0;
+			static int state = -1;
 			if( DBGU_IsRxReady() )
 			{
 				buf[nbuf] = DBGU_GetChar();
 				if( buf[nbuf] == '\n' || buf[nbuf] == '\r' )
 				{
-					int mn = 1;
-
 					buf[nbuf] = 0;
 					switch( buf[0] )
 					{
 					case '0':
-						mn = 0;
+						state = 0;
+						if( buf[1] == 'c' ) state |= 0x04;
+						break;
 					case '1':
-						printf( "vel:%d\n\r",				motor[mn].vel );
-						printf( "vel1:%d\n\r",				motor[mn].vel1 );
-						printf( "pos:%d\n\r",				motor[mn].pos );
-						printf( "enc_buf:%d\n\r",			motor[mn].enc_buf );
-						printf( "spd:%d\n\r",				motor[mn].spd );
-						//printf( "spd_sum:%d\n\r",			motor[mn].spd_sum );
-						//printf( "spd_num:%d\n\r",			motor[mn].spd_num );
-						printf( "enc:%d\n\r",				motor[mn].enc );
-						printf( "dir:%d\n\r",				motor[mn].dir );
-						printf( "ref.vel:%d\n\r",				motor[mn].ref.vel );
-						printf( "ref.vel_buf:%d\n\r",			motor[mn].ref.vel_buf );
-						//printf( "ref.vel_buf_prev:%d\n\r",	motor[mn].ref.vel_buf_prev );
-						//printf( "ref.vel_interval:%d\n\r",	motor[mn].ref.vel_interval );
-						printf( "ref.vel_diff:%d\n\r",		motor[mn].ref.vel_diff );
-						printf( "ref.torque:%d\n\r",			motor[mn].ref.torque );
-						printf( "ref.rate:%d\n\r",			motor[mn].ref.rate );
-						printf( "ref.rate2:%d\n\r",			motor[mn].ref.rate2 );
-						//printf( "ref.rate_buf:%d\n\r",		motor[mn].ref.rate_buf );
-						printf( "ref.vel_changed:%d\n\r",	motor[mn].ref.vel_changed );
-						printf( "error:%d\n\r",			motor[mn].error );
-						printf( "error_integ:%d\n\r",		motor[mn].error_integ );
-						//printf( "control_init:%d\n\r",	motor[mn].control_init );
-						printf( "vsrc:%d\n\r",				driver_param.vsrc );
-						printf( "vsrc0:%d\n\r",				driver_param.vsrc_rated );
-						printf( "vsrc_f:%d\n\r",				driver_param.vsrc_factor );
+						state = 1;
+						if( buf[1] == 'c' ) state |= 0x04;
+						break;
+					case 'c':
+						state = -1;
 						break;
 					case 'r':
 						{
@@ -588,6 +569,37 @@ int main(  )
 					nbuf ++;
 					if( nbuf > 15 ) nbuf = 15;
 				}
+			}
+			if( state >= 0 )
+			{
+				int mn;
+				mn = state & 0x03;
+				if( state < 3 ) state = -1;
+				printf( "vel:%d\n\r",				motor[mn].vel );
+				printf( "vel1:%d\n\r",				motor[mn].vel1 );
+				printf( "pos:%d\n\r",				motor[mn].pos );
+				printf( "enc_buf:%d\n\r",			motor[mn].enc_buf );
+				printf( "spd:%d\n\r",				motor[mn].spd );
+				printf( "spd_sum:%d\n\r",			motor[mn].spd_sum );
+				printf( "spd_num:%d\n\r",			motor[mn].spd_num );
+				printf( "enc:%d\n\r",				motor[mn].enc );
+				printf( "dir:%d\n\r",				motor[mn].dir );
+				printf( "ref.vel:%d\n\r",				motor[mn].ref.vel );
+				printf( "ref.vel_buf:%d\n\r",			motor[mn].ref.vel_buf );
+				//printf( "ref.vel_buf_prev:%d\n\r",	motor[mn].ref.vel_buf_prev );
+				//printf( "ref.vel_interval:%d\n\r",	motor[mn].ref.vel_interval );
+				printf( "ref.vel_diff:%d\n\r",		motor[mn].ref.vel_diff );
+				printf( "ref.torque:%d\n\r",			motor[mn].ref.torque );
+				printf( "ref.rate:%d\n\r",			motor[mn].ref.rate );
+				printf( "ref.rate2:%d\n\r",			motor[mn].ref.rate2 );
+				//printf( "ref.rate_buf:%d\n\r",		motor[mn].ref.rate_buf );
+				printf( "ref.vel_changed:%d\n\r",	motor[mn].ref.vel_changed );
+				printf( "error:%d\n\r",			motor[mn].error );
+				printf( "error_integ:%d\n\r",		motor[mn].error_integ );
+				//printf( "control_init:%d\n\r",	motor[mn].control_init );
+				printf( "vsrc:%d\n\r",				driver_param.vsrc );
+				printf( "vsrc0:%d\n\r",				driver_param.vsrc_rated );
+				printf( "vsrc_f:%d\n\r",				driver_param.vsrc_factor );
 			}
 		}
 		
