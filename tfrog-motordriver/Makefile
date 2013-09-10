@@ -76,8 +76,9 @@ OBJ = obj
 #-------------------------------------------------------------------------------
 
 # Tool suffix when cross-compiling
-CROSS_COMPILE = arm-elf-
-#arm-none-eabi-
+COMPILER_PREFIX = /usr/local/arm-none-eabi/
+CROSS_COMPILE = arm-none-eabi-
+#arm-elf-
 
 # Compilation tools
 CC = $(CROSS_COMPILE)gcc
@@ -92,7 +93,7 @@ INCLUDES += -I$(AT91LIB)/memories
 CFLAGS = -Wall -mlong-calls #-ffunction-sections
 CFLAGS += $(OPTIMIZATION) $(INCLUDES) -D$(CHIP) -DTRACE_LEVEL=$(TRACE_LEVEL)
 ASFLAGS = $(OPTIMIZATION) $(INCLUDES) -D$(CHIP) -D__ASSEMBLY__
-LDFLAGS = $(OPTIMIZATION) -nostartfiles -Wl,--gc-sections -L/usr/local/arm/arm-elf/lib
+LDFLAGS = $(OPTIMIZATION) -nostartfiles -Wl,--gc-sections -L$(COMPILER_PREFIX)/lib
 
 #-------------------------------------------------------------------------------
 #		Files

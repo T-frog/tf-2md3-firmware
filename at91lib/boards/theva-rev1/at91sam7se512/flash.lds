@@ -37,41 +37,47 @@ ENTRY(entry)
 
 MEMORY
 {
-    sram (W!RX) : ORIGIN = 0x200000, LENGTH = 0x8000
-    flash (RX) : ORIGIN = 0x100000, LENGTH = 0x80000
+	sram (W!RX) : ORIGIN = 0x200000, LENGTH = 0x8000
+	flash (RX) : ORIGIN = 0x100000, LENGTH = 0x80000
 }
 
 SECTIONS
-{  
-    .fixed :
-    {
-        . = ALIGN(4);
-        _sfixed = .;
-        *(.text*)
-        *(.rodata*)
-        . = ALIGN(4);
-        _efixed = .;
-    } >flash
+{
+	.fixed :
+	{
+		. = ALIGN(4);
+		_sfixed = .;
+		*(.text*)
+		*(.rodata*)
+		. = ALIGN(4);
+	} >flash
 
-    .relocate : AT (_efixed)
-    {
-        . = ALIGN(4);
-        _srelocate = .;
-        *(.vectors)
-        *(.ramfunc)
-        *(.data)
-        . = ALIGN(4);
-        _erelocate = .;
-    } >sram
+	.ARM.exidx : {
+		. = ALIGN(4);
+		*(.ARM.exidx*)
+		_efixed = .;
+		. = ALIGN(4);
+	} > flash
 
-    .bss (NOLOAD) : {
-        _szero = .;
-        *(.bss)
-        . = ALIGN(4);
-        _ezero = .;
-    } >sram
-    
-    _sstack = 0x208000;
+	.relocate : 
+	{
+		. = ALIGN(4);
+		_srelocate = .;
+		*(.vectors)
+		*(.ramfunc)
+		*(.data)
+		. = ALIGN(4);
+		_erelocate = .;
+	} >sram AT>flash
+
+	.bss : {
+		_szero = .;
+		*(.bss)
+		. = ALIGN(4);
+		_ezero = .;
+	} >sram
+
+	_sstack = 0x208000;
 }
 end = .;
 
