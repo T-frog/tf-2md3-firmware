@@ -807,7 +807,7 @@ inline int extended_command_analyze( char *data )
 			tmp += data[i] - '0';
 		}
 		send( data );
-		send( "\n00P\n\n" );
+		send( "\n04T\n\n" );
 	}
 	else
 	{
