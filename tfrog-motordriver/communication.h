@@ -64,16 +64,26 @@ typedef enum
 #define COMMUNICATION_END_BYTE		0x0a
 
 /* firmware */
-#define YP_FIRMWARE_NAME "2013.03.31"
+#ifndef YP_FIRMWARE_NAME
+#define YP_FIRMWARE_NAME "DEBUG_BUILD_VERSION"
+#endif
 /* parametor files dir */
+#ifndef YP_PARAMS_DIR 
 #define YP_PARAMS_DIR "robot-params"
+#endif
 /* protocol */
+#ifndef YP_PROTOCOL_NAME 
 #define YP_PROTOCOL_NAME "YPP:06:00"
+#endif
 /* vendor */
+#ifndef YP_VENDOR_NAME 
 #define YP_VENDOR_NAME "T-frog Prject"
+#endif
 
 /* Driver parameters */
+#ifndef YP_DRIVERPARAM_MOTORNUM 
 #define YP_DRIVERPARAM_MOTORNUM "2"
+#endif
 
 
 int data_analyze(  );

@@ -90,7 +90,9 @@ INCLUDES = -I$(AT91LIB)/boards/$(BOARD) -I$(AT91LIB)/peripherals
 INCLUDES += -I$(AT91LIB)/components -I$(AT91LIB)/usb/device -I$(AT91LIB)
 INCLUDES += -I$(AT91LIB)/memories
 
-CFLAGS = -Wall -mlong-calls #-ffunction-sections
+FIRMINFO ?= 
+
+CFLAGS = -Wall -mlong-calls $(FIRMINFO) #-ffunction-sections
 CFLAGS += $(OPTIMIZATION) $(INCLUDES) -D$(CHIP) -DTRACE_LEVEL=$(TRACE_LEVEL)
 ASFLAGS = $(OPTIMIZATION) $(INCLUDES) -D$(CHIP) -D__ASSEMBLY__
 LDFLAGS = $(OPTIMIZATION) -nostartfiles -Wl,--gc-sections -L$(COMPILER_PREFIX)/lib
