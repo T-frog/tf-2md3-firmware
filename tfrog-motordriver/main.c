@@ -652,7 +652,7 @@ int main(  )
 			enc_buf2[1] = motor[1].enc_buf;
 
 			driver_param.cnt_updated = 0;
-			driver_param.vsrc = Filter1st_Filter( &voltf, (int)( analog[ 0 ] & 0x03FF ) );
+			driver_param.vsrc = Filter1st_Filter( &voltf, (int)( analog[ 7 ] & 0x03FF ) );
 			ADC_Start();
 
 			if( driver_param.vsrc < driver_param.vsrc_rated / 4 )
