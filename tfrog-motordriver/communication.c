@@ -375,13 +375,31 @@ inline int data_analyze(  )
 			}
 			break;
 		case STATE_RECIEVING:
+			if( *data == COMMUNICATION_START_BYTE )
+			{
+				len = 0;
+				state = STATE_RECIEVING;
+			}
 			if( *data == COMMUNICATION_END_BYTE )
 			{
 				static unsigned char rawdata[16];
 				int data_len;
 
 				data_len = decord( line, len - 1, rawdata, 16 );
-				command_analyze( rawdata, data_len );
+				if( data_len < 6 )
+				{
+					int i;
+					printf( "Data err%d[%d]: ", data_len, len );
+					for( i = 0; i < len; i ++ )
+					{
+						printf( "%02x ", line[i] );
+					}
+					printf( "\n\r" );
+				}
+				else
+				{
+					command_analyze( rawdata, data_len );
+				}
 				len = 0;
 				r_receive_buf = r_buf + 1;
 				state = STATE_IDLE;
@@ -697,7 +715,6 @@ inline int extended_command_analyze( char *data )
 		send( num );
 
 		send( "\n\n" );
-		send( num );
 	}
 	else if( strstr( data, "ADMASK" ) == data )
 	{
