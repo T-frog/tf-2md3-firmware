@@ -241,6 +241,7 @@ void timer0_vel_calc( )
 	unsigned short enc[2];
 	int _nspd[2];
 	int _spd[2];
+	static char _spd_cnt[2]; 
 	int i;
 	volatile unsigned int dummy;
 
@@ -269,16 +270,26 @@ void timer0_vel_calc( )
 
 		__vel = ( short )( enc[i] - __enc[i] );
 		motor[i].vel1 = __vel;
-		motor[i].spd = _spd[i] / _nspd[i];
-		
-		if( _nspd[i] > 2 && driver_param.fpga_version > 0 )
+
+		if( _abs( __vel ) > 6 || driver_param.fpga_version == 0 ) 
 		{
+			motor[i].spd = 1000 * 256;
+			vel = __vel * 16;
+		}
+		else if( _nspd[i] >= 1 )
+		{
+			motor[i].spd = _spd[i] / _nspd[i];
+			_spd_cnt[i] = 256 / _abs( motor[i].spd );
+			vel = motor[i].spd / 256;
+		}
+		else if( _spd_cnt[i] > 0 )
+		{
+			_spd_cnt[i] --;
 			vel = motor[i].spd / 256;
 		}
 		else
 		{
-			motor[i].spd = 1000 * 256;
-			vel = __vel * 16;
+			vel = 0;
 		}
 		if( vel < 0 ) motor[i].dir = -1;
 		else if( vel > 0 ) motor[i].dir = 1;
@@ -341,7 +352,7 @@ void controlVelocity_init(  )
 		AT91C_BASE_TC0->TC_RC  = 1500;
 		AT91C_BASE_TC0->TC_IER = AT91C_TC_CPCS;
 
-		AIC_ConfigureIT( AT91C_ID_TC0, 0 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, ( void ( * )( void ) )timer0_vel_calc );
+		AIC_ConfigureIT( AT91C_ID_TC0, 4 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, ( void ( * )( void ) )timer0_vel_calc );
 		AIC_EnableIT( AT91C_ID_TC0 );
 
 		AT91C_BASE_TC0->TC_CCR = AT91C_TC_SWTRG;

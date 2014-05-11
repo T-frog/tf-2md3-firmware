@@ -185,7 +185,6 @@ void FIQ_PWMPeriod(  )
 	unsigned short hall[2];
 	static unsigned short _enc[2];
 	static unsigned short _hall[2];
-	static int _sign[2] = { 0, 0 };
 	static int init = 0;
 	static int cnt = 0;
 
@@ -209,16 +208,11 @@ void FIQ_PWMPeriod(  )
 		s = THEVA.MOTOR[i].SPEED;
 		__vel = ( short )( enc[i] - _enc[i] );
 
-		if( __vel < 0 )
-			_sign[i] = -1;
-		else if( __vel > 0 )
-			_sign[i] = 1;
-
-		if( s < 256 * 16 * 4 )
+		if( s < 256 * 16 * 8 && __vel != 0 )
 		{
-			if( _sign[i] > 0 )
+			if( __vel > 0 )
 				motor[i].spd_sum += s;
-			else if( _sign[i] < 0 )
+			else if( __vel < 0 )
 				motor[i].spd_sum -= s;
 			motor[i].spd_num ++;
 		}
