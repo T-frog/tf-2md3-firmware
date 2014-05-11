@@ -667,6 +667,10 @@ int main(  )
 			{
 				driver_param.vsrc_factor = 0;
 			}
+			else if( driver_param.vsrc_rated >= 0x03FF )
+			{
+				driver_param.vsrc_factor = 32768;
+			}
 			else
 			{
 				driver_param.vsrc_factor = driver_param.vsrc_rated * 32768 / driver_param.vsrc;

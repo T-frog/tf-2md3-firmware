@@ -198,21 +198,6 @@ void FIQ_PWMPeriod(  )
 		if( thin < PWM_thinning ) return;
 		thin = 0;
 	}
-	
-
-	if( driver_param.servo_level == SERVO_LEVEL_STOP || 
-		driver_param.error_state )
-	{
-		// Short-mode brake
-		for( i = 0; i < 3*2; i ++ )
-		{
-			THEVA.MOTOR[i%2].PWM[i/2].H = PWM_resolution;
-			THEVA.MOTOR[i%2].PWM[i/2].L = PWM_resolution;
-		}
-		PWM_init = 0;
-		init = 0;
-		return;
-	}
 
 	for( i = 0; i < 2; i ++ )
 	{
@@ -237,6 +222,20 @@ void FIQ_PWMPeriod(  )
 				motor[i].spd_sum -= s;
 			motor[i].spd_num ++;
 		}
+	}
+
+	if( driver_param.servo_level == SERVO_LEVEL_STOP || 
+		driver_param.error_state )
+	{
+		// Short-mode brake
+		for( i = 0; i < 3*2; i ++ )
+		{
+			THEVA.MOTOR[i%2].PWM[i/2].H = PWM_resolution;
+			THEVA.MOTOR[i%2].PWM[i/2].L = PWM_resolution;
+		}
+		PWM_init = 0;
+		init = 0;
+		return;
 	}
 
 	if( !init )

@@ -989,10 +989,6 @@ inline int command_analyze( unsigned char *data, int len )
 	case PARAM_vsrc:
 		// ad = 1024 * ( vsrc * VSRC_DIV ) / 3.3
 		driver_param.vsrc_rated = 310 * ( (int)i.integer * VSRC_DIV ) / 256;
-		if( driver_param.vsrc_rated > 1024 )
-		{
-			driver_param.vsrc_rated = 0;
-		}
 		break;
 	default:
 		return 0;
