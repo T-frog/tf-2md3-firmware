@@ -34,8 +34,7 @@ static const Pin pinPWMCycle2 = PIN_PWM_CYCLE2;
 static const Pin pinPWMEnable = PIN_PWM_ENABLE;
 
 // static long enc2phase[2];
-short SinTB[2][4096];
-int phase_offset[2][2];
+short SinTB[8192];
 int phase90[2];
 int PWM_abs_max = 0;
 int PWM_abs_min = 0;
@@ -64,7 +63,7 @@ int _abs( int x )
 
 void controlPWM_config(  )
 {
-	int i, j;
+	int i;
 
 	PWM_resolution = saved_param.PWM_resolution;
 	PWM_thinning = 2000 / PWM_resolution;
@@ -124,42 +123,8 @@ void controlPWM_config(  )
 		motor_param[i].enc_10hz = motor_param[i].enc_rev * 10 * 16 / 1000;
 
 		phase90[i] = motor_param[i].enc_rev - motor_param[i].enc_rev / 4;
-		phase_offset[i][0] = motor_param[i].enc_rev / 3;
-		phase_offset[i][1] = motor_param[i].enc_rev * 2 / 3;
-		if( i == 1 && motor_param[1].enc_rev == motor_param[0].enc_rev )
-		{
-			for( j = 0; j < motor_param[i].enc_rev; j++ )
-			{
-				SinTB[1][j] = SinTB[0][j];
-			}
-			break;
-		}
-		fixp4 rev_step;
-		rev_step = FP4_PI2 / motor_param[i].enc_rev;
-		for( j = 0; j < motor_param[i].enc_rev / 2; j++ )
-		{
-			fixp4 val;
-			int ival;
-			int ang;
-			
-			ang = j;
-			val = ( fp4sin( rev_step * ang )
-					+ fp4mul( fp4sin( rev_step * 3 * ang ), DOUBLE2FP4( 0.1547 ) ) );
-
-			ival = val * /* 4730 */ 3547 / FP4_ONE;
-
-			if( ival > 4096 )
-				ival = 4096;
-			else if( ival < -4096 )
-				ival = -4096;
-
-			SinTB[i][j] = ival;
-			driver_param.watchdog = 0;
-		}
-		for( j = 0; j < motor_param[i].enc_rev / 2; j++ )
-		{
-			SinTB[i][j + motor_param[i].enc_rev / 2] = -SinTB[i][j];
-		}
+		
+		motor_param[i].enc_mul = (unsigned int)( (uint64_t) 8192 * 0x40000 / motor_param[i].enc_rev );
 	}
 	for( i = 0; i < 2; i++ )
 	{
@@ -346,19 +311,20 @@ void FIQ_PWMPeriod(  )
 				break;
 			case MOTOR_TYPE_AC3:
 				phase[2] = ( ( motor[j].pos - motor_param[j].enc0tran ) ) - phase90[j];
-				normalize( &phase[2], 0, motor_param[j].enc_rev, motor_param[j].enc_rev );
+				phase[2] = (unsigned int) phase[2] * motor_param[j].enc_mul / 0x40000 + 8192;
+				phase[1] = phase[2] + 8192 * 2 / 3;
+				phase[0] = phase[2] + 8192 / 3;
 
-				phase[1] = phase[2] - phase_offset[j][0];
-				normalize( &phase[1], 0, motor_param[j].enc_rev, motor_param[j].enc_rev );
-
-				phase[0] = phase[2] - phase_offset[j][1];
-				normalize( &phase[0], 0, motor_param[j].enc_rev, motor_param[j].enc_rev );
+				phase[2] %= 8192;
+				phase[1] %= 8192;
+				phase[0] %= 8192;
 
 				{
 					for( i = 0; i < 3; i++ )
 					{
 						int pwmt;
-						pwmt = ( ( ( ( int )SinTB[j][phase[i]] ) * rate ) / 8192 );
+
+						pwmt = ( ( ( ( int )SinTB[phase[i]] ) * rate ) / 8192 );
 						pwmt += PWM_center;
 						if( pwmt < PWM_abs_min )
 							pwmt = PWM_abs_min;
@@ -546,7 +512,30 @@ void FIQ_PWMPeriod(  )
 // ------------------------------------------------------------------------------
 void controlPWM_init(  )
 {
-	int i;
+	int i, j;
+
+	for( j = 0; j < 4096; j++ )
+	{
+		fixp4 val;
+		int ival;
+		
+		val = ( fp4sin( FP4_PI2 * j / 8192 )
+				+ fp4mul( fp4sin( FP4_PI2 * 3 * j / 8192 ), DOUBLE2FP4( 0.1547 ) ) );
+
+		ival = val * 3547 / FP4_ONE;
+
+		if( ival > 4096 )
+			ival = 4096;
+		else if( ival < -4096 )
+			ival = -4096;
+
+		SinTB[j] = ival;
+		driver_param.watchdog = 0;
+	}
+	for( j = 0; j < 4096; j++ )
+	{
+		SinTB[j + 4096] = -SinTB[j];
+	}
 
 	PIO_Configure( &pinPWMCycle2, 1 );
 	AIC_ConfigureIT( AT91C_ID_IRQ0, 5 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, ( void ( * )( void ) )FIQ_PWMPeriod );
@@ -566,7 +555,7 @@ void controlPWM_init(  )
 		THEVA.MOTOR[i%2].PWM[i/2].H = PWM_resolution;
 		THEVA.MOTOR[i%2].PWM[i/2].L = PWM_resolution;
 	}
-	
+
 	THEVA.GENERAL.PWM.COUNT_ENABLE = 1;
 	THEVA.GENERAL.OUTPUT_ENABLE = 1;
 	PIO_Clear( &pinPWMEnable );
