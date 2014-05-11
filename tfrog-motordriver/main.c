@@ -120,8 +120,16 @@ void SRAM_Init(  )
 	// Enable corresponding PIOs
 	PIO_Configure( pinsSram, PIO_LISTSIZE( pinsSram ) );
 
+#if defined(tfrog_rev1)
 	AT91C_BASE_SMC->SMC2_CSR[0] =
 		1 | AT91C_SMC2_WSEN | ( 0 << 8 ) | AT91C_SMC2_BAT | AT91C_SMC2_DBW_16 | ( 0 << 24 ) | ( 1 << 28 );
+#elif defined(tfrog_rev5)
+	AT91C_BASE_SMC->SMC2_CSR[0] =
+		0 | AT91C_SMC2_WSEN | ( 0 << 8 ) | AT91C_SMC2_BAT | AT91C_SMC2_DBW_16 | ( 0 << 24 ) | ( 0 << 28 );
+#else
+	AT91C_BASE_SMC->SMC2_CSR[0] =
+		0 | AT91C_SMC2_WSEN | ( 0 << 8 ) | AT91C_SMC2_BAT | AT91C_SMC2_DBW_16 | ( 0 << 24 ) | ( 0 << 28 );
+#endif
 }
 
 

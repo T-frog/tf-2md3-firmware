@@ -134,6 +134,8 @@ void controlPWM_config(  )
 			}
 			break;
 		}
+		fixp4 rev_step;
+		rev_step = FP4_PI2 / motor_param[i].enc_rev;
 		for( j = 0; j < motor_param[i].enc_rev / 2; j++ )
 		{
 			fixp4 val;
@@ -141,9 +143,8 @@ void controlPWM_config(  )
 			int ang;
 			
 			ang = j;
-			val = ( fp4sin( FP4_PI2 * ang / motor_param[i].enc_rev )
-					+ fp4mul( fp4sin( FP4_PI2 * 3 * ang / motor_param[i].enc_rev ), DOUBLE2FP4( 0.1547 ) ) );
-			// = ( 2.0 / sqrt( 3.0 ) - 1.0 )
+			val = ( fp4sin( rev_step * ang )
+					+ fp4mul( fp4sin( rev_step * 3 * ang ), DOUBLE2FP4( 0.1547 ) ) );
 
 			ival = val * /* 4730 */ 3547 / FP4_ONE;
 
@@ -417,9 +418,9 @@ void FIQ_PWMPeriod(  )
 				( hall[i] & 0x07 ) == 0 ||
 				halldiff == 3 || halldiff >= 5 )
 			{
-				if( (hall[i] & 0x07) == ( HALL_U | HALL_V | HALL_W ) ) printf( "ENC error: 111\n\r" );
-				if( (hall[i] & 0x07) == 0 ) printf( "ENC error: 000\n\r" );
-				if( halldiff == 3 || halldiff >= 5 ) printf( "ENC error: %x->%x\n\r", _hall[i], hall[i] );
+				//if( (hall[i] & 0x07) == ( HALL_U | HALL_V | HALL_W ) ) printf( "ENC error: 111\n\r" );
+				//if( (hall[i] & 0x07) == 0 ) printf( "ENC error: 000\n\r" );
+				//if( halldiff == 3 || halldiff >= 5 ) printf( "ENC error: %x->%x\n\r", _hall[i], hall[i] );
 				// ホール素子信号が全相1、全相0のとき
 				// ホース素子信号が2ビット以上変化したときはエラー
 				if( driver_param.error.hall[i] < 128 )

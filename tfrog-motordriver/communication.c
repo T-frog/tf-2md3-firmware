@@ -173,8 +173,6 @@ void flush( void )
 			break;
 		}
 	}
-	// CDCDSerialDriver_Write(send_buf, send_buf_pos, 0, 0);
-	// printf("%u\n\r",send_buf_pos);
 }
 
 /**
@@ -227,19 +225,16 @@ inline int encode( unsigned char *src, int len, unsigned char *dst, int buf_max 
 inline int decord( unsigned char *src, int len, unsigned char *dst, int buf_max )
 {
 	static unsigned short dat, b;
-	// static int pos;
 	static int s_pos, w_pos;
 	static int rerr;
-	// pos = 0; // read position
+	
 	w_pos = 0;									// write_position
 	s_pos = 0;									// shift position
 	rerr = 0;
 	dat = 0;
 	b = 0;
-	while(  /* pos < */ len )
+	while(  len )
 	{
-		// if( src[pos] >= 0x40 )
-		// b = src[pos] - 0x40;
 		if( *src >= 0x40 )
 			b = *src - 0x40;
 		else
@@ -256,7 +251,6 @@ inline int decord( unsigned char *src, int len, unsigned char *dst, int buf_max 
 			s_pos -= 8;
 			dat = dat << 8;
 		}
-		// pos++;
 		src++;
 		len--;
 	}
@@ -865,9 +859,7 @@ inline int command_analyze( unsigned char *data, int len )
 	switch ( data[0] )
 	{
 	case PARAM_w_ref:
-		motor[imotor].ref.vel = i.integer * 16;
-		motor[imotor].ref.vel_changed = 1;
-		break;
+		i.integer *= 16;
 	case PARAM_w_ref_highprec:
 		motor[imotor].ref.vel = i.integer;
 		motor[imotor].ref.vel_changed = 1;
