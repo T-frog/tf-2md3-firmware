@@ -55,7 +55,7 @@ CHIP := $(shell $(chip))
 TRACE_LEVEL = 2
 
 # Optimization level, put in comment for debugging
-OPTIMIZATION = -O3 -mcpu=arm7tdmi -marm 
+OPTIMIZATION = -O3 -mcpu=arm7tdmi -marm -fno-aggressive-loop-optimizations
 # -fomit-frame-pointer -funroll-loops
 
 # AT91 library directory
