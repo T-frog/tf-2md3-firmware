@@ -82,7 +82,7 @@
 /// - BOARD_NAME
 
 /// Name of the board.
-#define BOARD_NAME "T-frog Motor Driver rev.5" 
+#define BOARD_NAME "T-frog Motor Driver rev.4" 
 /// Board definition.
 #define theva_rev1 
 #define tfrog_rev1 
