@@ -33,9 +33,7 @@ static const Pin pinPWMCycle2 = PIN_PWM_CYCLE2;
 // / PWM Enable pin instance.
 static const Pin pinPWMEnable = PIN_PWM_ENABLE;
 
-// static long enc2phase[2];
 short SinTB[8192];
-int phase90[2];
 int PWM_abs_max = 0;
 int PWM_abs_min = 0;
 int PWM_center = 0;
@@ -89,8 +87,6 @@ void controlPWM_config(  )
 	// PIO_Clear( &pinsLeds[USBD_LEDPOWER] );
 	for( i = 0; i < 2; i++ )
 	{
-		// enc2phase[i] = 2000 / motor_param[i].enc_rev;
-
 		switch( motor_param[i].motor_type )
 		{
 		case MOTOR_TYPE_DC:
@@ -113,17 +109,15 @@ void controlPWM_config(  )
 
 		motor[i].ref.rate = 0;
 
-		motor_param[i].enc_drev[0] = motor_param[i].enc_rev / 6;
+		motor_param[i].enc_drev[0] = motor_param[i].enc_rev * 1 / 6;
 		motor_param[i].enc_drev[1] = motor_param[i].enc_rev * 2 / 6;
 		motor_param[i].enc_drev[2] = motor_param[i].enc_rev * 3 / 6;
 		motor_param[i].enc_drev[3] = motor_param[i].enc_rev * 4 / 6;
 		motor_param[i].enc_drev[4] = motor_param[i].enc_rev * 5 / 6;
-		motor_param[i].enc_drev[5] = motor_param[i].enc_rev;
+		motor_param[i].enc_drev[5] = motor_param[i].enc_rev * 6 / 6;
 
 		motor_param[i].enc_10hz = motor_param[i].enc_rev * 10 * 16 / 1000;
 
-		phase90[i] = motor_param[i].enc_rev - motor_param[i].enc_rev / 4;
-		
 		motor_param[i].enc_mul = (unsigned int)( (uint64_t) 8192 * 0x40000 / motor_param[i].enc_rev );
 	}
 	for( i = 0; i < 2; i++ )
@@ -310,28 +304,22 @@ void FIQ_PWMPeriod(  )
 				}
 				break;
 			case MOTOR_TYPE_AC3:
-				phase[2] = ( ( motor[j].pos - motor_param[j].enc0tran ) ) - phase90[j];
-				phase[2] = (unsigned int) phase[2] * motor_param[j].enc_mul / 0x40000 + 8192;
-				phase[1] = phase[2] + 8192 * 2 / 3;
-				phase[0] = phase[2] + 8192 / 3;
+				phase[2] = motor[j].pos - motor_param[j].enc0tran;
+				phase[2] = (uint64_t)phase[2] * motor_param[j].enc_mul / 0x40000 + 8192 + 2048;
+				phase[1] = phase[2] - 8192 / 3;
+				phase[0] = phase[2] - 8192 * 2 / 3;
 
-				phase[2] %= 8192;
-				phase[1] %= 8192;
-				phase[0] %= 8192;
-
+				for( i = 0; i < 3; i++ )
 				{
-					for( i = 0; i < 3; i++ )
-					{
-						int pwmt;
+					int pwmt;
 
-						pwmt = ( ( ( ( int )SinTB[phase[i]] ) * rate ) / 8192 );
-						pwmt += PWM_center;
-						if( pwmt < PWM_abs_min )
-							pwmt = PWM_abs_min;
-						if( pwmt > PWM_abs_max )
-							pwmt = PWM_abs_max;
-						pwm[j][i] = pwmt;
-					}
+					pwmt = ( int )SinTB[phase[i]%8192] * rate / 8192;
+					pwmt += PWM_center;
+					if( pwmt < PWM_abs_min )
+						pwmt = PWM_abs_min;
+					if( pwmt > PWM_abs_max )
+						pwmt = PWM_abs_max;
+					pwm[j][i] = pwmt;
 				}
 				break;
 			}
@@ -512,15 +500,18 @@ void FIQ_PWMPeriod(  )
 // ------------------------------------------------------------------------------
 void controlPWM_init(  )
 {
-	int i, j;
+	int j;
 
+	fixp4 step;
+	step = FP4_PI2 / 8192;
 	for( j = 0; j < 4096; j++ )
 	{
-		fixp4 val;
+		fixp4 val, ang;
 		int ival;
 		
-		val = ( fp4sin( FP4_PI2 * j / 8192 )
-				+ fp4mul( fp4sin( FP4_PI2 * 3 * j / 8192 ), DOUBLE2FP4( 0.1547 ) ) );
+		ang = (uint64_t)FP4_PI2 * j / 8192;
+		val = ( fp4sin( ang )
+				+ fp4mul( fp4sin( ang * 3 ), DOUBLE2FP4( 0.1547 ) ) );
 
 		ival = val * 3547 / FP4_ONE;
 
@@ -550,10 +541,10 @@ void controlPWM_init(  )
 	THEVA.GENERAL.PWM.DEADTIME = PWM_deadtime;
 
 	// Short-mode brake
-	for( i = 0; i < 3*2; i ++ )
+	for( j = 0; j < 3*2; j ++ )
 	{
-		THEVA.MOTOR[i%2].PWM[i/2].H = PWM_resolution;
-		THEVA.MOTOR[i%2].PWM[i/2].L = PWM_resolution;
+		THEVA.MOTOR[j%2].PWM[j/2].H = PWM_resolution;
+		THEVA.MOTOR[j%2].PWM[j/2].L = PWM_resolution;
 	}
 
 	THEVA.GENERAL.PWM.COUNT_ENABLE = 1;
