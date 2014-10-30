@@ -170,10 +170,9 @@ void FIQ_PWMPeriod(  )
 		if( s < 256 * 16 * 8 && __vel != 0 )
 		{
 			if( __vel > 0 )
-				motor[i].spd_sum += s;
+				motor[i].spd = s;
 			else if( __vel < 0 )
-				motor[i].spd_sum -= s;
-			motor[i].spd_num ++;
+				motor[i].spd = -s;
 		}
 	}
 
@@ -502,8 +501,6 @@ void controlPWM_init(  )
 {
 	int j;
 
-	fixp4 step;
-	step = FP4_PI2 / 8192;
 	for( j = 0; j < 4096; j++ )
 	{
 		fixp4 val, ang;

@@ -87,6 +87,10 @@ void ISR_VelocityControl(  )
 
 					motor[i].ref.vel_changed = 0;
 				}
+				else if(motor[i].ref.vel_interval > 128)
+				{
+					motor[i].ref.vel_diff = 0;
+				}
 
 				// 積分
 				if( motor[i].control_init )
@@ -114,14 +118,14 @@ void ISR_VelocityControl(  )
 			}
 
 			// PWSでの相互の影響を考慮したフィードフォワード
-			s_a = ( toq_pi[0] + Filter1st_Filter( &accelf[0], motor[0].ref.vel_diff ) ) / 16;
-			s_b = ( toq_pi[1] + Filter1st_Filter( &accelf[1], motor[1].ref.vel_diff ) ) / 16;
+			s_a = toq_pi[0] + Filter1st_Filter( &accelf[0], motor[0].ref.vel_diff );
+			s_b = toq_pi[1] + Filter1st_Filter( &accelf[1], motor[1].ref.vel_diff );
 
 			// Kdynamics[TORQUE_UNIT 2pi/cntrev kgf m m], s_a/s_b[cnt/ss]
-			toq[0] = ( s_a * driver_param.Kdynamics[0]
-					   + s_b * driver_param.Kdynamics[2] + motor[0].ref.vel_buf * driver_param.Kdynamics[4] ) / 256;
-			toq[1] = ( s_b * driver_param.Kdynamics[1]
-					   + s_a * driver_param.Kdynamics[3] + motor[1].ref.vel_buf * driver_param.Kdynamics[5] ) / 256;
+			toq[0] = ( (s_a * driver_param.Kdynamics[0] + s_b * driver_param.Kdynamics[2]) / (16)
+				       	+ motor[0].ref.vel_buf * driver_param.Kdynamics[4] ) / 256;
+			toq[1] = ( (s_b * driver_param.Kdynamics[1] + s_a * driver_param.Kdynamics[3]) / (16)
+				       	+ motor[1].ref.vel_buf * driver_param.Kdynamics[5] ) / 256;
 		}
 		else
 		{
@@ -239,9 +243,8 @@ void timer0_vel_calc( )
 {
 	static unsigned short __enc[2];
 	unsigned short enc[2];
-	int _nspd[2];
-	int _spd[2];
 	static char _spd_cnt[2]; 
+	int spd[2];
 	int i;
 	volatile unsigned int dummy;
 
@@ -257,10 +260,8 @@ void timer0_vel_calc( )
 	for( i = 0; i < 2; i++ )
 	{
 		enc[i] = motor[i].enc;
-		_nspd[i] = motor[i].spd_num;
-		_spd[i]  = motor[i].spd_sum;
-		motor[i].spd_num = 0;
-		motor[i].spd_sum = 0;
+		spd[i] = motor[i].spd;
+		motor[i].spd = 0;
 	}
 
 	for( i = 0; i < 2; i++ )
@@ -273,27 +274,30 @@ void timer0_vel_calc( )
 
 		if( _abs( __vel ) > 6 || driver_param.fpga_version == 0 ) 
 		{
-			motor[i].spd = 1000 * 256;
 			vel = __vel * 16;
+			_spd_cnt[i] = 0;
+
+			if( vel < 0 ) motor[i].dir = -1;
+			else if( vel > 0 ) motor[i].dir = 1;
 		}
-		else if( _nspd[i] >= 1 )
+		else if( _abs(spd[i]) > 128 )
 		{
-			motor[i].spd = _spd[i] / _nspd[i];
-			_spd_cnt[i] = 256 / _abs( motor[i].spd );
-			vel = motor[i].spd / 256;
+			_spd_cnt[i] = 256 * 16 / _abs(spd[i]);
+			vel = spd[i] / 256;
+
+			if( vel < 0 ) motor[i].dir = -1;
+			else if( vel > 0 ) motor[i].dir = 1;
 		}
 		else if( _spd_cnt[i] > 0 )
 		{
 			_spd_cnt[i] --;
-			vel = motor[i].spd / 256;
+			vel = motor[i].vel;
 		}
 		else
 		{
 			vel = 0;
+			motor[i].dir = 0;
 		}
-		if( vel < 0 ) motor[i].dir = -1;
-		else if( vel > 0 ) motor[i].dir = 1;
-		else motor[i].dir = 0;
 		
 		motor[i].vel = vel;
 		__enc[i] = enc[i];

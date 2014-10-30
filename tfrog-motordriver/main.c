@@ -588,8 +588,6 @@ int main(  )
 				printf( "pos:%d\n\r",				motor[mn].pos );
 				printf( "enc_buf:%d\n\r",			motor[mn].enc_buf );
 				printf( "spd:%d\n\r",				motor[mn].spd );
-				printf( "spd_sum:%d\n\r",			motor[mn].spd_sum );
-				printf( "spd_num:%d\n\r",			motor[mn].spd_num );
 				printf( "enc:%d\n\r",				motor[mn].enc );
 				printf( "dir:%d\n\r",				motor[mn].dir );
 				printf( "ref.vel:%d\n\r",				motor[mn].ref.vel );

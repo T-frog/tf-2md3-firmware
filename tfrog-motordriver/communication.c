@@ -861,8 +861,8 @@ inline int command_analyze( unsigned char *data, int len )
 	case PARAM_w_ref:
 		i.integer *= 16;
 	case PARAM_w_ref_highprec:
+		if( motor[imotor].ref.vel != i.integer ) motor[imotor].ref.vel_changed = 1;
 		motor[imotor].ref.vel = i.integer;
-		motor[imotor].ref.vel_changed = 1;
 		break;
 	case PARAM_p_ki:
 		motor_param[imotor].Kcurrent = i.integer;
