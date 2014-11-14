@@ -66,21 +66,21 @@ void ISR_VelocityControl(  )
 
 			for( i = 0; i < 2; i++ )
 			{
+				if( motor[i].control_init )
+				{
+					motor[i].ref.vel_diff = 0;
+					motor[i].error = 0;
+					motor[i].error_integ = 0;
+					motor[i].control_init = 0;
+				}
 				motor[i].ref.vel_interval++;
 				if( motor[i].ref.vel_changed )
 				{
 					motor[i].ref.vel_buf = motor[i].ref.vel;
-					if( motor[i].control_init )
-					{
-						motor[i].ref.vel_diff = 0;
-						motor[i].control_init = 0;
-					}
-					else
-					{
-						motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - motor[i].ref.vel_buf_prev )
-							 * 1000000 / motor[i].ref.vel_interval;
-						// [cnt/msms] * 1000[ms/s] * 1000[ms/s] = [cnt/ss]
-					}
+					motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - motor[i].ref.vel_buf_prev )
+						* driver_param.control_s * driver_param.control_s
+						/ motor[i].ref.vel_interval;
+					// [cnt/msms] * 1000[ms/s] * 1000[ms/s] = [cnt/ss]
 
 					motor[i].ref.vel_buf_prev = motor[i].ref.vel_buf;
 					motor[i].ref.vel_interval = 0;
@@ -93,16 +93,8 @@ void ISR_VelocityControl(  )
 				}
 
 				// 積分
-				if( motor[i].control_init )
-				{
-					motor[i].error = 0;
-					motor[i].error_integ = 0;
-				}
-				else
-				{
-					motor[i].error = motor[i].ref.vel_buf - motor[i].vel;
-					motor[i].error_integ += motor[i].error;
-				}
+				motor[i].error = motor[i].ref.vel_buf - motor[i].vel;
+				motor[i].error_integ += motor[i].error;
 				if( motor[i].error_integ > driver_param.integ_max )
 				{
 					motor[i].error_integ = driver_param.integ_max;
@@ -113,8 +105,10 @@ void ISR_VelocityControl(  )
 				}
 
 				// PI制御分 単位：加速度[cnt/ss]
-				toq_pi[i]  = motor[i].error * 1000 * motor_param[i].Kp; // [cnt/ms] * 1000[ms/s] * Kp[1/s] = [cnt/ss]
-				toq_pi[i] += motor[i].error_integ * motor_param[i].Ki; // [cnt] * Ki[1/ss] = [cnt/ss]
+				toq_pi[i]  = motor[i].error * driver_param.control_s * motor_param[i].Kp;
+				// [cnt/ms] * 1000[ms/s] * Kp[1/s] = [cnt/ss]
+				toq_pi[i] += motor[i].error_integ * motor_param[i].Ki; 
+				// [cnt] * Ki[1/ss] = [cnt/ss]
 			}
 
 			// PWSでの相互の影響を考慮したフィードフォワード
@@ -299,7 +293,21 @@ void timer0_vel_calc( )
 			motor[i].dir = 0;
 		}
 		
-		motor[i].vel = vel;
+		if(motor_param[i].enc_type == 0)
+		{
+			motor[i].vel = motor[i].ref.vel;
+			motor[i].vel1 = motor[i].ref.vel / 16;
+			motor[i].enc += motor[i].vel1;
+			enc[i] = motor[i].enc;
+
+			if( motor[i].vel < 0 ) motor[i].dir = -1;
+			else if( motor[i].vel > 0 ) motor[i].dir = 1;
+			else motor[i].dir = 0;
+		}
+		else
+		{
+			motor[i].vel = vel;
+		}
 		__enc[i] = enc[i];
 		motor[i].enc_buf = enc[i];
 	}
@@ -314,19 +322,33 @@ void timer0_vel_calc( )
 // ------------------------------------------------------------------------------
 void controlVelocity_init(  )
 {
-#define ACCEL_FILTER_TIME  15.0
 	int i;
 
-	Filter1st_CreateLPF( &accelf0, ACCEL_FILTER_TIME );
-	accelf[0] = accelf[1] = accelf0;
-
-	driver_param.cnt_updated = 0;
+	driver_param.control_cycle = 1;
 	driver_param.watchdog = 0;
 	driver_param.watchdog_limit = 600;
+
+	for( i = 0; i < 2; i ++ )
+	{
+		motor_param[i].motor_type = MOTOR_TYPE_AC3;
+		motor_param[i].enc_rev = 0;
+		motor_param[i].enc_type = 2;
+		motor[i].control_init = 1;
+	}
+	driver_param.cnt_updated = 0;
 	driver_param.servo_level = SERVO_LEVEL_STOP;
 	driver_param.admask = 0;
 	driver_param.io_mask[0] = 0;
 	driver_param.io_mask[1] = 0;
+
+	controlVelocity_config();
+}
+void controlVelocity_config(  )
+{
+	int i;
+
+	Filter1st_CreateLPF( &accelf0, 15 / driver_param.control_cycle );
+	accelf[0] = accelf[1] = accelf0;
 
 	for( i = 0; i < 2; i ++ )
 	{
@@ -335,9 +357,7 @@ void controlVelocity_init(  )
 		motor[i].ref.vel_buf_prev = 0;
 		motor[i].ref.vel_diff = 0;
 		motor[i].error_integ = 0;
-		motor[i].control_init = 0;
-		motor_param[i].motor_type = MOTOR_TYPE_AC3;
-		motor_param[i].enc_rev = 0;
+		motor[i].spd_cnt = 0;
 	}
 
 	{
@@ -353,7 +373,7 @@ void controlVelocity_init(  )
 		// MCK/32 * 1500 -> 1ms
 		AT91C_BASE_TC0->TC_CMR = AT91C_TC_CLKS_TIMER_DIV3_CLOCK | AT91C_TC_WAVE | AT91C_TC_WAVESEL_UP_AUTO;
 		AT91C_BASE_TC0->TC_CCR = AT91C_TC_CLKEN;
-		AT91C_BASE_TC0->TC_RC  = 1500;
+		AT91C_BASE_TC0->TC_RC  = 1500 * driver_param.control_cycle;
 		AT91C_BASE_TC0->TC_IER = AT91C_TC_CPCS;
 
 		AIC_ConfigureIT( AT91C_ID_TC0, 4 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, ( void ( * )( void ) )timer0_vel_calc );

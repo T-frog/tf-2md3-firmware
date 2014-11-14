@@ -1,6 +1,12 @@
 #ifndef __COMMUNICATION_H__
 #define __COMMUNICATION_H__
 
+#include <board.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef union _Integer4
 {
 	int integer;
@@ -53,6 +59,8 @@ typedef enum
 	PARAM_enc_rev,
 	PARAM_motor_phase,
 	PARAM_vsrc,
+	PARAM_enc_type,
+	PARAM_control_cycle,
 	PARAM_servo = 64,
 	PARAM_watch_dog_limit,
 	PARAM_io_dir = 96,
@@ -105,5 +113,9 @@ RAMFUNC int nsend( char *buf, int len );
 RAMFUNC void sendclear( void );
 RAMFUNC void flush( void );
 
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

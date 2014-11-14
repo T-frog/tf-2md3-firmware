@@ -944,6 +944,7 @@ inline int command_analyze( unsigned char *data, int len )
 	case PARAM_servo:
 		if( driver_param.servo_level < SERVO_LEVEL_TORQUE && i.integer >= SERVO_LEVEL_TORQUE )
 		{
+			controlVelocity_config(  );
 			controlPWM_config(  );
 
 			THEVA.GENERAL.PWM.COUNT_ENABLE = 1;
@@ -954,9 +955,12 @@ inline int command_analyze( unsigned char *data, int len )
 		if( ( driver_param.servo_level < SERVO_LEVEL_VELOCITY || driver_param.servo_level == SERVO_LEVEL_OPENFREE ) && 
 			( i.integer >= SERVO_LEVEL_VELOCITY && i.integer != SERVO_LEVEL_OPENFREE ) )
 		{
+			controlVelocity_config(  );
 			// servo levelが速度制御に推移した
 			motor[0].control_init = 1;
 			motor[1].control_init = 1;
+			THEVA.GENERAL.OUTPUT_ENABLE = 1;
+			PIO_Clear( &pinPWMEnable );
 		}
 		if( driver_param.servo_level != SERVO_LEVEL_OPENFREE && i.integer == SERVO_LEVEL_OPENFREE )
 		{
@@ -985,6 +989,13 @@ inline int command_analyze( unsigned char *data, int len )
 		break;
 	case PARAM_enc_rev:
 		motor_param[imotor].enc_rev = i.integer;
+		break;
+	case PARAM_enc_type:
+		motor_param[imotor].enc_type = i.integer;
+		break;
+	case PARAM_control_cycle:
+		driver_param.control_cycle = i.integer;
+		controlVelocity_config(  );
 		break;
 	case PARAM_vsrc:
 		// ad = 1024 * ( vsrc * VSRC_DIV ) / 3.3

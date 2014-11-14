@@ -41,6 +41,8 @@ int PWM_init = 0;
 int PWM_resolution = 0;
 int PWM_thinning = 0;
 int PWM_deadtime;
+int PWM_cpms;
+
 
 extern Tfrog_EEPROM_data saved_param;
 
@@ -75,6 +77,8 @@ void controlPWM_config(  )
 	PWM_abs_max = PWM_resolution - PWM_deadtime - 1;
 	PWM_abs_min = PWM_deadtime + 1;
 	PWM_center = PWM_resolution / 2;
+	PWM_cpms = 256 * 16 * driver_param.control_cycle * 48000 / (PWM_resolution * 2);
+	driver_param.control_s = 1000 / driver_param.control_cycle;
 
 	for( i = 0; i < 2; i ++ )
 	{
@@ -119,15 +123,8 @@ void controlPWM_config(  )
 		motor_param[i].enc_10hz = motor_param[i].enc_rev * 10 * 16 / 1000;
 
 		motor_param[i].enc_mul = (unsigned int)( (uint64_t) 8192 * 0x40000 / motor_param[i].enc_rev );
-	}
-	for( i = 0; i < 2; i++ )
-	{
-		motor[i].ref.vel_diff = 0;
-		motor[i].ref.vel_interval = 0;
-		motor[i].ref.vel_changed = 0;
-		motor[i].error_integ = 0;
-		motor[i].vel = 0;
-		motor[i].dir = 0;
+		motor_param[i].phase_offset = -(motor_param[i].enc_mul / 2) / 0x40000 + 8192 + 2048;
+		motor_param[i].enc_rev_h = motor_param[i].enc_rev / 2;
 	}
 	PWM_init = 0;
 	
@@ -146,6 +143,7 @@ void FIQ_PWMPeriod(  )
 	static unsigned short _hall[2];
 	static int init = 0;
 	static int cnt = 0;
+	cnt ++;
 
 	{
 		// PWM周波数が高い場合は処理を間引く
@@ -159,23 +157,31 @@ void FIQ_PWMPeriod(  )
 
 	for( i = 0; i < 2; i ++ )
 	{
-		unsigned short s;
-		int __vel;
-
-		motor[i].enc = enc[i] = THEVA.MOTOR[i].ENCODER;
 		hall[i] = *(unsigned short *)&THEVA.MOTOR[i].ROT_DETECTER;
-		s = THEVA.MOTOR[i].SPEED;
-		__vel = ( short )( enc[i] - _enc[i] );
-
-		if( s < 256 * 16 * 8 && __vel != 0 )
+		if( motor_param[i].enc_type == 2 )
 		{
-			if( __vel > 0 )
-				motor[i].spd = s;
-			else if( __vel < 0 )
-				motor[i].spd = -s;
+			unsigned short s;
+			int __vel;
+
+			motor[i].enc = enc[i] = THEVA.MOTOR[i].ENCODER;
+			s = THEVA.MOTOR[i].SPEED * driver_param.control_cycle;
+			__vel = ( short )( enc[i] - _enc[i] );
+
+			if( s < 256 * 16 * 8 && __vel != 0 )
+			{
+				if( __vel > 0 )
+					motor[i].spd = s;
+				else if( __vel < 0 )
+					motor[i].spd = -s;
+			}
+		}
+		else if( motor_param[i].enc_type == 0 )
+		{
+			enc[i] = motor[i].enc;
 		}
 	}
 
+	int disabled = 0;
 	if( driver_param.servo_level == SERVO_LEVEL_STOP || 
 		driver_param.error_state )
 	{
@@ -187,10 +193,10 @@ void FIQ_PWMPeriod(  )
 		}
 		PWM_init = 0;
 		init = 0;
-		return;
+		disabled = 1;
+		if( driver_param.servo_level == SERVO_LEVEL_STOP ) return;
 	}
-
-	if( !init )
+	else if( !init )
 	{
 		init = 1;
 		_hall[0] = hall[0];
@@ -201,14 +207,19 @@ void FIQ_PWMPeriod(  )
 		return;
 	}
 
-	for( i = 0; i < 2; i ++ )
+	if( !disabled )
 	{
-		motor[i].pos += ( short )( enc[i] - _enc[i] );
-		normalize( &motor[i].pos, 0, motor_param[i].enc_rev, motor_param[i].enc_rev );
-	}
+		for( i = 0; i < 2; i ++ )
+		{
+			if( motor_param[i].enc_type == 2 ||
+					motor_param[i].enc_type == 0 )
+			{
+				motor[i].pos += ( short )( enc[i] - _enc[i] );
+				normalize( &motor[i].pos, 0, motor_param[i].enc_rev, motor_param[i].enc_rev );
+			}
+		}
 
-	// PWM計算
-	{
+		// PWM計算
 		int pwm[2][3];
 		int phase[3];
 		int j;
@@ -216,6 +227,7 @@ void FIQ_PWMPeriod(  )
 		if( PWM_init < 2048 )
 		{
 			PWM_init ++;
+			if( PWM_init > 2048 ) PWM_init = 2048;
 			for( i = 0; i < 2; i++ )
 			{
 				motor[i].pos = 0;
@@ -239,10 +251,14 @@ void FIQ_PWMPeriod(  )
 					else
 						motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 9 / 12;	// 270度
 				}
+				if( motor_param[i].enc_type == 3 )
+				{
+					motor[i].pos = motor[i].pos - motor_param[i].enc0;
+					motor_param[i].enc0 = 0;
+				}
 				motor_param[i].enc0tran = motor_param[i].enc0;
 			}
 		}
-		cnt ++;
 		for( j = 0; j < 2; j++ )
 		{
 			int64_t rate;
@@ -263,7 +279,7 @@ void FIQ_PWMPeriod(  )
 			{
 				int diff;
 				diff = motor_param[j].enc0tran - motor_param[j].enc0;
-				normalize( &diff, -motor_param[j].enc_rev / 2, motor_param[j].enc_rev / 2, motor_param[j].enc_rev );
+				normalize( &diff, -motor_param[j].enc_rev_h, motor_param[j].enc_rev_h, motor_param[j].enc_rev );
 
 				if( diff == 0 )
 				{
@@ -304,7 +320,8 @@ void FIQ_PWMPeriod(  )
 				break;
 			case MOTOR_TYPE_AC3:
 				phase[2] = motor[j].pos - motor_param[j].enc0tran;
-				phase[2] = (uint64_t)phase[2] * motor_param[j].enc_mul / 0x40000 + 8192 + 2048;
+				phase[2] = (uint64_t)phase[2] * motor_param[j].enc_mul / 0x40000
+				   	+ motor_param[j].phase_offset;
 				phase[1] = phase[2] - 8192 / 3;
 				phase[0] = phase[2] - 8192 * 2 / 3;
 
@@ -347,9 +364,10 @@ void FIQ_PWMPeriod(  )
 	// ゼロ点計算
 	for( i = 0; i < 2; i++ )
 	{
-		char u, v, w;
+		int u, v, w;
 
-		if( motor_param[i].motor_type != MOTOR_TYPE_DC )
+		if( motor_param[i].motor_type != MOTOR_TYPE_DC &&
+				motor_param[i].enc_type != 0 )
 		{
 			char dir;
 			unsigned short halldiff;
@@ -464,6 +482,31 @@ void FIQ_PWMPeriod(  )
 				break;
 			}
 
+			if( motor_param[i].enc_type == 3 )
+			{
+				int _pos;
+				_pos = (int)motor[i].pos;
+				if( w == -1 ) motor[i].pos = motor_param[i].enc_drev[0];
+				else if( v == 1 ) motor[i].pos = motor_param[i].enc_drev[1];
+				else if( u == -1 ) motor[i].pos = motor_param[i].enc_drev[2];
+				else if( w == 1 ) motor[i].pos = motor_param[i].enc_drev[3];
+				else if( v == -1 ) motor[i].pos = motor_param[i].enc_drev[4];
+				else if( u == 1 ) motor[i].pos = motor_param[i].enc_drev[5];
+				motor[i].pos -= dir - 1;
+				normalize( &motor[i].pos, 0, motor_param[i].enc_rev, motor_param[i].enc_rev );
+				motor_param[i].enc0 = 0;
+				motor_param[i].enc0tran = 0;
+
+				int diff;
+				diff = (int)motor[i].pos - _pos;
+				normalize( &diff, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev );
+				motor[i].enc += diff;
+
+				if( diff > 0 ) motor[i].spd = PWM_cpms / (cnt - motor[i].spd_cnt);
+				else motor[i].spd = -PWM_cpms / (cnt - motor[i].spd_cnt);
+				motor[i].spd_cnt = cnt;
+				continue;
+			}
 			// ホール素子は高速域では信頼できない
 			if( _abs( motor[i].vel ) > motor_param[i].enc_10hz )
 				continue;
@@ -471,17 +514,17 @@ void FIQ_PWMPeriod(  )
 			// ゼロ点計算
 
 			if( w == -1 )
-				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[0] + dir;
+				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[0] + dir - 1;
 			else if( v == 1 )
-				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[1] + dir;
+				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[1] + dir - 1;
 			else if( u == -1 )
-				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[2] + dir;
+				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[2] + dir - 1;
 			else if( w == 1 )
-				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[3] + dir;
+				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[3] + dir - 1;
 			else if( v == -1 )
-				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[4] + dir;
+				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[4] + dir - 1;
 			else if( u == 1 )
-				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[5] + dir;
+				motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[5] + dir - 1;
 		}
 	}
 
