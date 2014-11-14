@@ -333,7 +333,6 @@ void timer0_vel_calc( )
 // ------------------------------------------------------------------------------
 void controlVelocity_init(  )
 {
-#define ACCEL_FILTER_TIME  15.0
 	int i;
 
 	Filter1st_CreateLPF( &accelf0, ACCEL_FILTER_TIME );
@@ -344,6 +343,15 @@ void controlVelocity_init(  )
 	driver_param.admask = 0;
 	driver_param.io_mask[0] = 0;
 	driver_param.io_mask[1] = 0;
+
+	controlVelocity_config();
+}
+void controlVelocity_config(  )
+{
+	int i;
+
+	Filter1st_CreateLPF( &accelf0, 15 / driver_param.control_cycle );
+	accelf[0] = accelf[1] = accelf0;
 
 	for( i = 0; i < 2; i ++ )
 	{

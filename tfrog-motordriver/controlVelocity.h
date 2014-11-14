@@ -50,6 +50,7 @@ typedef struct _MotorParam
 	unsigned int enc_10hz;
 	unsigned int enc_drev[6];
 	unsigned int enc_mul;
+	unsigned int phase_offset;
 	int enc0;									// count
 	int enc0tran;								// count
 	int vel_max;								// count/ms
