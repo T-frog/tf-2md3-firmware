@@ -33,7 +33,7 @@ static const Pin pinPWMCycle2 = PIN_PWM_CYCLE2;
 // / PWM Enable pin instance.
 static const Pin pinPWMEnable = PIN_PWM_ENABLE;
 
-short SinTB[8192];
+short SinTB[1024];
 int PWM_abs_max = 0;
 int PWM_abs_min = 0;
 int PWM_center = 0;
@@ -42,11 +42,22 @@ int PWM_resolution = 0;
 int PWM_thinning = 0;
 int PWM_deadtime;
 
+#define SinTB_2PI 4096
+RAMFUNC short sin_(int x)
+{
+	if( x < 1024 ) return SinTB[x];
+	else if( x < 2048 ) return SinTB[2048 - x];
+	else if( x < 2048 + 1024 ) return -SinTB[x - 2048];
+	return -SinTB[4096 - x];
+}
+
 extern Tfrog_EEPROM_data saved_param;
+extern volatile char rs485_timeout;
 
 
 void normalize( int *val, int min, int max, int resolution )
 {
+	if( resolution <= 0 ) return;
 	while( *val < min )
 		*val += resolution;
 	while( *val >= max )
@@ -59,9 +70,53 @@ int _abs( int x )
 	return x;
 }
 
-void controlPWM_config(  )
+void controlPWM_config( int i )
 {
-	int i;
+	motor[i].pos = 0;
+	motor[i].vel = 0;
+	motor[i].error_integ = 0;
+	motor_param[i].enc0 = 0;
+	motor_param[i].enc0tran = 0;
+
+	switch( motor_param[i].motor_type )
+	{
+	case MOTOR_TYPE_DC:
+		THEVA.MOTOR[i].PWM[0].H = PWM_resolution;
+		THEVA.MOTOR[i].PWM[1].H = 0;
+		THEVA.MOTOR[i].PWM[2].H = PWM_resolution;
+		THEVA.MOTOR[i].PWM[0].L = PWM_resolution;
+		THEVA.MOTOR[i].PWM[1].L = 0;
+		THEVA.MOTOR[i].PWM[2].L = PWM_resolution;
+		break;
+	case MOTOR_TYPE_AC3:
+		THEVA.MOTOR[i].PWM[0].H = PWM_resolution;
+		THEVA.MOTOR[i].PWM[1].H = PWM_resolution;
+		THEVA.MOTOR[i].PWM[2].H = PWM_resolution;
+		THEVA.MOTOR[i].PWM[0].L = PWM_resolution;
+		THEVA.MOTOR[i].PWM[1].L = PWM_resolution;
+		THEVA.MOTOR[i].PWM[2].L = PWM_resolution;
+		break;
+	}
+
+	motor[i].ref.rate = 0;
+
+	motor_param[i].enc_drev[0] = motor_param[i].enc_rev * 1 / 6;
+	motor_param[i].enc_drev[1] = motor_param[i].enc_rev * 2 / 6;
+	motor_param[i].enc_drev[2] = motor_param[i].enc_rev * 3 / 6;
+	motor_param[i].enc_drev[3] = motor_param[i].enc_rev * 4 / 6;
+	motor_param[i].enc_drev[4] = motor_param[i].enc_rev * 5 / 6;
+	motor_param[i].enc_drev[5] = motor_param[i].enc_rev * 6 / 6;
+
+	motor_param[i].enc_10hz = motor_param[i].enc_rev * 10 * 16 / 1000;
+
+	motor_param[i].enc_mul = (unsigned int)( (uint64_t) SinTB_2PI * 0x40000 / motor_param[i].enc_rev );
+
+	motor[i].ref.vel_diff = 0;
+	motor[i].ref.vel_interval = 0;
+	motor[i].ref.vel_changed = 0;
+	motor[i].error_integ = 0;
+	motor[i].vel = 0;
+	motor[i].dir = 0;
 
 	PWM_resolution = saved_param.PWM_resolution;
 	PWM_thinning = 2000 / PWM_resolution;
@@ -76,61 +131,12 @@ void controlPWM_config(  )
 	PWM_abs_min = PWM_deadtime + 1;
 	PWM_center = PWM_resolution / 2;
 
-	for( i = 0; i < 2; i ++ )
-	{
-		motor[i].pos = 0;
-		motor[i].vel = 0;
-		motor[i].error_integ = 0;
-		motor_param[i].enc0 = 0;
-		motor_param[i].enc0tran = 0;
-	}
-	// PIO_Clear( &pinsLeds[USBD_LEDPOWER] );
-	for( i = 0; i < 2; i++ )
-	{
-		switch( motor_param[i].motor_type )
-		{
-		case MOTOR_TYPE_DC:
-			THEVA.MOTOR[i].PWM[0].H = PWM_resolution;
-			THEVA.MOTOR[i].PWM[1].H = 0;
-			THEVA.MOTOR[i].PWM[2].H = PWM_resolution;
-			THEVA.MOTOR[i].PWM[0].L = PWM_resolution;
-			THEVA.MOTOR[i].PWM[1].L = 0;
-			THEVA.MOTOR[i].PWM[2].L = PWM_resolution;
-			break;
-		case MOTOR_TYPE_AC3:
-			THEVA.MOTOR[i].PWM[0].H = PWM_resolution;
-			THEVA.MOTOR[i].PWM[1].H = PWM_resolution;
-			THEVA.MOTOR[i].PWM[2].H = PWM_resolution;
-			THEVA.MOTOR[i].PWM[0].L = PWM_resolution;
-			THEVA.MOTOR[i].PWM[1].L = PWM_resolution;
-			THEVA.MOTOR[i].PWM[2].L = PWM_resolution;
-			break;
-		}
+	THEVA.GENERAL.PWM.COUNT_ENABLE = 1;
+	THEVA.GENERAL.OUTPUT_ENABLE = 1;
+	PIO_Clear( &pinPWMEnable );
 
-		motor[i].ref.rate = 0;
-
-		motor_param[i].enc_drev[0] = motor_param[i].enc_rev * 1 / 6;
-		motor_param[i].enc_drev[1] = motor_param[i].enc_rev * 2 / 6;
-		motor_param[i].enc_drev[2] = motor_param[i].enc_rev * 3 / 6;
-		motor_param[i].enc_drev[3] = motor_param[i].enc_rev * 4 / 6;
-		motor_param[i].enc_drev[4] = motor_param[i].enc_rev * 5 / 6;
-		motor_param[i].enc_drev[5] = motor_param[i].enc_rev * 6 / 6;
-
-		motor_param[i].enc_10hz = motor_param[i].enc_rev * 10 * 16 / 1000;
-
-		motor_param[i].enc_mul = (unsigned int)( (uint64_t) 8192 * 0x40000 / motor_param[i].enc_rev );
-	}
-	for( i = 0; i < 2; i++ )
-	{
-		motor[i].ref.vel_diff = 0;
-		motor[i].ref.vel_interval = 0;
-		motor[i].ref.vel_changed = 0;
-		motor[i].error_integ = 0;
-		motor[i].vel = 0;
-		motor[i].dir = 0;
-	}
 	PWM_init = 0;
-	
+
 	driver_param.watchdog = 0;
 }
 
@@ -157,6 +163,9 @@ void FIQ_PWMPeriod(  )
 		thin = 0;
 	}
 
+	rs485_timeout ++;
+	if( rs485_timeout > 100 ) rs485_timeout = 100;
+
 	for( i = 0; i < 2; i ++ )
 	{
 		unsigned short s;
@@ -177,8 +186,7 @@ void FIQ_PWMPeriod(  )
 		}
 	}
 
-	if( driver_param.servo_level == SERVO_LEVEL_STOP || 
-		driver_param.error_state )
+	if( driver_param.error_state )
 	{
 		// Short-mode brake
 		for( i = 0; i < 3*2; i ++ )
@@ -306,15 +314,15 @@ void FIQ_PWMPeriod(  )
 			case MOTOR_TYPE_AC3:
 				phase[2] = motor[j].pos - motor_param[j].enc0tran;
 				phase[2] = (uint64_t)(phase[2] + motor_param[j].phase_offset )
-				   	* motor_param[j].enc_mul / 0x40000 + 8192 + 2048;
-				phase[1] = phase[2] - 8192 / 3;
-				phase[0] = phase[2] - 8192 * 2 / 3;
+			   		* motor_param[j].enc_mul / 0x40000 + SinTB_2PI + SinTB_2PI/4;
+				phase[1] = phase[2] - SinTB_2PI / 3;
+				phase[0] = phase[2] - SinTB_2PI * 2 / 3;
 
 				for( i = 0; i < 3; i++ )
 				{
 					int pwmt;
 
-					pwmt = ( int )SinTB[phase[i]%8192] * rate / 8192;
+					pwmt = ( int )sin_(phase[i]%SinTB_2PI) * rate / (4096 * 2);
 					pwmt += PWM_center;
 					if( pwmt < PWM_abs_min )
 						pwmt = PWM_abs_min;
@@ -327,7 +335,16 @@ void FIQ_PWMPeriod(  )
 		}
 		for( j = 0; j < 2; j++ )
 		{
-			if( _abs( motor[j].ref.torque ) < driver_param.zero_torque )
+			if( motor[j].servo_level == SERVO_LEVEL_STOP )
+			{
+				for( i = 0; i < 3; i ++ )
+				{
+					THEVA.MOTOR[j].PWM[i].H = PWM_resolution;
+					THEVA.MOTOR[j].PWM[i].L = PWM_resolution;
+				}
+			}
+			else if( _abs( motor[j].ref.torque ) < driver_param.zero_torque ||
+					motor[j].servo_level == SERVO_LEVEL_OPENFREE )
 			{
 				for( i = 0; i < 3; i++ )
 				{
@@ -503,14 +520,12 @@ void controlPWM_init(  )
 {
 	int j;
 
-	fixp4 step;
-	step = FP4_PI2 / 8192;
-	for( j = 0; j < 4096; j++ )
+	for( j = 0; j < SinTB_2PI / 4; j ++ )
 	{
 		fixp4 val, ang;
 		int ival;
 		
-		ang = (uint64_t)FP4_PI2 * j / 8192;
+		ang = (uint64_t)FP4_PI2 * j / SinTB_2PI;
 		val = ( fp4sin( ang )
 				+ fp4mul( fp4sin( ang * 3 ), DOUBLE2FP4( 0.1547 ) ) );
 
@@ -523,10 +538,6 @@ void controlPWM_init(  )
 
 		SinTB[j] = ival;
 		driver_param.watchdog = 0;
-	}
-	for( j = 0; j < 4096; j++ )
-	{
-		SinTB[j + 4096] = -SinTB[j];
 	}
 
 	PIO_Configure( &pinPWMCycle2, 1 );
@@ -548,8 +559,18 @@ void controlPWM_init(  )
 		THEVA.MOTOR[j%2].PWM[j/2].L = PWM_resolution;
 	}
 
+	driver_param.PWM_resolution = PWM_resolution;
+
+	PWM_abs_max = PWM_resolution - PWM_deadtime - 1;
+	PWM_abs_min = PWM_deadtime + 1;
+	PWM_center = PWM_resolution / 2;
+
 	THEVA.GENERAL.PWM.COUNT_ENABLE = 1;
 	THEVA.GENERAL.OUTPUT_ENABLE = 1;
 	PIO_Clear( &pinPWMEnable );
+
+	PWM_init = 0;
+
+	driver_param.watchdog = 0;
 }
 

@@ -54,6 +54,7 @@
 
 
 int velcontrol = 0;
+volatile char rs485_timeout = 100;
 Tfrog_EEPROM_data saved_param = TFROG_EEPROM_DEFAULT;
 
 extern unsigned char languageIdStringDescriptor[];
@@ -213,16 +214,30 @@ static void UsbDataReceived( unsigned int unused, unsigned char status, unsigned
 	}
 }
 
+
+void us0_received()
+{
+	volatile static unsigned char read485;
+	read485 = AT91C_BASE_US0->US_RHR;
+
+	rs485_timeout = 0;
+	if( AT91C_BASE_US0->US_CSR & (AT91C_US_OVRE | AT91C_US_FRAME | AT91C_US_PARE) )
+	{
+		unsigned char *pos;
+		pos = AT91C_BASE_US0->US_RPR;
+		*pos = 0;
+	}
+}
+
 // ------------------------------------------------------------------------------
 // Main
 // ------------------------------------------------------------------------------
-
 // ------------------------------------------------------------------------------
 // / Initializes drivers and start the USB <-> Serial bridge.
 // ------------------------------------------------------------------------------
 int main(  )
 {
-	short analog[16];
+	static short analog[16];
 	short enc_buf2[2];
 	int err_cnt;
 	Filter1st voltf;
@@ -279,6 +294,28 @@ int main(  )
 	printf( "-- Locomotion Board %s --\n\r", SOFTPACK_VERSION );
 	printf( "-- %s\n\r", BOARD_NAME );
 	printf( "-- Compiled: %s %s --\n\r", __DATE__, __TIME__ );
+
+	switch( AT91C_BASE_RSTC->RSTC_RSR & AT91C_RSTC_RSTTYP )
+	{
+	case AT91C_RSTC_RSTTYP_POWERUP:
+		printf( "Power-up Reset. VDDCORE rising.\n\r" );
+		break;
+	case AT91C_RSTC_RSTTYP_WAKEUP:
+		printf( "WakeUp Reset. VDDCORE rising.\n\r" );
+		break;
+	case AT91C_RSTC_RSTTYP_WATCHDOG:
+		printf( "Watchdog Reset. Watchdog overflow occured.\n\r" );
+		break;
+	case AT91C_RSTC_RSTTYP_SOFTWARE:
+		printf( "Software Reset. Processor reset required by the software.\n\r" );
+		break;
+	case AT91C_RSTC_RSTTYP_USER:
+		printf( "User Reset. NRST pin detected low.\n\r" );
+		break;
+	case AT91C_RSTC_RSTTYP_BROWNOUT:
+		printf( "Brownout Reset occured.\n\r" );
+		break;
+	}
 
 	// If they are present, configure Vbus & Wake-up pins
 	PIO_InitializeInterrupts( 0 );
@@ -430,9 +467,8 @@ int main(  )
 
 	printf( "PWM control init\n\r" );
 	// Configure PWM control
-	controlPWM_init(  );
-
 	enc_buf2[0] = enc_buf2[1] = 0;
+	controlPWM_init(  );
 
 	// Enable watchdog
 	printf( "Watchdog init\n\r" );
@@ -442,20 +478,49 @@ int main(  )
 	LED_off( 0 );
 	ADC_Start();
 	
-#define RS485BUF_SIZE	256
-	char rs485buf[RS485BUF_SIZE];
+#define RS485BUF_SIZE	128
+	unsigned char rs485buf_[2][RS485BUF_SIZE];
+	unsigned char *rs485buf;
+	unsigned char *rs485buf_next;
+	unsigned short r_rs485buf_pos;
+
+	rs485buf = &rs485buf_[0][0];
+	rs485buf_next = &rs485buf_[1][0];
+	r_rs485buf_pos = 0;
 	printf( "RS485 init\n\r" );
 	AT91C_BASE_PMC->PMC_PCER = 1 << AT91C_ID_US0;
-	USART_Configure( AT91C_BASE_US0, AT91C_US_USMODE_RS485 | AT91C_US_CHRL_8_BITS, 115200, BOARD_MCK );
+	USART_Configure( AT91C_BASE_US0, AT91C_US_USMODE_RS485 | AT91C_US_CHRL_8_BITS, 3000000, BOARD_MCK );
+
 	USART_SetTransmitterEnabled( AT91C_BASE_US0, 1 );
 	USART_SetReceiverEnabled( AT91C_BASE_US0, 1 );
 	USART_ReadBuffer( AT91C_BASE_US0, rs485buf, RS485BUF_SIZE );
+	USART_ReadBuffer( AT91C_BASE_US0, rs485buf_next, RS485BUF_SIZE );
+
+	AT91C_BASE_US0->US_IDR = 0xFFFFFFFF;
+	AT91C_BASE_US0->US_IER = AT91C_US_RXRDY;
+	AIC_ConfigureIT( AT91C_ID_US0, 5 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, ( void ( * )( void ) )us0_received );
+	AIC_EnableIT( AT91C_ID_US0 );
+
+
+	short com_cnts_prev[COM_MOTORS];
+	{
+		int i;
+		for(i = 0; i < COM_MOTORS; i ++)
+		{
+			com_cnts[i] = 0;
+			com_cnts_prev[i] = 0;
+			com_pwms[i] = 0;
+			com_en[i] = 0;
+		}
+		com_en[0] = com_en[1] = 1;
+	}
 
 	err_cnt = 0;
 	driver_param.error.low_voltage = 0;
 	driver_param.error.hall[0] = 0;
 	driver_param.error.hall[1] = 0;
 	driver_param.error_state = 0;
+	driver_param.ifmode = 0;
 	// Driver loop
 	while( 1 )
 	{
@@ -482,22 +547,32 @@ int main(  )
 			}
 		}
 
-		if( driver_param.servo_level >= SERVO_LEVEL_TORQUE )
+		if( driver_param.watchdog >= driver_param.watchdog_limit )
 		{
-			if( driver_param.watchdog >= driver_param.watchdog_limit )
+			controlVelocity_init( );
+			controlPWM_init(  );
+			driver_param.error.hall[0] = 0;
+			driver_param.error.hall[1] = 0;
+			driver_param.error_state = 0;
+			driver_param.error_state |= ERROR_WATCHDOG;
+			TRACE_ERROR( "Watchdog - parameter init\n\r" );
 			{
-				controlVelocity_init( );
-				controlPWM_init(  );
-				driver_param.error.hall[0] = 0;
-				driver_param.error.hall[1] = 0;
-				driver_param.error_state = 0;
-				driver_param.error_state |= ERROR_WATCHDOG;
-				TRACE_ERROR( "Watchdog - parameter init\n\r" );
+				int i;
+				printf( "Motors: " );
+				for(i = 0; i < COM_MOTORS; i ++)
+				{
+					if( com_en[i] ) printf( "%d ", i );
+					com_cnts[i] = 0;
+					com_pwms[i] = 0;
+					com_en[i] = 0;
+				}
+				printf( "\n\r" );
+				com_en[0] = com_en[1] = 1;
 			}
-			else
-			{
-				driver_param.error_state &= ~ERROR_WATCHDOG;
-			}
+		}
+		else
+		{
+			driver_param.error_state &= ~ERROR_WATCHDOG;
 		}
 
 		// Check current level on VBus
@@ -530,6 +605,49 @@ int main(  )
 		}
 		_vbus = vbus;
 		
+		if( AT91C_BASE_US0->US_RNCR == 0 )
+		{
+			short len;
+
+			if( driver_param.ifmode == 1 ) LED_on(2);
+
+			len = RS485BUF_SIZE - r_rs485buf_pos;
+			if( data_fetch485( rs485buf + r_rs485buf_pos, len ) )
+			{
+				TRACE_WARNING( "RS485DataReceived: buffer overrun\n\r" );
+			}
+			if( driver_param.ifmode == 1 ) LED_off(2);
+
+			if(rs485buf == &rs485buf_[0][0])
+			{
+				rs485buf = &rs485buf_[1][0];
+				rs485buf_next = &rs485buf_[0][0];
+			}
+			else
+			{
+				rs485buf = &rs485buf_[0][0];
+				rs485buf_next = &rs485buf_[1][0];
+			}
+			USART_ReadBuffer( AT91C_BASE_US0, rs485buf_next, RS485BUF_SIZE );
+			r_rs485buf_pos = 0;
+		}
+		{
+			short len;
+			len = (RS485BUF_SIZE - AT91C_BASE_US0->US_RCR) - r_rs485buf_pos;
+
+			if( len > 0 )
+			{
+				if( driver_param.ifmode == 1 ) LED_on(2);
+
+				if( data_fetch485( rs485buf + r_rs485buf_pos, len ) )
+				{
+					TRACE_WARNING( "RS485DataReceived: buffer overrun\n\r" );
+				}
+				r_rs485buf_pos += len;
+				if( driver_param.ifmode == 1 ) LED_off(2);
+			}
+		}
+
 		{
 			static char buf[16];
 			static int nbuf = 0;
@@ -612,16 +730,17 @@ int main(  )
 		}
 		
 		data_analyze(  );
+		data_analyze485(  );
 		if( connecting )
 		{
-			if( USBD_GetState(  ) < USBD_STATE_CONFIGURED )
-				continue;
-
-			printf( "Start receiving data on the USB\n\r" );
-			// Start receiving data on the USB
-			CDCDSerialDriver_Read( usbBuffer, DATABUFFERSIZE, ( TransferCallback ) UsbDataReceived, 0 );
-			connecting = 0;
-			connected = 1;
+			if( USBD_GetState(  ) >= USBD_STATE_CONFIGURED )
+			{
+				printf( "Start receiving data on the USB\n\r" );
+				// Start receiving data on the USB
+				CDCDSerialDriver_Read( usbBuffer, DATABUFFERSIZE, ( TransferCallback ) UsbDataReceived, 0 );
+				connecting = 0;
+				connected = 1;
+			}
 		}
 		if( connected )
 		{
@@ -652,9 +771,33 @@ int main(  )
 			analog[8] = ( 15 << 12 ) | get_io_data();
 			analog[9] = ( 14 << 12 ) | THEVA.PORT[0];
 
-			data_send( ( short )( ( short )motor[0].enc_buf - ( short )enc_buf2[0] ),
-					   ( short )( ( short )motor[1].enc_buf - ( short )enc_buf2[1] ),
-					   motor[0].ref.rate_buf, motor[1].ref.rate_buf, analog, mask );
+			com_pwms[0] = motor[0].ref.rate_buf;
+			com_pwms[1] = motor[1].ref.rate_buf;
+			if( driver_param.ifmode == 0 )
+			{
+				com_cnts[0] = ( short )( ( short )motor[0].enc_buf - ( short )enc_buf2[0] );
+				com_cnts[1] = ( short )( ( short )motor[1].enc_buf - ( short )enc_buf2[1] );
+				for(i = 2; i < COM_MOTORS; i ++)
+				{
+					short tmp;
+					tmp = com_cnts[i];
+					com_cnts[i] = ( short )( ( short )com_cnts[i] - ( short )com_cnts_prev[i] );
+					com_cnts_prev[i] = tmp;
+				}
+				data_send( com_cnts, com_pwms, com_en, analog, mask );
+			}
+			else
+			{
+				com_cnts[0] = ( short )motor[0].enc_buf;
+				com_cnts[1] = ( short )motor[1].enc_buf;
+				while( rs485_timeout < 16 );
+				data_send485( com_cnts, com_pwms, com_en, analog, mask );
+			}
+			for(i = 2; i < COM_MOTORS; i ++)
+			{
+				com_cnts[i] = com_cnts_prev[i];
+				com_pwms[i] = 0;
+			}
 
 			enc_buf2[0] = motor[0].enc_buf;
 			enc_buf2[1] = motor[1].enc_buf;

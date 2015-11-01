@@ -31,6 +31,7 @@ typedef struct _MotorState
 	int error;
 	int error_integ;
 	char control_init;
+	YPSpur_servo_level servo_level;
 } MotorState;
 
 typedef struct _MotorParam
@@ -74,7 +75,6 @@ typedef struct _DriverParam
 	int vsrc;
 	int zero_torque;
 	int Kdynamics[6];
-	YPSpur_servo_level servo_level;
 	unsigned short watchdog_limit;
 	unsigned short watchdog;
 	unsigned char cnt_updated;
@@ -82,6 +82,7 @@ typedef struct _DriverParam
 	unsigned short io_dir;
 	unsigned short io_mask[2];
 	unsigned short fpga_version;
+	unsigned char ifmode;
 	struct
 	{
 		unsigned char low_voltage;
@@ -102,6 +103,11 @@ typedef struct _DriverParam
 extern MotorState motor[2];
 extern MotorParam motor_param[2];
 extern DriverParam driver_param;
+
+#define COM_MOTORS 16
+extern short com_cnts[COM_MOTORS];
+extern short com_pwms[COM_MOTORS];
+extern char com_en[COM_MOTORS];
 
 void controlVelocity_init(  );
 RAMFUNC void ISR_VelocityControl(  );

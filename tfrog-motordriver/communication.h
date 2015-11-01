@@ -74,7 +74,7 @@ typedef enum
 #endif
 /* protocol */
 #ifndef YP_PROTOCOL_NAME 
-#define YP_PROTOCOL_NAME "YPP:06:00"
+#define YP_PROTOCOL_NAME "YPP:07:00"
 #endif
 /* vendor */
 #ifndef YP_VENDOR_NAME 
@@ -88,23 +88,39 @@ typedef enum
 
 
 int data_analyze(  );
+int data_analyze485(  );
+
 int data_fetch( unsigned char *data, int len );
+int data_fetch485( unsigned char *data, int len );
+
+RAMFUNC int data_send( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask );
+RAMFUNC int data_send485( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask );
+RAMFUNC int data_pack( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask, unsigned char *data );
+
+RAMFUNC int decord( unsigned char *src, int len, unsigned char *dst, int buf_max );
+RAMFUNC int encode( unsigned char *src, int len, unsigned char *dst, int buf_max );
+
 int extended_command_analyze( char *data );
-int command_analyze( unsigned char *data, int len );
-int data_send( short cnt1, short cnt2, short pwm1, short pwm2, short *analog, unsigned short analog_mask );
-int decord( unsigned char *src, int len, unsigned char *dst, int buf_max );
-int encode( unsigned char *src, int len, unsigned char *dst, int buf_max );
+RAMFUNC int command_analyze( unsigned char *data, int len );
+
+RAMFUNC int data_analyze_( unsigned char *receive_buf, 
+		volatile int *w_receive_buf, volatile int *r_receive_buf, int fromto);
+RAMFUNC int data_fetch_( unsigned char *receive_buf, 
+		volatile int *w_receive_buf, volatile int *r_receive_buf,
+		unsigned char *data, int len );
 
 
-
-RAMFUNC int hextoi( char *buf );
-RAMFUNC int atoi( char *buf );
-RAMFUNC int nhex( char *buf, int data, int len );
-RAMFUNC int itoa10( char *buf, int data );
+int hextoi( char *buf );
+int atoi( char *buf );
+int nhex( char *buf, int data, int len );
+int itoa10( char *buf, int data );
 RAMFUNC int send( char *buf );
 RAMFUNC int nsend( char *buf, int len );
-RAMFUNC void sendclear( void );
+RAMFUNC int send485( char *buf );
+RAMFUNC int nsend485( char *buf, int len );
+void sendclear( void );
 RAMFUNC void flush( void );
+RAMFUNC void flush485( void );
 
 
 #endif

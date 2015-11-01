@@ -3,8 +3,8 @@
 
 void msleep( int ms );
 void EEPROM_Init(  );
-RAMFUNC int EEPROM_Read( int addr, void *data, int len );
-RAMFUNC int EEPROM_Write( int addr, void *data, int len );
+int EEPROM_Read( int addr, void *data, int len );
+int EEPROM_Write( int addr, void *data, int len );
 
 
 typedef struct _Tfrog_EEPROM_data
@@ -14,6 +14,7 @@ typedef struct _Tfrog_EEPROM_data
 	char robot_name[32];
 	unsigned short PWM_resolution;
 	unsigned short PWM_deadtime;
+	unsigned char id485;
 } Tfrog_EEPROM_data;
 
 #define TFROG_EEPROM_ROBOTPARAM_ADDR  0x100
@@ -24,7 +25,8 @@ typedef struct _Tfrog_EEPROM_data
 	0x01300000,\
 	{"unknown"},\
 	1200,\
-	20\
+	20,\
+	0\
 }
 
 #endif

@@ -2,7 +2,7 @@
 #define __CONTROL_PWM_H__
 
 void controlPWM_init(  );
-RAMFUNC void controlPWM_config(  );
+void controlPWM_config(  );
 RAMFUNC void FIQ_PWMPeriod(  );
 RAMFUNC int _abs( int x );
 RAMFUNC void normalize( int *val, int min, int max, int resolution );

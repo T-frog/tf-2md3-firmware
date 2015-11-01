@@ -11,6 +11,7 @@
 #include <usb/device/cdc-serial/CDCDSerialDriver.h>
 #include <usb/device/cdc-serial/CDCDSerialDriverDescriptors.h>
 #include <flash/flashd.h>
+#include <usart/usart.h>
 
 #include "communication.h"
 #include "registerFPGA.h"
@@ -19,16 +20,22 @@
 #include "eeprom.h"
 #include "io.h"
 
-#define SEND_BUF_LEN  1024
+#define SEND_BUF_LEN  64
 #define RECV_BUF_LEN  1024
 
 unsigned char send_buf[SEND_BUF_LEN];
+volatile unsigned long send_buf_pos = 0;
+unsigned char send_buf485[SEND_BUF_LEN];
+volatile unsigned long send_buf_pos485 = 0;
 unsigned char receive_buf[RECV_BUF_LEN];
 volatile int w_receive_buf = 0;
 volatile int r_receive_buf = 0;
-volatile unsigned long send_buf_pos = 0;
+unsigned char receive_buf485[RECV_BUF_LEN];
+volatile int w_receive_buf485 = 0;
+volatile int r_receive_buf485 = 0;
 extern const Pin pinPWMEnable;
 extern Tfrog_EEPROM_data saved_param;
+extern volatile char rs485_timeout;
 
 int hextoi( char *buf )
 {
@@ -122,7 +129,19 @@ int send( char *buf )
 	{
 		send_buf[send_buf_pos] = ( unsigned char )( *buf );
 		send_buf_pos++;
-		if( send_buf_pos >= SEND_BUF_LEN || send_buf[send_buf_pos] == '\n' ) flush();
+		if( send_buf_pos >= SEND_BUF_LEN || *buf == '\n' ) flush();
+		i ++;
+	}
+	return i;
+}
+int send485( char *buf )
+{
+	int i = 0;
+	for( ; *buf; buf++ )
+	{
+		send_buf485[send_buf_pos485] = ( unsigned char )( *buf );
+		send_buf_pos485++;
+		if( send_buf_pos485 >= SEND_BUF_LEN-1 || *buf == '\n' ) flush485();
 		i ++;
 	}
 	return i;
@@ -135,7 +154,18 @@ int nsend( char *buf, int len )
 	{
 		send_buf[send_buf_pos] = ( unsigned char )( *buf );
 		send_buf_pos++;
-		if( send_buf_pos >= SEND_BUF_LEN || send_buf[send_buf_pos] == '\n' ) flush();
+		if( send_buf_pos >= SEND_BUF_LEN-1 || *buf == '\n' ) flush();
+	}
+	return i;
+}
+int nsend485( char *buf, int len )
+{
+	int i;
+	for( i = 0; i < len && *buf; i ++, buf ++ )
+	{
+		send_buf485[send_buf_pos485] = ( unsigned char )( *buf );
+		send_buf_pos485++;
+		if( send_buf_pos485 >= SEND_BUF_LEN-1 || *buf == '\n' ) flush485();
 	}
 	return i;
 }
@@ -143,20 +173,15 @@ int nsend( char *buf, int len )
 void flush( void )
 {
 	int len;
-	
+	char ret;
+	unsigned short timeout;
+
 	len = send_buf_pos;
 	send_buf[len] = 0;
 	if( len == 0 )
 		return;
-	while( 1 )
+	for( timeout = 1024; timeout; timeout -- )
 	{
-		char ret;
-		if( driver_param.watchdog >= driver_param.watchdog_limit )
-		{
-			TRACE_ERROR( "Send timeout\n\r" );
-			send_buf_pos = 0;
-			break;
-		}
 		ret = CDCDSerialDriver_Write( send_buf, len, 0, 0 );
 		if( ret == USBD_STATUS_LOCKED )
 		{
@@ -165,7 +190,8 @@ void flush( void )
 		else if( ret != USBD_STATUS_SUCCESS )
 		{
 			TRACE_ERROR( "Send failed\n\r  buf: %s\n\r", send_buf );
-			break;
+			send_buf_pos = 0;
+			return;
 		}
 		else
 		{
@@ -173,6 +199,19 @@ void flush( void )
 			break;
 		}
 	}
+	if( !timeout )
+	{
+		TRACE_ERROR( "USB send timeout\n\r" );
+		send_buf_pos = 0;
+	}
+}
+void flush485( void )
+{
+	if( send_buf_pos485 == 0 )
+		return;
+
+	USART_WriteBuffer( AT91C_BASE_US0, &send_buf485, send_buf_pos485 );
+	send_buf_pos485 = 0;
 }
 
 /**
@@ -260,23 +299,62 @@ inline int decord( unsigned char *src, int len, unsigned char *dst, int buf_max 
 	return w_pos;
 }
 
-/* オドメトリデータの送信 */
-inline int data_send( short cnt1, short cnt2, short pwm1, short pwm2, short *analog, unsigned short analog_mask )
+inline int data_send( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask )
 {
 	static unsigned char data[34];
+	static int len, encode_len;
+	len = data_pack( cnt, pwm, en, analog, analog_mask, data );
 
-	static int len, i, encode_len;
+	send_buf_pos = 0;
+	send_buf[0] = COMMUNICATION_START_BYTE;
+	encode_len = encode( ( unsigned char * )data, len, send_buf + 1, SEND_BUF_LEN - 2 );
+	if( encode_len < 0 )
+		return encode_len;
+	send_buf[encode_len + 1] = COMMUNICATION_END_BYTE;
+	send_buf_pos = encode_len + 2;
 
-	data[0] = ( ( Integer2 ) cnt1 ).byte[1];
-	data[1] = ( ( Integer2 ) cnt1 ).byte[0];
-	data[2] = ( ( Integer2 ) cnt2 ).byte[1];
-	data[3] = ( ( Integer2 ) cnt2 ).byte[0];
-	data[4] = ( ( Integer2 ) pwm1 ).byte[1];
-	data[5] = ( ( Integer2 ) pwm1 ).byte[0];
-	data[6] = ( ( Integer2 ) pwm2 ).byte[1];
-	data[7] = ( ( Integer2 ) pwm2 ).byte[0];
+	flush(  );
+	return encode_len;
+}
+inline int data_send485( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask )
+{
+	static unsigned char data[34];
+	static int len, encode_len;
+	len = data_pack( cnt, pwm, en, analog, analog_mask, data );
 
-	len = 8;
+	send_buf_pos485 = 0;
+	send_buf485[0] = COMMUNICATION_START_BYTE;
+	send_buf485[1] = saved_param.id485 + 0x40;
+	send_buf485[2] = 0x40 - 1;
+	encode_len = encode( ( unsigned char * )data, len, send_buf485 + 3, SEND_BUF_LEN - 4 );
+	if( encode_len < 0 )
+		return encode_len;
+	send_buf485[encode_len + 3] = COMMUNICATION_END_BYTE;
+	send_buf_pos485 = encode_len + 4;
+
+	flush485(  );
+	return encode_len;
+}
+
+/* オドメトリデータの送信 */
+inline int data_pack( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask, unsigned char *data )
+{
+	static int i;
+	int len = 0;
+
+	for(i = 0; i < COM_MOTORS; i ++)
+	{
+		if(!en[i]) continue;
+		data[len++] = ( ( Integer2 ) cnt[i] ).byte[1];
+		data[len++] = ( ( Integer2 ) cnt[i] ).byte[0];
+	}
+	for(i = 0; i < COM_MOTORS; i ++)
+	{
+		if(!en[i]) continue;
+		data[len++] = ( ( Integer2 ) pwm[i] ).byte[1];
+		data[len++] = ( ( Integer2 ) pwm[i] ).byte[0];
+	}
+
 	for( i = 0; analog_mask != 0; analog_mask = analog_mask >> 1, i++ )
 	{
 		if( analog_mask & 1 )
@@ -286,69 +364,101 @@ inline int data_send( short cnt1, short cnt2, short pwm1, short pwm2, short *ana
 			len += 2;
 		}
 	}
-
-	// 変換
-	send_buf_pos = 0;
-	send_buf[0] = COMMUNICATION_START_BYTE;
-	encode_len = encode( ( unsigned char * )data, len, send_buf + 1, RECV_BUF_LEN - 2 );
-	if( encode_len < 0 )
-		return encode_len;
-	send_buf[encode_len + 1] = COMMUNICATION_END_BYTE;
-	send_buf_pos = encode_len + 2;
-
-	flush(  );
-
-	return encode_len;
+	return len;
 }
 
 inline int data_fetch( unsigned char *data, int len )
+{
+	return data_fetch_( receive_buf, 
+		&w_receive_buf, &r_receive_buf,
+		data, len );
+}
+inline int data_fetch485( unsigned char *data, int len )
+{
+	return data_fetch_( receive_buf485, 
+		&w_receive_buf485, &r_receive_buf485,
+		data, len );
+}
+inline void char_fetch485( unsigned char data )
+{
+	int w_rec = w_receive_buf485;
+
+	receive_buf485[w_receive_buf485] = data;
+	w_receive_buf485++;
+	if( w_receive_buf485 >= RECV_BUF_LEN )
+		w_receive_buf485 = 0;
+	if( w_receive_buf485 == r_receive_buf485 )
+	{
+		w_receive_buf485 = w_rec;
+	}
+
+}
+int data_fetch_( unsigned char *receive_buf, 
+		volatile int *w_receive_buf, volatile int *r_receive_buf,
+		unsigned char *data, int len )
 {
 	unsigned char *data_begin;
 
 	data_begin = data;
 	for( ; len; len-- )
 	{
-		receive_buf[w_receive_buf] = *data;
-		w_receive_buf++;
+		int w_rec = *w_receive_buf;
+
+		receive_buf[*w_receive_buf] = *data;
+		(*w_receive_buf)++;
 		data++;
-		if( w_receive_buf >= RECV_BUF_LEN )
-			w_receive_buf = 0;
-		if( w_receive_buf == r_receive_buf )
+		if( *w_receive_buf >= RECV_BUF_LEN )
+			*w_receive_buf = 0;
+		if( *w_receive_buf == *r_receive_buf )
 		{
-			break;
+			int len_remain = len;
+			*w_receive_buf = w_rec;
+			for( ; len; len-- )
+			{
+				*data_begin = *data;
+				data_begin++;
+				data++;
+			}
+			return len_remain;
 		}
 	}
-	if( len )
-	{
-		int i;
-		for( i = 0; i < len; i++ )
-		{
-			data_begin[i] = data[i];
-		}
-	}
-	return len;
+	return 0;
 }
 
 inline int data_analyze(  )
 {
-	unsigned char line[256];
+	return data_analyze_(receive_buf, &w_receive_buf, &r_receive_buf, 0);
+}
+inline int data_analyze485(  )
+{
+	return data_analyze_(receive_buf485, &w_receive_buf485, &r_receive_buf485, 1);
+}
+int data_analyze_( unsigned char *receive_buf, 
+		volatile int *w_receive_buf, volatile int *r_receive_buf, int fromto)
+{
+	static unsigned char line[64];
 	unsigned char *data;
 	int r_buf, len;
+	short from = -1, to = -1;
 	enum
 	{
 		STATE_IDLE,
+		STATE_FROM,
+		STATE_TO,
 		STATE_RECIEVING
 	} state = STATE_IDLE;
 
-	r_buf = r_receive_buf;
-	data = &receive_buf[r_receive_buf];
+	r_buf = *r_receive_buf;
+	data = &receive_buf[*r_receive_buf];
 	len = 0;
 	for( ;; )
 	{
-		if( r_buf == w_receive_buf )
+		char receive_period = 0;
+		if( r_buf == *w_receive_buf )
 			break;
 		line[len] = *data;
 		len++;
+		if(len > 63) len = 63;
 
 		switch ( state )
 		{
@@ -356,46 +466,107 @@ inline int data_analyze(  )
 			if( *data == COMMUNICATION_START_BYTE )
 			{
 				len = 0;
-				state = STATE_RECIEVING;
+				if(fromto)
+				{
+					state = STATE_FROM;
+				}
+				else
+				{
+					state = STATE_RECIEVING;
+					from = -1;
+					to = saved_param.id485;
+				}
 			}
-
-			if( *data == COMMUNICATION_END_BYTE )
+			else if( *data == COMMUNICATION_END_BYTE )
 			{
 				line[len - 1] = 0;
 				extended_command_analyze( ( char * )line );
 				len = 0;
-				r_receive_buf = r_buf + 1;
+				receive_period = 1;
 				state = STATE_IDLE;
 			}
+			break;
+		case STATE_FROM:
+			from = (*data) - 0x40;
+			state = STATE_TO;
+			break;
+		case STATE_TO:
+			to = (*data) - 0x40;
+			state = STATE_RECIEVING;
+			len = 0;
 			break;
 		case STATE_RECIEVING:
 			if( *data == COMMUNICATION_START_BYTE )
 			{
 				len = 0;
 				state = STATE_RECIEVING;
+				receive_period = 1;
+				break;
 			}
 			if( *data == COMMUNICATION_END_BYTE )
 			{
 				static unsigned char rawdata[16];
 				int data_len;
-
-				data_len = decord( line, len - 1, rawdata, 16 );
-				if( data_len < 6 )
+				if( to == saved_param.id485 )
 				{
-					int i;
-					printf( "Data err%d[%d]: ", data_len, len );
-					for( i = 0; i < len; i ++ )
+					data_len = decord( line, len - 1, rawdata, 16 );
+					if( data_len < 6 )
 					{
-						printf( "%02x ", line[i] );
+						line[len - 1] = 0;
+						printf( "Decode failed: \"%s\" (%d)\n\r", (char*)line, data_len );
 					}
-					printf( "\n\r" );
+					else
+					{
+						unsigned char imotor = rawdata[1];
+						if(saved_param.id485 * 2 <= imotor && imotor <= saved_param.id485 * 2 + 1 )
+						{
+							rawdata[1] = rawdata[1] & 1;
+							command_analyze( rawdata, data_len );
+							driver_param.ifmode = fromto;
+						}
+						else if( from == -1 )
+						{
+							com_en[imotor] = 1;
+							// Forward from USB(id: 0) to RS485(id: imotor/2)
+							send_buf_pos485 = 0;
+							send_buf485[0] = COMMUNICATION_START_BYTE;
+							send_buf485[1] = 0 + 0x40;
+							send_buf485[2] = imotor / 2 + 0x40;
+							int i;
+							for(i = 0; i < len; i ++)
+							{
+								send_buf485[3 + i] = line[i];
+							}
+							send_buf_pos485 = len + 3;
+							while( rs485_timeout < 8 );
+							flush485(  );
+							send_buf485[3 + len] = 0;
+							//printf( "Fw\"%s\"\n\r", (char*)send_buf485 );
+						}
+					}
 				}
-				else
+				else if( saved_param.id485 == 0 && to == -1 && 
+						0 < from && from < COM_MOTORS/2 )
 				{
-					command_analyze( rawdata, data_len );
+					// Forward packet from RS485 to USB
+					data_len = decord( line, len - 1, rawdata, 16 );
+					Integer2 tmp;
+					int i = 0, j;
+					for( j = 0; j < 2; j ++ )
+					{
+						tmp.byte[1] = rawdata[i++];
+						tmp.byte[0] = rawdata[i++];
+						com_cnts[from * 2 + j] = tmp.integer;
+					}
+					for( j = 0; j < 2; j ++ )
+					{
+						tmp.byte[1] = rawdata[i++];
+						tmp.byte[0] = rawdata[i++];
+						com_pwms[from * 2 + j] = tmp.integer;
+					}
 				}
 				len = 0;
-				r_receive_buf = r_buf + 1;
+				receive_period = 1;
 				state = STATE_IDLE;
 			}
 			break;
@@ -407,6 +578,7 @@ inline int data_analyze(  )
 			r_buf = 0;
 			data = receive_buf;
 		}
+		if( receive_period ) *r_receive_buf = r_buf;
 	}
 	return 0;
 }
@@ -418,7 +590,8 @@ inline int extended_command_analyze( char *data )
 {
 	static int i;
 
-	if( driver_param.servo_level != SERVO_LEVEL_STOP )
+	if( motor[0].servo_level != SERVO_LEVEL_STOP ||
+			motor[1].servo_level != SERVO_LEVEL_STOP )
 		return 0;
 
 	if( ext_continue >= 0 )
@@ -484,6 +657,9 @@ inline int extended_command_analyze( char *data )
 		send( YP_PROTOCOL_NAME );
 		send( "; \nSERI:" );
 		nhex( val, saved_param.serial_no, 8 );
+		send( val );
+		send( "; \nID:" );
+		itoa10( val, saved_param.id485 );
 		send( val );
 		send( "; \n\n" );
 
@@ -598,6 +774,13 @@ inline int extended_command_analyze( char *data )
 			EEPROM_Write( i, &clear, 16 );
 			AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 		}
+
+		send( data );
+		send( "\n00P\n\n" );
+	}
+	else if( strstr( data, "$SETID" ) == data )
+	{
+		saved_param.id485 = hextoi( data + 6 );
 
 		send( data );
 		send( "\n00P\n\n" );
@@ -852,10 +1035,13 @@ inline int command_analyze( unsigned char *data, int len )
 
 	imotor = data[1];
 	if( imotor < 0 || imotor >= 2 )
+	{
 		return 0;
+	}
 
-	// if(data[0] != PARAM_w_ref)
-	// printf("get %d %d %d\n\r",data[0],data[1],i.integer);
+	//if(data[0] != PARAM_w_ref && 
+	//		data[0] != PARAM_w_ref_highprec) 
+	//	printf("get %d %d %d\n\r",data[0],data[1],i.integer);
 	switch ( data[0] )
 	{
 	case PARAM_w_ref:
@@ -942,33 +1128,18 @@ inline int command_analyze( unsigned char *data, int len )
 		}
 		break;
 	case PARAM_servo:
-		if( driver_param.servo_level < SERVO_LEVEL_TORQUE && i.integer >= SERVO_LEVEL_TORQUE )
+		if( motor[imotor].servo_level < SERVO_LEVEL_TORQUE && i.integer >= SERVO_LEVEL_TORQUE )
 		{
-			controlPWM_config(  );
-
-			THEVA.GENERAL.PWM.COUNT_ENABLE = 1;
-			THEVA.GENERAL.OUTPUT_ENABLE = 1;
-
-			PIO_Clear( &pinPWMEnable );
+			controlPWM_config( imotor );
 		}
-		if( ( driver_param.servo_level < SERVO_LEVEL_VELOCITY || driver_param.servo_level == SERVO_LEVEL_OPENFREE ) && 
+		if( ( motor[imotor].servo_level < SERVO_LEVEL_VELOCITY || 
+					motor[imotor].servo_level == SERVO_LEVEL_OPENFREE ) && 
 			( i.integer >= SERVO_LEVEL_VELOCITY && i.integer != SERVO_LEVEL_OPENFREE ) )
 		{
 			// servo levelが速度制御に推移した
-			motor[0].control_init = 1;
-			motor[1].control_init = 1;
+			motor[imotor].control_init = 1;
 		}
-		if( driver_param.servo_level != SERVO_LEVEL_OPENFREE && i.integer == SERVO_LEVEL_OPENFREE )
-		{
-			THEVA.GENERAL.OUTPUT_ENABLE = 0;
-			PIO_Set( &pinPWMEnable );
-		}
-		if( driver_param.servo_level == SERVO_LEVEL_OPENFREE && i.integer != SERVO_LEVEL_OPENFREE )
-		{
-			THEVA.GENERAL.OUTPUT_ENABLE = 1;
-			PIO_Clear( &pinPWMEnable );
-		}
-		driver_param.servo_level = i.integer;
+		motor[imotor].servo_level = i.integer;
 		break;
 	case PARAM_watch_dog_limit:
 		driver_param.watchdog_limit = i.integer;
