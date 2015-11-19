@@ -325,6 +325,7 @@ inline int data_send485( short *cnt, short *pwm, char *en, short *analog, unsign
 	send_buf_pos485 = 0;
 	send_buf485[0] = COMMUNICATION_START_BYTE;
 	send_buf485[1] = saved_param.id485 + 0x40;
+	if( driver_param.ifmode == 0 ) send_buf485[1] = 0x40;
 	send_buf485[2] = 0x40 - 1;
 	encode_len = encode( ( unsigned char * )data, len, send_buf485 + 3, SEND_BUF_LEN - 4 );
 	if( encode_len < 0 )
@@ -440,6 +441,7 @@ int data_analyze_( unsigned char *receive_buf,
 	unsigned char *data;
 	int r_buf, len;
 	short from = -1, to = -1;
+	short id = saved_param.id485;
 	enum
 	{
 		STATE_IDLE,
@@ -447,6 +449,11 @@ int data_analyze_( unsigned char *receive_buf,
 		STATE_TO,
 		STATE_RECIEVING
 	} state = STATE_IDLE;
+
+	if( !fromto )
+	{
+		id = 0;
+	}
 
 	r_buf = *r_receive_buf;
 	data = &receive_buf[*r_receive_buf];
@@ -474,7 +481,7 @@ int data_analyze_( unsigned char *receive_buf,
 				{
 					state = STATE_RECIEVING;
 					from = -1;
-					to = saved_param.id485;
+					to = id;
 				}
 			}
 			else if( *data == COMMUNICATION_END_BYTE )
@@ -507,7 +514,7 @@ int data_analyze_( unsigned char *receive_buf,
 			{
 				static unsigned char rawdata[16];
 				int data_len;
-				if( to == saved_param.id485 )
+				if( to == id )
 				{
 					data_len = decord( line, len - 1, rawdata, 16 );
 					if( data_len < 6 )
@@ -518,7 +525,7 @@ int data_analyze_( unsigned char *receive_buf,
 					else
 					{
 						unsigned char imotor = rawdata[1];
-						if(saved_param.id485 * 2 <= imotor && imotor <= saved_param.id485 * 2 + 1 )
+						if(id * 2 <= imotor && imotor <= id * 2 + 1 )
 						{
 							rawdata[1] = rawdata[1] & 1;
 							command_analyze( rawdata, data_len );
@@ -545,7 +552,7 @@ int data_analyze_( unsigned char *receive_buf,
 						}
 					}
 				}
-				else if( saved_param.id485 == 0 && to == -1 && 
+				else if( id == 0 && to == -1 && 
 						0 < from && from < COM_MOTORS/2 )
 				{
 					// Forward packet from RS485 to USB
@@ -1068,23 +1075,27 @@ inline int command_analyze( unsigned char *data, int len )
 	case PARAM_p_fr_wminus:
 		motor_param[imotor].fr_wminus = i.integer;
 		break;
+	case PARAM_p_inertia_self:
+		motor_param[imotor].inertia_self = i.integer;
+		break;
+	case PARAM_p_inertia_cross:
+		motor_param[imotor].inertia_cross = i.integer;
+		break;
 	case PARAM_p_A:
-		driver_param.Kdynamics[0] = i.integer;
+		motor_param[0].inertia_self = i.integer;
 		break;
 	case PARAM_p_B:
-		driver_param.Kdynamics[1] = i.integer;
+		motor_param[1].inertia_self = i.integer;
 		break;
 	case PARAM_p_C:
-		driver_param.Kdynamics[2] = i.integer;
+		motor_param[0].inertia_cross = i.integer;
 		break;
 	case PARAM_p_D:
-		driver_param.Kdynamics[3] = i.integer;
+		motor_param[1].inertia_cross = i.integer;
 		break;
 	case PARAM_p_E:
-		driver_param.Kdynamics[4] = i.integer;
 		break;
 	case PARAM_p_F:
-		driver_param.Kdynamics[5] = i.integer;
 		break;
 	case PARAM_p_pi_kp:
 		motor_param[imotor].Kp = i.integer;
@@ -1111,10 +1122,10 @@ inline int command_analyze( unsigned char *data, int len )
 		motor_param[imotor].torque_offset = i.integer;
 		break;
 	case PARAM_int_max:
-		driver_param.integ_max = i.integer * 16;
+		motor_param[imotor].integ_max = i.integer * 16;
 		break;
 	case PARAM_int_min:
-		driver_param.integ_min = i.integer * 16;
+		motor_param[imotor].integ_min = i.integer * 16;
 		break;
 	case PARAM_motor_phase:
 		switch( i.integer )
@@ -1128,13 +1139,13 @@ inline int command_analyze( unsigned char *data, int len )
 		}
 		break;
 	case PARAM_servo:
-		if( motor[imotor].servo_level < SERVO_LEVEL_TORQUE && i.integer >= SERVO_LEVEL_TORQUE )
+		if( motor[imotor].servo_level < SERVO_LEVEL_TORQUE && 
+				i.integer >= SERVO_LEVEL_TORQUE )
 		{
 			controlPWM_config( imotor );
 		}
-		if( ( motor[imotor].servo_level < SERVO_LEVEL_VELOCITY || 
-					motor[imotor].servo_level == SERVO_LEVEL_OPENFREE ) && 
-			( i.integer >= SERVO_LEVEL_VELOCITY && i.integer != SERVO_LEVEL_OPENFREE ) )
+		if( motor[imotor].servo_level != SERVO_LEVEL_VELOCITY &&
+			i.integer == SERVO_LEVEL_VELOCITY )
 		{
 			// servo levelが速度制御に推移した
 			motor[imotor].control_init = 1;

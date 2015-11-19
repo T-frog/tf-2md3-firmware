@@ -136,8 +136,6 @@ void controlPWM_config( int i )
 	PIO_Clear( &pinPWMEnable );
 
 	PWM_init = 0;
-
-	driver_param.watchdog = 0;
 }
 
 // ------------------------------------------------------------------------------
@@ -537,7 +535,6 @@ void controlPWM_init(  )
 			ival = -4096;
 
 		SinTB[j] = ival;
-		driver_param.watchdog = 0;
 	}
 
 	PIO_Configure( &pinPWMCycle2, 1 );
@@ -570,7 +567,5 @@ void controlPWM_init(  )
 	PIO_Clear( &pinPWMEnable );
 
 	PWM_init = 0;
-
-	driver_param.watchdog = 0;
 }
 

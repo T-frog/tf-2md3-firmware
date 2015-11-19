@@ -224,7 +224,7 @@ void us0_received()
 	if( AT91C_BASE_US0->US_CSR & (AT91C_US_OVRE | AT91C_US_FRAME | AT91C_US_PARE) )
 	{
 		unsigned char *pos;
-		pos = AT91C_BASE_US0->US_RPR;
+		pos = (void*)AT91C_BASE_US0->US_RPR;
 		*pos = 0;
 	}
 }
@@ -521,6 +521,7 @@ int main(  )
 	driver_param.error.hall[1] = 0;
 	driver_param.error_state = 0;
 	driver_param.ifmode = 0;
+	driver_param.watchdog = 0;
 	// Driver loop
 	while( 1 )
 	{
@@ -572,7 +573,9 @@ int main(  )
 		}
 		else
 		{
-			driver_param.error_state &= ~ERROR_WATCHDOG;
+			if( motor[0].servo_level != SERVO_LEVEL_STOP ||
+					motor[1].servo_level != SERVO_LEVEL_STOP)
+				driver_param.error_state &= ~ERROR_WATCHDOG;
 		}
 
 		// Check current level on VBus

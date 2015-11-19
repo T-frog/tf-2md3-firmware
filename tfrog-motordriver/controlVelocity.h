@@ -56,6 +56,10 @@ typedef struct _MotorParam
 	int fr_wplus;
 	int fr_minus;
 	int fr_wminus;
+	int integ_max;								// cnt
+	int integ_min;								// cnt
+	int inertia_self;
+	int inertia_cross;
 	enum _motor_type_t
 	{
 		MOTOR_TYPE_DC,
@@ -68,13 +72,10 @@ typedef struct _DriverParam
 	int PWM_max;								// clock
 	int PWM_min;								// clock
 	int PWM_resolution;							// clock
-	int integ_max;								// cnt
-	int integ_min;								// cnt
 	int vsrc_rated;
 	int vsrc_factor;
 	int vsrc;
 	int zero_torque;
-	int Kdynamics[6];
 	unsigned short watchdog_limit;
 	unsigned short watchdog;
 	unsigned char cnt_updated;
