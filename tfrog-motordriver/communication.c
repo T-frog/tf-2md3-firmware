@@ -983,6 +983,9 @@ inline int command_analyze( unsigned char *data, int len )
 	case PARAM_ad_mask:
 		driver_param.admask = i.integer;
 		break;
+	case PARAM_phase_offset:
+		motor_param[imotor].phase_offset = i.integer;
+		break;
 	case PARAM_enc_rev:
 		motor_param[imotor].enc_rev = i.integer;
 		break;

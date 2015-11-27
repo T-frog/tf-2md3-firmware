@@ -334,6 +334,7 @@ void controlVelocity_init(  )
 		motor[i].control_init = 0;
 		motor_param[i].motor_type = MOTOR_TYPE_AC3;
 		motor_param[i].enc_rev = 0;
+		motor_param[i].phase_offset = 0;
 	}
 
 	{

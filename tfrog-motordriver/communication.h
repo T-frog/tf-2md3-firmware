@@ -57,7 +57,8 @@ typedef enum
 	PARAM_watch_dog_limit,
 	PARAM_io_dir = 96,
 	PARAM_io_data,
-	PARAM_ad_mask
+	PARAM_ad_mask,
+	PARAM_phase_offset
 } YPSpur_loco_param;
 
 #define COMMUNICATION_START_BYTE	0x09

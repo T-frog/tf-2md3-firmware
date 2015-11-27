@@ -36,6 +36,7 @@ typedef struct _MotorState
 typedef struct _MotorParam
 {
 	unsigned short enc_rev;						// count/rev
+	unsigned short phase_offset;
 	unsigned short enc_10hz;
 	unsigned short enc_drev[6];
 	unsigned int enc_mul;

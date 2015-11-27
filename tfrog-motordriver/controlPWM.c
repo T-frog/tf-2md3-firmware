@@ -305,7 +305,8 @@ void FIQ_PWMPeriod(  )
 				break;
 			case MOTOR_TYPE_AC3:
 				phase[2] = motor[j].pos - motor_param[j].enc0tran;
-				phase[2] = (uint64_t)phase[2] * motor_param[j].enc_mul / 0x40000 + 8192 + 2048;
+				phase[2] = (uint64_t)(phase[2] + motor_param[j].phase_offset )
+				   	* motor_param[j].enc_mul / 0x40000 + 8192 + 2048;
 				phase[1] = phase[2] - 8192 / 3;
 				phase[0] = phase[2] - 8192 * 2 / 3;
 
