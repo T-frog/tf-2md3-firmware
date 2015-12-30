@@ -620,6 +620,8 @@ inline int extended_command_analyze( char *data )
 			send( " bytes saved\n\n" );
 			flush(  );
 			ext_continue = -1;
+			saved_param.stored_data = TFROG_EEPROM_DATA_TEXT;
+			EEPROM_Write( 0, &saved_param, sizeof(saved_param) );
 			return 1;
 		}
 
@@ -685,7 +687,44 @@ inline int extended_command_analyze( char *data )
 		send( "; \nDEADTIME:" );
 		itoa10( val, saved_param.PWM_deadtime );
 		send( val );
+		send( "; \nPARAM:" );
+		if( saved_param.stored_data == TFROG_EEPROM_DATA_TEXT )
+			send( "text" );
+		else if( saved_param.stored_data == TFROG_EEPROM_DATA_BIN )
+			send( "binary" );
+		else if( saved_param.stored_data == TFROG_EEPROM_DATA_BIN_LOCKED )
+			send( "binary locked" );
+		else if( saved_param.stored_data == TFROG_EEPROM_DATA_BIN_SAVING )
+			send( "binary saving" );
 		send( "; \n\n" );
+	}
+	else if( strstr( data, "$LOCKPARAM" ) == data )
+	{
+		if( saved_param.stored_data == TFROG_EEPROM_DATA_BIN )
+		{
+			saved_param.stored_data = TFROG_EEPROM_DATA_BIN_LOCKED;
+			if( EEPROM_Write( 0, &saved_param, sizeof(saved_param) ) < 0 )
+			{
+				send( data );
+				send( "\n01Q\n\n" );
+			}
+			else
+			{
+				send( data );
+				send( "\n00P\n\n" );
+			}
+		}
+		else
+		{
+			send( data );
+			send( "\n02R\n\n" );
+		}
+	}
+	else if( strstr( data, "$KEEPPARAM" ) == data )
+	{
+		saved_param.stored_data = TFROG_EEPROM_DATA_BIN_SAVING;
+		send( data );
+		send( "\n00P\n\n" );
 	}
 	else if( strstr( data, "GETEMBEDDEDPARAM" ) == data )
 	{
@@ -704,12 +743,15 @@ inline int extended_command_analyze( char *data )
 		{
 			send( "00P\n" );
 			flush( );
-			for( i = 0; i < 1792; i += 256 )
+			if( saved_param.stored_data == TFROG_EEPROM_DATA_TEXT )
 			{
-				len = EEPROM_Read( TFROG_EEPROM_ROBOTPARAM_ADDR + i, epval, 256 );
-				if( nsend( epval, 256 ) < 256 ) break;
-				AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
-				flush( );
+				for( i = 0; i < 1792; i += 256 )
+				{
+					len = EEPROM_Read( TFROG_EEPROM_ROBOTPARAM_ADDR + i, epval, 256 );
+					if( nsend( epval, 256 ) < 256 ) break;
+					AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
+					flush( );
+				}
 			}
 			send( "\n\n" );
 		}
@@ -1049,6 +1091,7 @@ inline int command_analyze( unsigned char *data, int len )
 	//if(data[0] != PARAM_w_ref && 
 	//		data[0] != PARAM_w_ref_highprec) 
 	//	printf("get %d %d %d\n\r",data[0],data[1],i.integer);
+	char param_set = 0;
 	switch ( data[0] )
 	{
 	case PARAM_w_ref:
@@ -1057,87 +1100,6 @@ inline int command_analyze( unsigned char *data, int len )
 		motor[imotor].ref.vel = i.integer;
 		motor[imotor].ref.vel_changed = 1;
 		break;
-	case PARAM_p_ki:
-		motor_param[imotor].Kcurrent = i.integer;
-		break;
-	case PARAM_p_kv:
-		motor_param[imotor].Kvolt = i.integer;
-		break;
-	case PARAM_p_fr_plus:
-		motor_param[imotor].fr_plus = i.integer;
-		break;
-	case PARAM_p_fr_wplus:
-		motor_param[imotor].fr_wplus = i.integer;
-		break;
-	case PARAM_p_fr_minus:
-		motor_param[imotor].fr_minus = i.integer;
-		break;
-	case PARAM_p_fr_wminus:
-		motor_param[imotor].fr_wminus = i.integer;
-		break;
-	case PARAM_p_inertia_self:
-		motor_param[imotor].inertia_self = i.integer;
-		break;
-	case PARAM_p_inertia_cross:
-		motor_param[imotor].inertia_cross = i.integer;
-		break;
-	case PARAM_p_A:
-		motor_param[0].inertia_self = i.integer;
-		break;
-	case PARAM_p_B:
-		motor_param[1].inertia_self = i.integer;
-		break;
-	case PARAM_p_C:
-		motor_param[0].inertia_cross = i.integer;
-		break;
-	case PARAM_p_D:
-		motor_param[1].inertia_cross = i.integer;
-		break;
-	case PARAM_p_E:
-		break;
-	case PARAM_p_F:
-		break;
-	case PARAM_p_pi_kp:
-		motor_param[imotor].Kp = i.integer;
-		break;
-	case PARAM_p_pi_ki:
-		motor_param[imotor].Ki = i.integer;
-		break;
-	case PARAM_pwm_max:
-		driver_param.PWM_max = i.integer;
-		break;
-	case PARAM_pwm_min:
-		driver_param.PWM_min = i.integer;
-		break;
-	case PARAM_toq_max:
-		motor_param[imotor].torque_max = i.integer;
-		break;
-	case PARAM_toq_min:
-		motor_param[imotor].torque_min = i.integer;
-		break;
-	case PARAM_toq_limit:
-		motor_param[imotor].torque_limit = i.integer;
-		break;
-	case PARAM_p_toq_offset:
-		motor_param[imotor].torque_offset = i.integer;
-		break;
-	case PARAM_int_max:
-		motor_param[imotor].integ_max = i.integer * 16;
-		break;
-	case PARAM_int_min:
-		motor_param[imotor].integ_min = i.integer * 16;
-		break;
-	case PARAM_motor_phase:
-		switch( i.integer )
-		{
-		case 0:
-			motor_param[imotor].motor_type = MOTOR_TYPE_DC;
-			break;
-		case 3:
-			motor_param[imotor].motor_type = MOTOR_TYPE_AC3;
-			break;
-		}
-		break;
 	case PARAM_servo:
 		if( motor[imotor].servo_level < SERVO_LEVEL_TORQUE && 
 				i.integer >= SERVO_LEVEL_TORQUE )
@@ -1145,15 +1107,12 @@ inline int command_analyze( unsigned char *data, int len )
 			controlPWM_config( imotor );
 		}
 		if( motor[imotor].servo_level != SERVO_LEVEL_VELOCITY &&
-			i.integer == SERVO_LEVEL_VELOCITY )
+				i.integer == SERVO_LEVEL_VELOCITY )
 		{
 			// servo levelが速度制御に推移した
 			motor[imotor].control_init = 1;
 		}
 		motor[imotor].servo_level = i.integer;
-		break;
-	case PARAM_watch_dog_limit:
-		driver_param.watchdog_limit = i.integer;
 		break;
 	case PARAM_io_dir:
 		driver_param.io_dir = i.integer;
@@ -1165,18 +1124,110 @@ inline int command_analyze( unsigned char *data, int len )
 	case PARAM_ad_mask:
 		driver_param.admask = i.integer;
 		break;
-	case PARAM_phase_offset:
-		motor_param[imotor].phase_offset = i.integer;
-		break;
-	case PARAM_enc_rev:
-		motor_param[imotor].enc_rev = i.integer;
-		break;
-	case PARAM_vsrc:
-		// ad = 1024 * ( vsrc * VSRC_DIV ) / 3.3
-		driver_param.vsrc_rated = 310 * ( (int)i.integer * VSRC_DIV ) / 256;
-		break;
 	default:
-		return 0;
+		param_set = 1;
+	}
+	if( param_set == 1 && saved_param.stored_data != TFROG_EEPROM_DATA_BIN_LOCKED )
+	{
+		switch ( data[0] )
+		{
+		case PARAM_p_ki:
+			motor_param[imotor].Kcurrent = i.integer;
+			break;
+		case PARAM_p_kv:
+			motor_param[imotor].Kvolt = i.integer;
+			break;
+		case PARAM_p_fr_plus:
+			motor_param[imotor].fr_plus = i.integer;
+			break;
+		case PARAM_p_fr_wplus:
+			motor_param[imotor].fr_wplus = i.integer;
+			break;
+		case PARAM_p_fr_minus:
+			motor_param[imotor].fr_minus = i.integer;
+			break;
+		case PARAM_p_fr_wminus:
+			motor_param[imotor].fr_wminus = i.integer;
+			break;
+		case PARAM_p_inertia_self:
+			motor_param[imotor].inertia_self = i.integer;
+			break;
+		case PARAM_p_inertia_cross:
+			motor_param[imotor].inertia_cross = i.integer;
+			break;
+		case PARAM_p_A:
+			motor_param[0].inertia_self = i.integer;
+			break;
+		case PARAM_p_B:
+			motor_param[1].inertia_self = i.integer;
+			break;
+		case PARAM_p_C:
+			motor_param[0].inertia_cross = i.integer;
+			break;
+		case PARAM_p_D:
+			motor_param[1].inertia_cross = i.integer;
+			break;
+		case PARAM_p_E:
+			break;
+		case PARAM_p_F:
+			break;
+		case PARAM_p_pi_kp:
+			motor_param[imotor].Kp = i.integer;
+			break;
+		case PARAM_p_pi_ki:
+			motor_param[imotor].Ki = i.integer;
+			break;
+		case PARAM_pwm_max:
+			driver_param.PWM_max = i.integer;
+			break;
+		case PARAM_pwm_min:
+			driver_param.PWM_min = i.integer;
+			break;
+		case PARAM_toq_max:
+			motor_param[imotor].torque_max = i.integer;
+			break;
+		case PARAM_toq_min:
+			motor_param[imotor].torque_min = i.integer;
+			break;
+		case PARAM_toq_limit:
+			motor_param[imotor].torque_limit = i.integer;
+			break;
+		case PARAM_p_toq_offset:
+			motor_param[imotor].torque_offset = i.integer;
+			break;
+		case PARAM_int_max:
+			motor_param[imotor].integ_max = i.integer * 16;
+			break;
+		case PARAM_int_min:
+			motor_param[imotor].integ_min = i.integer * 16;
+			break;
+		case PARAM_motor_phase:
+			switch( i.integer )
+			{
+			case 0:
+				motor_param[imotor].motor_type = MOTOR_TYPE_DC;
+				break;
+			case 3:
+				motor_param[imotor].motor_type = MOTOR_TYPE_AC3;
+				break;
+			}
+			break;
+		case PARAM_watch_dog_limit:
+			driver_param.watchdog_limit = i.integer;
+			break;
+		case PARAM_phase_offset:
+			motor_param[imotor].phase_offset = i.integer;
+			break;
+		case PARAM_enc_rev:
+			motor_param[imotor].enc_rev = i.integer;
+			break;
+		case PARAM_vsrc:
+			// ad = 1024 * ( vsrc * VSRC_DIV ) / 3.3
+			driver_param.vsrc_rated = 310 * ( (int)i.integer * VSRC_DIV ) / 256;
+			break;
+		default:
+			return 0;
+		}
 	}
 	driver_param.watchdog = 0;
 	return 0;

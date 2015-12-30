@@ -15,10 +15,11 @@ typedef struct _Tfrog_EEPROM_data
 	unsigned short PWM_resolution;
 	unsigned short PWM_deadtime;
 	unsigned char id485;
+	unsigned char stored_data;
 } Tfrog_EEPROM_data;
 
 #define TFROG_EEPROM_ROBOTPARAM_ADDR  0x100
-#define TFROG_EEPROM_KEY              0x00AA77CC
+#define TFROG_EEPROM_KEY              0x00AA77CD
 #define TFROG_EEPROM_DEFAULT \
 {\
 	TFROG_EEPROM_KEY,\
@@ -26,8 +27,14 @@ typedef struct _Tfrog_EEPROM_data
 	{"unknown"},\
 	1200,\
 	20,\
+	0,\
 	0\
 }
+
+#define TFROG_EEPROM_DATA_TEXT 0
+#define TFROG_EEPROM_DATA_BIN 1
+#define TFROG_EEPROM_DATA_BIN_SAVING 2
+#define TFROG_EEPROM_DATA_BIN_LOCKED 3
 
 #endif
 

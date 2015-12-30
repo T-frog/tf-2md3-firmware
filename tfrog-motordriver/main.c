@@ -470,6 +470,17 @@ int main(  )
 	enc_buf2[0] = enc_buf2[1] = 0;
 	controlPWM_init(  );
 
+	if( saved_param.stored_data == TFROG_EEPROM_DATA_BIN ||
+			saved_param.stored_data == TFROG_EEPROM_DATA_BIN_LOCKED )
+	{
+		EEPROM_Read( TFROG_EEPROM_ROBOTPARAM_ADDR, &driver_param, sizeof(DriverParam) );
+		msleep(1);
+		EEPROM_Read( TFROG_EEPROM_ROBOTPARAM_ADDR + 0x100,
+				motor_param, sizeof(MotorParam) * 2 );
+		motor[0].servo_level = SERVO_LEVEL_STOP;
+		motor[1].servo_level = SERVO_LEVEL_STOP;
+	}
+
 	// Enable watchdog
 	printf( "Watchdog init\n\r" );
 	AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDRSTEN | 0xFF00FF; // 1s
@@ -550,8 +561,29 @@ int main(  )
 
 		if( driver_param.watchdog >= driver_param.watchdog_limit )
 		{
-			controlVelocity_init( );
-			controlPWM_init(  );
+			if( saved_param.stored_data == TFROG_EEPROM_DATA_BIN_SAVING )
+			{
+				LED_on( 0 );
+				EEPROM_Write( TFROG_EEPROM_ROBOTPARAM_ADDR, 
+						&driver_param, sizeof(DriverParam) );
+				msleep(5);
+				EEPROM_Write( TFROG_EEPROM_ROBOTPARAM_ADDR + 0x100,
+						motor_param, sizeof(MotorParam) * 2 );
+				saved_param.stored_data = TFROG_EEPROM_DATA_BIN;
+				EEPROM_Write( 0, &saved_param, sizeof(saved_param) );
+				LED_off( 0 );
+			}
+			if( saved_param.stored_data == TFROG_EEPROM_DATA_BIN ||
+					saved_param.stored_data == TFROG_EEPROM_DATA_BIN_LOCKED )
+			{
+				motor[0].servo_level = SERVO_LEVEL_STOP;
+				motor[1].servo_level = SERVO_LEVEL_STOP;
+			}
+			else
+			{
+				controlVelocity_init( );
+				controlPWM_init(  );
+			}
 			driver_param.error.hall[0] = 0;
 			driver_param.error.hall[1] = 0;
 			driver_param.error_state = 0;
