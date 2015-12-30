@@ -20,6 +20,8 @@
 #include "eeprom.h"
 #include "io.h"
 
+#include "crc8.h"
+
 #define SEND_BUF_LEN  64
 #define RECV_BUF_LEN  1024
 
@@ -36,6 +38,33 @@ volatile int r_receive_buf485 = 0;
 extern const Pin pinPWMEnable;
 extern Tfrog_EEPROM_data saved_param;
 extern volatile char rs485_timeout;
+
+
+RAMFUNC unsigned char crc8(unsigned char *buf, int len)
+{
+	unsigned char ret = 0;
+	unsigned char *pos;
+	
+	for( pos = buf; len; len -- )
+	{
+		ret = crc8_tb[ret ^ (*pos)];
+		pos ++;
+	}
+	return ret;
+}
+
+RAMFUNC void add_crc8_485()
+{
+	send_buf485[send_buf_pos485] = crc8( send_buf485, send_buf_pos485 );
+	send_buf_pos485 ++;
+}
+
+RAMFUNC char verify_crc8_485(unsigned char *buf, int len)
+{
+	if( crc8(buf, len - 1) == buf[len - 1] )
+		return 1;
+	return 0;
+}
 
 int hextoi( char *buf )
 {
@@ -333,6 +362,8 @@ inline int data_send485( short *cnt, short *pwm, char *en, short *analog, unsign
 	send_buf485[encode_len + 3] = COMMUNICATION_END_BYTE;
 	send_buf_pos485 = encode_len + 4;
 
+	add_crc8_485();
+
 	flush485(  );
 	return encode_len;
 }
@@ -437,7 +468,8 @@ inline int data_analyze485(  )
 int data_analyze_( unsigned char *receive_buf, 
 		volatile int *w_receive_buf, volatile int *r_receive_buf, int fromto)
 {
-	static unsigned char line[64];
+	static unsigned char line_full[64+3];
+	static unsigned char *line = line_full + 3;
 	unsigned char *data;
 	int r_buf, len;
 	short from = -1, to = -1;
@@ -447,7 +479,9 @@ int data_analyze_( unsigned char *receive_buf,
 		STATE_IDLE,
 		STATE_FROM,
 		STATE_TO,
-		STATE_RECIEVING
+		STATE_RECIEVING,
+		STATE_RECIEVED,
+		STATE_CRC8
 	} state = STATE_IDLE;
 
 	if( !fromto )
@@ -476,6 +510,7 @@ int data_analyze_( unsigned char *receive_buf,
 				if(fromto)
 				{
 					state = STATE_FROM;
+					line_full[0] = *data;
 				}
 				else
 				{
@@ -495,10 +530,12 @@ int data_analyze_( unsigned char *receive_buf,
 			break;
 		case STATE_FROM:
 			from = (*data) - 0x40;
+			line_full[1] = *data;
 			state = STATE_TO;
 			break;
 		case STATE_TO:
 			to = (*data) - 0x40;
+			line_full[2] = *data;
 			state = STATE_RECIEVING;
 			len = 0;
 			break;
@@ -512,71 +549,93 @@ int data_analyze_( unsigned char *receive_buf,
 			}
 			if( *data == COMMUNICATION_END_BYTE )
 			{
-				static unsigned char rawdata[16];
-				int data_len;
-				if( to == id )
-				{
-					data_len = decord( line, len - 1, rawdata, 16 );
-					if( data_len < 6 )
-					{
-						line[len - 1] = 0;
-						printf( "Decode failed: \"%s\" (%d)\n\r", (char*)line, data_len );
-					}
-					else
-					{
-						unsigned char imotor = rawdata[1];
-						if(id * 2 <= imotor && imotor <= id * 2 + 1 )
-						{
-							rawdata[1] = rawdata[1] & 1;
-							command_analyze( rawdata, data_len );
-							driver_param.ifmode = fromto;
-						}
-						else if( from == -1 )
-						{
-							com_en[imotor] = 1;
-							// Forward from USB(id: 0) to RS485(id: imotor/2)
-							send_buf_pos485 = 0;
-							send_buf485[0] = COMMUNICATION_START_BYTE;
-							send_buf485[1] = 0 + 0x40;
-							send_buf485[2] = imotor / 2 + 0x40;
-							int i;
-							for(i = 0; i < len; i ++)
-							{
-								send_buf485[3 + i] = line[i];
-							}
-							send_buf_pos485 = len + 3;
-							while( rs485_timeout < 8 );
-							flush485(  );
-							send_buf485[3 + len] = 0;
-							//printf( "Fw\"%s\"\n\r", (char*)send_buf485 );
-						}
-					}
-				}
-				else if( id == 0 && to == -1 && 
-						0 < from && from < COM_MOTORS/2 )
-				{
-					// Forward packet from RS485 to USB
-					data_len = decord( line, len - 1, rawdata, 16 );
-					Integer2 tmp;
-					int i = 0, j;
-					for( j = 0; j < 2; j ++ )
-					{
-						tmp.byte[1] = rawdata[i++];
-						tmp.byte[0] = rawdata[i++];
-						com_cnts[from * 2 + j] = tmp.integer;
-					}
-					for( j = 0; j < 2; j ++ )
-					{
-						tmp.byte[1] = rawdata[i++];
-						tmp.byte[0] = rawdata[i++];
-						com_pwms[from * 2 + j] = tmp.integer;
-					}
-				}
-				len = 0;
-				receive_period = 1;
-				state = STATE_IDLE;
+				if( fromto )
+					state = STATE_CRC8;
+				else
+					state = STATE_RECIEVED;
 			}
 			break;
+		case STATE_RECIEVED:
+			break;
+		case STATE_CRC8:
+			if( verify_crc8_485( line_full, len + 3 ) )
+			{
+				state = STATE_RECIEVED;
+				len --;
+			}
+			else
+			{
+				state = STATE_IDLE;
+				line[len - 2] = 0;
+				printf( "CRC8 mismatch: \"%s\"\n\r", (char*)line );
+			}
+			break;
+		}
+		if(state == STATE_RECIEVED)
+		{
+			static unsigned char rawdata[16];
+			int data_len;
+
+			if( to == id )
+			{
+				data_len = decord( line, len - 1, rawdata, 16 );
+				if( data_len < 6 )
+				{
+					line[len - 1] = 0;
+					printf( "Decode failed: \"%s\" (%d)\n\r", (char*)line, data_len );
+				}
+				else
+				{
+					unsigned char imotor = rawdata[1];
+					if(id * 2 <= imotor && imotor <= id * 2 + 1 )
+					{
+						rawdata[1] = rawdata[1] & 1;
+						command_analyze( rawdata, data_len );
+						driver_param.ifmode = fromto;
+					}
+					else if( from == -1 )
+					{
+						com_en[imotor] = 1;
+						// Forward from USB(id: 0) to RS485(id: imotor/2)
+						send_buf_pos485 = 0;
+						send_buf485[0] = COMMUNICATION_START_BYTE;
+						send_buf485[1] = 0 + 0x40;
+						send_buf485[2] = imotor / 2 + 0x40;
+						int i;
+						for(i = 0; i < len; i ++)
+						{
+							send_buf485[3 + i] = line[i];
+						}
+						send_buf_pos485 = len + 3;
+						add_crc8_485();
+						while( rs485_timeout < 8 );
+						flush485(  );
+					}
+				}
+			}
+			else if( id == 0 && to == -1 && 
+					0 < from && from < COM_MOTORS/2 )
+			{
+				// Forward packet from RS485 to USB
+				data_len = decord( line, len - 1, rawdata, 16 );
+				Integer2 tmp;
+				int i = 0, j;
+				for( j = 0; j < 2; j ++ )
+				{
+					tmp.byte[1] = rawdata[i++];
+					tmp.byte[0] = rawdata[i++];
+					com_cnts[from * 2 + j] = tmp.integer;
+				}
+				for( j = 0; j < 2; j ++ )
+				{
+					tmp.byte[1] = rawdata[i++];
+					tmp.byte[0] = rawdata[i++];
+					com_pwms[from * 2 + j] = tmp.integer;
+				}
+			}
+			len = 0;
+			receive_period = 1;
+			state = STATE_IDLE;
 		}
 		data++;
 		r_buf++;
