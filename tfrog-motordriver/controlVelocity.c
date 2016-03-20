@@ -103,8 +103,11 @@ void ISR_VelocityControl(  )
 				}
 
 				// PI制御分 単位：加速度[cnt/ss]
-				acc_pi  = motor[i].error * 1000 * motor_param[i].Kp; // [cnt/ms] * 1000[ms/s] * Kp[1/s] = [cnt/ss]
-				acc_pi += motor[i].error_integ * motor_param[i].Ki; // [cnt] * Ki[1/ss] = [cnt/ss]
+				acc_pi  = (int64_t)(motor[i].error * motor_param[i].Kp) * 1000;
+				// [cnt/ms] * 1000[ms/s] * Kp[1/s] = [cnt/ss]
+				acc_pi += (int64_t)motor[i].error_integ * motor_param[i].Ki;
+				// [cnt] * Ki[1/ss] = [cnt/ss]
+
 				acc[i] = (acc_pi + Filter1st_Filter( &accelf[i], motor[i].ref.vel_diff )) / 16;
 			}
 			else
