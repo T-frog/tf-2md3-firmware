@@ -825,7 +825,7 @@ int main(  )
 			{
 				com_cnts[0] = ( short )motor[0].enc_buf;
 				com_cnts[1] = ( short )motor[1].enc_buf;
-				while( rs485_timeout < 16 );
+				while( rs485_timeout < saved_param.id485 * 4 + 4 );
 				data_send485( com_cnts, com_pwms, com_en, analog, mask );
 			}
 			for(i = 2; i < COM_MOTORS; i ++)

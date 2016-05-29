@@ -57,6 +57,10 @@ RAMFUNC void add_crc8_485()
 {
 	send_buf485[send_buf_pos485] = crc8( send_buf485, send_buf_pos485 );
 	send_buf_pos485 ++;
+	send_buf485[send_buf_pos485] = 0xAA;
+	send_buf_pos485 ++;
+	send_buf485[send_buf_pos485] = 0xAA;
+	send_buf_pos485 ++;
 }
 
 RAMFUNC char verify_crc8_485(unsigned char *buf, int len)
@@ -608,7 +612,7 @@ int data_analyze_( unsigned char *receive_buf,
 						}
 						send_buf_pos485 = len + 3;
 						add_crc8_485();
-						while( rs485_timeout < 8 );
+						while( rs485_timeout < 4 );
 						flush485(  );
 					}
 				}
