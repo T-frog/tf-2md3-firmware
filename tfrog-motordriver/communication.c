@@ -966,6 +966,8 @@ inline int command_analyze( unsigned char *data, int len )
 		{
 			THEVA.GENERAL.OUTPUT_ENABLE = 0;
 			PIO_Set( &pinPWMEnable );
+			if( motor_param[0].enc_type == 0 ) motor[0].ref.vel = 0;
+			if( motor_param[1].enc_type == 0 ) motor[1].ref.vel = 0;
 		}
 		if( driver_param.servo_level == SERVO_LEVEL_OPENFREE && i.integer != SERVO_LEVEL_OPENFREE )
 		{
