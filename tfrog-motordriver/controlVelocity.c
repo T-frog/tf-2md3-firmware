@@ -72,6 +72,7 @@ void ISR_VelocityControl(  )
 				// 積分
 				if( motor[i].control_init )
 				{
+					motor[i].ref.vel_diff = 0;
 					motor[i].error = 0;
 					motor[i].error_integ = 0;
 					motor[i].control_init = 0;
@@ -82,13 +83,18 @@ void ISR_VelocityControl(  )
 				{
 					motor[i].ref.vel_buf = motor[i].ref.vel;
 					motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - motor[i].ref.vel_buf_prev )
-						* 1000000 / motor[i].ref.vel_interval;
+						* driver_param.control_s * driver_param.control_s
+						/ motor[i].ref.vel_interval;
 					// [cnt/msms] * 1000[ms/s] * 1000[ms/s] = [cnt/ss]
 
 					motor[i].ref.vel_buf_prev = motor[i].ref.vel_buf;
 					motor[i].ref.vel_interval = 0;
 
 					motor[i].ref.vel_changed = 0;
+				}
+				else if(motor[i].ref.vel_interval > 128)
+				{
+					motor[i].ref.vel_diff = 0;
 				}
 
 				motor[i].error = motor[i].ref.vel_buf - motor[i].vel;
@@ -230,9 +236,8 @@ void timer0_vel_calc( )
 {
 	static unsigned short __enc[2];
 	unsigned short enc[2];
-	int _nspd[2];
-	int _spd[2];
 	static char _spd_cnt[2]; 
+	int spd[2];
 	int i;
 	volatile unsigned int dummy;
 
@@ -249,10 +254,8 @@ void timer0_vel_calc( )
 	for( i = 0; i < 2; i++ )
 	{
 		enc[i] = motor[i].enc;
-		_nspd[i] = motor[i].spd_num;
-		_spd[i]  = motor[i].spd_sum;
-		motor[i].spd_num = 0;
-		motor[i].spd_sum = 0;
+		spd[i] = motor[i].spd;
+		motor[i].spd = 0;
 	}
 
 	for( i = 0; i < 2; i++ )
@@ -265,29 +268,46 @@ void timer0_vel_calc( )
 
 		if( _abs( __vel ) > 6 || driver_param.fpga_version == 0 ) 
 		{
-			motor[i].spd = 1000 * 256;
 			vel = __vel * 16;
+			_spd_cnt[i] = 0;
+
+			if( vel < 0 ) motor[i].dir = -1;
+			else if( vel > 0 ) motor[i].dir = 1;
 		}
-		else if( _nspd[i] >= 1 )
+		else if( _abs(spd[i]) > 128 )
 		{
-			motor[i].spd = _spd[i] / _nspd[i];
-			_spd_cnt[i] = 256 / _abs( motor[i].spd );
-			vel = motor[i].spd / 256;
+			_spd_cnt[i] = 256 * 16 / _abs(spd[i]);
+			vel = spd[i] / 256;
+
+			if( vel < 0 ) motor[i].dir = -1;
+			else if( vel > 0 ) motor[i].dir = 1;
 		}
 		else if( _spd_cnt[i] > 0 )
 		{
 			_spd_cnt[i] --;
-			vel = motor[i].spd / 256;
+			vel = motor[i].vel;
 		}
 		else
 		{
 			vel = 0;
+			motor[i].dir = 0;
 		}
-		if( vel < 0 ) motor[i].dir = -1;
-		else if( vel > 0 ) motor[i].dir = 1;
-		else motor[i].dir = 0;
 		
-		motor[i].vel = vel;
+		if(motor_param[i].enc_type == 0)
+		{
+			motor[i].vel = motor[i].ref.vel;
+			motor[i].vel1 = motor[i].ref.vel / 16;
+			motor[i].enc += motor[i].vel1;
+			enc[i] = motor[i].enc;
+
+			if( motor[i].vel < 0 ) motor[i].dir = -1;
+			else if( motor[i].vel > 0 ) motor[i].dir = 1;
+			else motor[i].dir = 0;
+		}
+		else
+		{
+			motor[i].vel = vel;
+		}
 		__enc[i] = enc[i];
 		motor[i].enc_buf = enc[i];
 	}
@@ -328,6 +348,13 @@ void controlVelocity_init(  )
 		motor_param[i].phase_offset = 0;
 	}
 
+	controlVelocity_config();
+}
+void controlVelocity_config(  )
+{
+	Filter1st_CreateLPF( &accelf0, 15 / driver_param.control_cycle );
+	accelf[0] = accelf[1] = accelf0;
+
 	{
 		volatile unsigned int dummy;
 
@@ -341,7 +368,7 @@ void controlVelocity_init(  )
 		// MCK/32 * 1500 -> 1ms
 		AT91C_BASE_TC0->TC_CMR = AT91C_TC_CLKS_TIMER_DIV3_CLOCK | AT91C_TC_WAVE | AT91C_TC_WAVESEL_UP_AUTO;
 		AT91C_BASE_TC0->TC_CCR = AT91C_TC_CLKEN;
-		AT91C_BASE_TC0->TC_RC  = 1500;
+		AT91C_BASE_TC0->TC_RC  = 1500 * driver_param.control_cycle;
 		AT91C_BASE_TC0->TC_IER = AT91C_TC_CPCS;
 
 		AIC_ConfigureIT( AT91C_ID_TC0, 4 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, ( void ( * )( void ) )timer0_vel_calc );

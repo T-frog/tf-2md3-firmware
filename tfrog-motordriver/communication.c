@@ -1224,8 +1224,8 @@ inline int command_analyze( unsigned char *data, int len )
 	case PARAM_w_ref:
 		i.integer *= 16;
 	case PARAM_w_ref_highprec:
+		if( motor[imotor].ref.vel != i.integer ) motor[imotor].ref.vel_changed = 1;
 		motor[imotor].ref.vel = i.integer;
-		motor[imotor].ref.vel_changed = 1;
 		break;
 	case PARAM_servo:
 		if( motor[imotor].servo_level < SERVO_LEVEL_TORQUE && 
@@ -1347,6 +1347,14 @@ inline int command_analyze( unsigned char *data, int len )
 			break;
 		case PARAM_enc_rev:
 			motor_param[imotor].enc_rev = i.integer;
+			break;
+		case PARAM_enc_type:
+			motor_param[imotor].enc_type = i.integer;
+			break;
+		case PARAM_control_cycle:
+			driver_param.control_cycle = i.integer;
+			controlVelocity_config(  );
+			controlPWM_init(  );
 			break;
 		case PARAM_vsrc:
 			// ad = 1024 * ( vsrc * VSRC_DIV ) / 3.3

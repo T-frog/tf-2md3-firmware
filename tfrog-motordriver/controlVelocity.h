@@ -1,7 +1,12 @@
 #ifndef __CONTROL_VELOCITY_H__
 #define __CONTROL_VELOCITY_H__
 
+#include <board.h>
 #include "communication.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct _MotorState
 {
@@ -10,8 +15,7 @@ typedef struct _MotorState
 	int pos;									// count
 	int enc_buf;								// count
 	int spd;
-	int spd_sum;
-	int spd_num;
+	int spd_cnt;
 	unsigned short enc;
 	short dir;
 
@@ -38,11 +42,13 @@ typedef struct _MotorParam
 {
 	unsigned short enc_rev;						// count/rev
 	unsigned short phase_offset;
+	unsigned short enc_rev_h;					// count/rev
+	unsigned short enc_type;					// count/rev
 	unsigned short enc_10hz;
 	unsigned short enc_drev[6];
 	unsigned int enc_mul;
 	int enc0;									// count
-	int enc0tran;									// count
+	int enc0tran;								// count
 	int vel_max;								// count/ms
 	int Kcurrent;
 	int Kvolt;
@@ -72,6 +78,8 @@ typedef struct _DriverParam
 	int PWM_max;								// clock
 	int PWM_min;								// clock
 	int PWM_resolution;							// clock
+	int control_cycle;
+	int control_s;
 	int vsrc_rated;
 	int vsrc_factor;
 	int vsrc;
@@ -111,7 +119,13 @@ extern short com_pwms[COM_MOTORS];
 extern char com_en[COM_MOTORS];
 
 void controlVelocity_init(  );
+void controlVelocity_config(  );
 RAMFUNC void ISR_VelocityControl(  );
 RAMFUNC void timer0_vel_calc(  );
+
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
