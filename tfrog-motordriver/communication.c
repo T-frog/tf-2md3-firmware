@@ -20,7 +20,13 @@
 #include "eeprom.h"
 #include "io.h"
 
+#define CRC 16
+
+#if (CRC == 16)
+#include "crc16.h"
+#elif (CRC == 8)
 #include "crc8.h"
+#endif
 
 #define SEND_BUF_LEN  64
 #define RECV_BUF_LEN  1024
@@ -40,6 +46,20 @@ extern Tfrog_EEPROM_data saved_param;
 extern volatile char rs485_timeout;
 
 
+#if (CRC == 16)
+RAMFUNC unsigned short crc16(unsigned char *buf, int len)
+{
+	unsigned short ret = 0;
+	unsigned char *pos;
+	
+	for( pos = buf; len; len -- )
+	{
+		ret = (ret >> 8) ^ crc16_tb[(ret ^ (*pos)) & 0x00FF];
+		pos ++;
+	}
+	return ret;
+}
+#elif (CRC == 8)
 RAMFUNC unsigned char crc8(unsigned char *buf, int len)
 {
 	unsigned char ret = 0;
@@ -52,21 +72,35 @@ RAMFUNC unsigned char crc8(unsigned char *buf, int len)
 	}
 	return ret;
 }
+#endif
 
-RAMFUNC void add_crc8_485()
+RAMFUNC void add_crc_485()
 {
+#if (CRC == 16)
+	unsigned short crc = crc16( send_buf485, send_buf_pos485 );
+	send_buf485[send_buf_pos485] = crc & 0xFF;
+	send_buf_pos485 ++;
+	send_buf485[send_buf_pos485] = crc >> 8;
+	send_buf_pos485 ++;
+#elif (CRC == 8)
 	send_buf485[send_buf_pos485] = crc8( send_buf485, send_buf_pos485 );
 	send_buf_pos485 ++;
 	send_buf485[send_buf_pos485] = 0xAA;
 	send_buf_pos485 ++;
+#endif
 	send_buf485[send_buf_pos485] = 0xAA;
 	send_buf_pos485 ++;
 }
 
-RAMFUNC char verify_crc8_485(unsigned char *buf, int len)
+RAMFUNC char verify_crc_485(unsigned char *buf, int len)
 {
+#if (CRC == 16)
+	if( crc16(buf, len - 2) == (buf[len - 2] | buf[len - 1] << 8))
+		return 1;
+#elif (CRC == 8)
 	if( crc8(buf, len - 1) == buf[len - 1] )
 		return 1;
+#endif
 	return 0;
 }
 
@@ -366,7 +400,7 @@ inline int data_send485( short *cnt, short *pwm, char *en, short *analog, unsign
 	send_buf485[encode_len + 3] = COMMUNICATION_END_BYTE;
 	send_buf_pos485 = encode_len + 4;
 
-	add_crc8_485();
+	add_crc_485();
 
 	flush485(  );
 	return encode_len;
@@ -485,7 +519,12 @@ int data_analyze_( unsigned char *receive_buf,
 		STATE_TO,
 		STATE_RECIEVING,
 		STATE_RECIEVED,
-		STATE_CRC8
+#if (CRC == 8)
+		STATE_CRC8,
+#elif (CRC == 16)
+		STATE_CRC16_1,
+		STATE_CRC16_2,
+#endif
 	} state = STATE_IDLE;
 
 	if( !fromto )
@@ -554,15 +593,22 @@ int data_analyze_( unsigned char *receive_buf,
 			if( *data == COMMUNICATION_END_BYTE )
 			{
 				if( fromto )
+#if (CRC == 8)
 					state = STATE_CRC8;
+#elif (CRC == 16)
+					state = STATE_CRC16_1;
+#else
+					state = STATE_RECIEVED;
+#endif
 				else
 					state = STATE_RECIEVED;
 			}
 			break;
 		case STATE_RECIEVED:
 			break;
+#if (CRC == 8)
 		case STATE_CRC8:
-			if( verify_crc8_485( line_full, len + 3 ) )
+			if( verify_crc_485( line_full, len + 3 ) )
 			{
 				state = STATE_RECIEVED;
 				len --;
@@ -574,6 +620,24 @@ int data_analyze_( unsigned char *receive_buf,
 				printf( "CRC8 mismatch: \"%s\"\n\r", (char*)line );
 			}
 			break;
+#elif (CRC == 16)
+		case STATE_CRC16_1:
+			state = STATE_CRC16_2;
+			break;
+		case STATE_CRC16_2:
+			if( verify_crc_485( line_full, len + 3 ) )
+			{
+				state = STATE_RECIEVED;
+				len -= 2;
+			}
+			else
+			{
+				state = STATE_IDLE;
+				line[len - 3] = 0;
+				printf( "CRC16 mismatch: \"%s\"\n\r", (char*)line );
+			}
+			break;
+#endif
 		}
 		if(state == STATE_RECIEVED)
 		{
@@ -611,7 +675,7 @@ int data_analyze_( unsigned char *receive_buf,
 							send_buf485[3 + i] = line[i];
 						}
 						send_buf_pos485 = len + 3;
-						add_crc8_485();
+						add_crc_485();
 						while( rs485_timeout < 4 );
 						flush485(  );
 					}
