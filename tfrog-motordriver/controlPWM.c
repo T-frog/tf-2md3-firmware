@@ -147,9 +147,6 @@ void FIQ_PWMPeriod(  )
 		thin = 0;
 	}
 
-	rs485_timeout ++;
-	if( rs485_timeout > 100 ) rs485_timeout = 100;
-
 	for( i = 0; i < 2; i ++ )
 	{
 		hall[i] = *(unsigned short *)&THEVA.MOTOR[i].ROT_DETECTER;

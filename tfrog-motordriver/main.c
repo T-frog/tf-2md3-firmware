@@ -220,16 +220,42 @@ static void UsbDataReceived( unsigned int unused, unsigned char status, unsigned
 
 void us0_received()
 {
-	volatile static unsigned char read485;
+	volatile static unsigned int read485;
 	read485 = AT91C_BASE_US0->US_RHR;
 
 	rs485_timeout = 0;
-	if( AT91C_BASE_US0->US_CSR & (AT91C_US_OVRE | AT91C_US_FRAME | AT91C_US_PARE) )
-	{
-		unsigned char *pos;
-		pos = (void*)AT91C_BASE_US0->US_RPR;
-		*pos = 0;
-	}
+}
+
+void timer1_tic()
+{
+	volatile unsigned int dummy;
+	dummy = AT91C_BASE_TC1->TC_SR;
+	dummy = dummy;
+
+	rs485_timeout ++;
+	if( rs485_timeout > 100 ) rs485_timeout = 100;
+}
+void tic_init()
+{
+	volatile unsigned int dummy;
+
+	AT91C_BASE_PMC->PMC_PCER = 1 << AT91C_ID_TC1;
+
+	AT91C_BASE_TC1->TC_CCR = AT91C_TC_CLKDIS;
+	AT91C_BASE_TC1->TC_IDR = 0xFFFFFFFF;
+	dummy = AT91C_BASE_TC1->TC_SR;
+	dummy = dummy;
+
+	// MCK/32 * 1500 -> 1ms
+	AT91C_BASE_TC1->TC_CMR = AT91C_TC_CLKS_TIMER_DIV3_CLOCK | AT91C_TC_WAVE | AT91C_TC_WAVESEL_UP_AUTO;
+	AT91C_BASE_TC1->TC_CCR = AT91C_TC_CLKEN;
+	AT91C_BASE_TC1->TC_RC  = 1500 / 20;
+	AT91C_BASE_TC1->TC_IER = AT91C_TC_CPCS;
+
+	AIC_ConfigureIT( AT91C_ID_TC1, 2 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, ( void ( * )( void ) )timer1_tic );
+	AIC_EnableIT( AT91C_ID_TC1 );
+
+	AT91C_BASE_TC1->TC_CCR = AT91C_TC_SWTRG;
 }
 
 // ------------------------------------------------------------------------------
@@ -515,6 +541,7 @@ int main(  )
 	AIC_ConfigureIT( AT91C_ID_US0, 5 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, ( void ( * )( void ) )us0_received );
 	AIC_EnableIT( AT91C_ID_US0 );
 
+	tic_init();
 
 	short com_cnts_prev[COM_MOTORS];
 	{
@@ -670,7 +697,6 @@ int main(  )
 			{
 				TRACE_WARNING( "RS485DataReceived: buffer overrun\n\r" );
 			}
-			if( driver_param.ifmode == 1 ) LED_off(2);
 
 			if(rs485buf == &rs485buf_[0][0])
 			{
@@ -685,6 +711,7 @@ int main(  )
 			USART_ReadBuffer( AT91C_BASE_US0, rs485buf_next, RS485BUF_SIZE );
 			r_rs485buf_pos = 0;
 		}
+		else
 		{
 			short len;
 			len = (RS485BUF_SIZE - AT91C_BASE_US0->US_RCR) - r_rs485buf_pos;
@@ -698,7 +725,6 @@ int main(  )
 					TRACE_WARNING( "RS485DataReceived: buffer overrun\n\r" );
 				}
 				r_rs485buf_pos += len;
-				if( driver_param.ifmode == 1 ) LED_off(2);
 			}
 		}
 
