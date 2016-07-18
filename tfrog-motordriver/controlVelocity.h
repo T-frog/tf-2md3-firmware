@@ -105,6 +105,12 @@ typedef struct _DriverParam
 		ERROR_HALL2			= 0x0004,
 		ERROR_WATCHDOG		= 0x0008
 	} error_state;
+	enum
+	{
+		BOARD_R4,
+		BOARD_R6A,
+		BOARD_R6B
+	} board_version;
 } DriverParam;
 
 #define ERROR_NUM 4

@@ -97,6 +97,9 @@ static const Pin pins[] = {
 	PIN_PCK_PCK1,
 	PINS_USERIO,
 	PINS_RS485,
+#if defined(tfrog_rev5)
+	PINS_VERSION,
+#endif
 	PIN_LED_0, PIN_LED_1, PIN_LED_2
 };
 
@@ -526,6 +529,22 @@ int main(  )
 		com_en[0] = com_en[1] = 1;
 	}
 
+#if defined(tfrog_rev5)
+	if( !(AT91C_BASE_PIOA->PIO_PDSR & (1 << 16)) )
+	{
+		driver_param.board_version = BOARD_R6B;
+		printf( "Board version: R6B\n\r" );
+	}
+	else
+	{
+		driver_param.board_version = BOARD_R6A;
+		printf( "Board version: R6, R6A\n\r" );
+	}
+#else
+		driver_param.board_version = BOARD_R4;
+		printf( "Board version: R4\n\r" );
+#endif
+
 	err_cnt = 0;
 	driver_param.error.low_voltage = 0;
 	driver_param.error.hall[0] = 0;
@@ -803,6 +822,18 @@ int main(  )
 			}
 			analog[8] = ( 15 << 12 ) | get_io_data();
 			analog[9] = ( 14 << 12 ) | THEVA.PORT[0];
+		
+			switch( driver_param.board_version )
+			{
+			case BOARD_R6A:
+			case BOARD_R4:
+				break;
+			case BOARD_R6B:
+#if defined(tfrog_rev5)
+				analog[7] = (analog[7] & 0xFFF) * VSRC_CONV_B | (7 << 12);
+#endif
+				break;
+			}
 
 			com_pwms[0] = motor[0].ref.rate_buf;
 			com_pwms[1] = motor[1].ref.rate_buf;
@@ -836,7 +867,7 @@ int main(  )
 			enc_buf2[1] = motor[1].enc_buf;
 
 			driver_param.cnt_updated = 0;
-			driver_param.vsrc = Filter1st_Filter( &voltf, (int)( analog[ 7 ] & 0x03FF ) );
+			driver_param.vsrc = Filter1st_Filter( &voltf, (int)( analog[ 7 ] & 0x0FFF ) );
 			ADC_Start();
 
 			if( driver_param.vsrc < driver_param.vsrc_rated / 4 )
