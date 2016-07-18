@@ -74,22 +74,23 @@ RAMFUNC unsigned char crc8(unsigned char *buf, int len)
 }
 #endif
 
-RAMFUNC void add_crc_485()
+RAMFUNC int add_crc_485(unsigned char *buf, int len)
 {
 #if (CRC == 16)
-	unsigned short crc = crc16( send_buf485, send_buf_pos485 );
-	send_buf485[send_buf_pos485] = crc & 0xFF;
-	send_buf_pos485 ++;
-	send_buf485[send_buf_pos485] = crc >> 8;
-	send_buf_pos485 ++;
+	unsigned short crc = crc16( buf, len );
+	buf[len] = crc & 0xFF;
+	len ++;
+	buf[len] = crc >> 8;
+	len ++;
 #elif (CRC == 8)
-	send_buf485[send_buf_pos485] = crc8( send_buf485, send_buf_pos485 );
-	send_buf_pos485 ++;
-	send_buf485[send_buf_pos485] = 0xAA;
-	send_buf_pos485 ++;
+	buf[len] = crc8( buf, len );
+	len ++;
+	buf[len] = 0xAA;
+	len ++;
 #endif
-	send_buf485[send_buf_pos485] = 0xAA;
-	send_buf_pos485 ++;
+	buf[len] = 0xAA;
+	len ++;
+	return len;
 }
 
 RAMFUNC char verify_crc_485(unsigned char *buf, int len)
@@ -400,7 +401,7 @@ inline int data_send485( short *cnt, short *pwm, char *en, short *analog, unsign
 	send_buf485[encode_len + 3] = COMMUNICATION_END_BYTE;
 	send_buf_pos485 = encode_len + 4;
 
-	add_crc_485();
+	send_buf_pos485 = add_crc_485( send_buf485, send_buf_pos485 );
 
 	flush485(  );
 	return encode_len;
@@ -665,19 +666,56 @@ int data_analyze_( unsigned char *receive_buf,
 					{
 						com_en[imotor] = 1;
 						// Forward from USB(id: 0) to RS485(id: imotor/2)
-						send_buf_pos485 = 0;
-						send_buf485[0] = COMMUNICATION_START_BYTE;
-						send_buf485[1] = 0 + 0x40;
-						send_buf485[2] = imotor / 2 + 0x40;
+						unsigned char *buf;
+						int buf_len;
+						buf = &send_buf485[send_buf_pos485];
+						buf_len = 0;
+						buf[0] = COMMUNICATION_START_BYTE;
+						buf[1] = 0 + 0x40;
+						buf[2] = imotor / 2 + 0x40;
 						int i;
 						for(i = 0; i < len; i ++)
 						{
-							send_buf485[3 + i] = line[i];
+							buf[3 + i] = line[i];
 						}
-						send_buf_pos485 = len + 3;
-						add_crc_485();
-						while( rs485_timeout < 4 );
-						flush485(  );
+						buf_len = len + 3;
+						buf_len = add_crc_485( buf, buf_len );
+						send_buf_pos485 += buf_len;
+
+						unsigned char *p;
+						p = data;
+						char st;
+						st = 0;
+						for( i = r_buf;; i ++ )
+						{
+							if( *p == COMMUNICATION_START_BYTE && st == 0 )
+							{
+								st = 1;
+							}
+							else if( *p == COMMUNICATION_END_BYTE && st == 1 )
+							{
+								st = 2;
+								break;
+							}
+							p ++;
+							if( i >= RECV_BUF_LEN )
+							{
+								i = 0;
+								p = receive_buf;
+							}
+							if( i == *w_receive_buf )
+								break;
+						}
+						if( (imotor & 1) == 0 ) st = 2;
+						if( st != 2 || send_buf_pos485 > 32 )
+						{
+							while( rs485_timeout < 4 );
+							flush485(  );
+						}
+						else
+						{
+							send_buf_pos485 --;
+						}
 					}
 				}
 			}
