@@ -554,7 +554,13 @@ int data_analyze_( unsigned char *receive_buf,
 			break;
 		line[len] = *data;
 		len++;
-		if(len > 63) len = 63;
+		if(len > 63)
+		{
+			len = 0;
+			receive_period = 1;
+			state = STATE_IDLE;
+			printf("receive buffer overrun\n\r");
+		}
 
 		switch ( state )
 		{
