@@ -278,10 +278,39 @@ int main(  )
 	unsigned char errnum = 0;
 	unsigned char blink = 0;
 
+	tic_init();
+
 	// Configure IO
 	PIO_Configure( pins, PIO_LISTSIZE( pins ) );
 
 	LED_on( 0 );
+
+	TRACE_CONFIGURE( DBGU_STANDARD, 230400, BOARD_MCK );
+	printf( "-- Locomotion Board %s --\n\r", SOFTPACK_VERSION );
+	printf( "-- %s\n\r", BOARD_NAME );
+	printf( "-- Compiled: %s %s --\n\r", __DATE__, __TIME__ );
+
+	switch( AT91C_BASE_RSTC->RSTC_RSR & AT91C_RSTC_RSTTYP )
+	{
+	case AT91C_RSTC_RSTTYP_POWERUP:
+		printf( "Power-up Reset. VDDCORE rising.\n\r" );
+		break;
+	case AT91C_RSTC_RSTTYP_WAKEUP:
+		printf( "WakeUp Reset. VDDCORE rising.\n\r" );
+		break;
+	case AT91C_RSTC_RSTTYP_WATCHDOG:
+		printf( "Watchdog Reset. Watchdog overflow occured.\n\r" );
+		break;
+	case AT91C_RSTC_RSTTYP_SOFTWARE:
+		printf( "Software Reset. Processor reset required by the software.\n\r" );
+		break;
+	case AT91C_RSTC_RSTTYP_USER:
+		printf( "User Reset. NRST pin detected low.\n\r" );
+		break;
+	case AT91C_RSTC_RSTTYP_BROWNOUT:
+		printf( "Brownout Reset occured.\n\r" );
+		break;
+	}
 
 	switch( AT91C_BASE_RSTC->RSTC_RSR & AT91C_RSTC_RSTTYP )
 	{
@@ -318,33 +347,6 @@ int main(  )
 
 	// Enable user reset
 	AT91C_BASE_RSTC->RSTC_RMR = 0xA5000400 | AT91C_RSTC_URSTEN;
-
-	TRACE_CONFIGURE( DBGU_STANDARD, 230400, BOARD_MCK );
-	printf( "-- Locomotion Board %s --\n\r", SOFTPACK_VERSION );
-	printf( "-- %s\n\r", BOARD_NAME );
-	printf( "-- Compiled: %s %s --\n\r", __DATE__, __TIME__ );
-
-	switch( AT91C_BASE_RSTC->RSTC_RSR & AT91C_RSTC_RSTTYP )
-	{
-	case AT91C_RSTC_RSTTYP_POWERUP:
-		printf( "Power-up Reset. VDDCORE rising.\n\r" );
-		break;
-	case AT91C_RSTC_RSTTYP_WAKEUP:
-		printf( "WakeUp Reset. VDDCORE rising.\n\r" );
-		break;
-	case AT91C_RSTC_RSTTYP_WATCHDOG:
-		printf( "Watchdog Reset. Watchdog overflow occured.\n\r" );
-		break;
-	case AT91C_RSTC_RSTTYP_SOFTWARE:
-		printf( "Software Reset. Processor reset required by the software.\n\r" );
-		break;
-	case AT91C_RSTC_RSTTYP_USER:
-		printf( "User Reset. NRST pin detected low.\n\r" );
-		break;
-	case AT91C_RSTC_RSTTYP_BROWNOUT:
-		printf( "Brownout Reset occured.\n\r" );
-		break;
-	}
 
 	// If they are present, configure Vbus & Wake-up pins
 	PIO_InitializeInterrupts( 0 );
@@ -508,6 +510,8 @@ int main(  )
 				motor_param, sizeof(MotorParam) * 2 );
 		motor[0].servo_level = SERVO_LEVEL_STOP;
 		motor[1].servo_level = SERVO_LEVEL_STOP;
+		controlVelocity_config(  );
+		controlPWM_init(  );
 	}
 
 	// Enable watchdog
@@ -540,8 +544,6 @@ int main(  )
 	AT91C_BASE_US0->US_IER = AT91C_US_RXRDY;
 	AIC_ConfigureIT( AT91C_ID_US0, 5 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, ( void ( * )( void ) )us0_received );
 	AIC_EnableIT( AT91C_ID_US0 );
-
-	tic_init();
 
 	short com_cnts_prev[COM_MOTORS];
 	{
@@ -579,12 +581,14 @@ int main(  )
 	driver_param.error_state = 0;
 	driver_param.ifmode = 0;
 	driver_param.watchdog = 0;
+	motor[0].servo_level = SERVO_LEVEL_STOP;
+	motor[1].servo_level = SERVO_LEVEL_STOP;
 	// Driver loop
 	while( 1 )
 	{
 		AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 
-		if( err_chk ++ % 20 )
+		if( err_chk ++ % 20 == 0 )
 		{
 			if( (volatile int)THEVA.GENERAL.PWM.HALF_PERIOD != saved_param.PWM_resolution ||
 				 (volatile int)THEVA.GENERAL.PWM.DEADTIME != saved_param.PWM_deadtime )
@@ -619,13 +623,8 @@ int main(  )
 				EEPROM_Write( 0, &saved_param, sizeof(saved_param) );
 				LED_off( 0 );
 			}
-			if( saved_param.stored_data == TFROG_EEPROM_DATA_BIN ||
-					saved_param.stored_data == TFROG_EEPROM_DATA_BIN_LOCKED )
-			{
-				motor[0].servo_level = SERVO_LEVEL_STOP;
-				motor[1].servo_level = SERVO_LEVEL_STOP;
-			}
-			else
+			if( !(saved_param.stored_data == TFROG_EEPROM_DATA_BIN ||
+					saved_param.stored_data == TFROG_EEPROM_DATA_BIN_LOCKED) )
 			{
 				controlVelocity_init( );
 				controlPWM_init(  );
@@ -648,6 +647,10 @@ int main(  )
 				printf( "\n\r" );
 				com_en[0] = com_en[1] = 1;
 			}
+			motor[0].servo_level = SERVO_LEVEL_STOP;
+			motor[1].servo_level = SERVO_LEVEL_STOP;
+			driver_param.watchdog = 0;
+			driver_param.ifmode = 0;
 		}
 		else
 		{
