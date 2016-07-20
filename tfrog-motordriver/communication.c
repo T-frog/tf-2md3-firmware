@@ -33,7 +33,8 @@
 
 unsigned char send_buf[SEND_BUF_LEN];
 volatile unsigned long send_buf_pos = 0;
-unsigned char send_buf485[SEND_BUF_LEN];
+unsigned char send_buf485_[2][SEND_BUF_LEN];
+unsigned char *send_buf485 = (unsigned char *)&send_buf485_[0][0];
 volatile unsigned long send_buf_pos485 = 0;
 unsigned char receive_buf[RECV_BUF_LEN];
 volatile int w_receive_buf = 0;
@@ -202,18 +203,6 @@ int send( char *buf )
 	}
 	return i;
 }
-int send485( char *buf )
-{
-	int i = 0;
-	for( ; *buf; buf++ )
-	{
-		send_buf485[send_buf_pos485] = ( unsigned char )( *buf );
-		send_buf_pos485++;
-		if( send_buf_pos485 >= SEND_BUF_LEN-1 || *buf == '\n' ) flush485();
-		i ++;
-	}
-	return i;
-}
 
 int nsend( char *buf, int len )
 {
@@ -223,17 +212,6 @@ int nsend( char *buf, int len )
 		send_buf[send_buf_pos] = ( unsigned char )( *buf );
 		send_buf_pos++;
 		if( send_buf_pos >= SEND_BUF_LEN-1 || *buf == '\n' ) flush();
-	}
-	return i;
-}
-int nsend485( char *buf, int len )
-{
-	int i;
-	for( i = 0; i < len && *buf; i ++, buf ++ )
-	{
-		send_buf485[send_buf_pos485] = ( unsigned char )( *buf );
-		send_buf_pos485++;
-		if( send_buf_pos485 >= SEND_BUF_LEN-1 || *buf == '\n' ) flush485();
 	}
 	return i;
 }
@@ -278,8 +256,26 @@ void flush485( void )
 	if( send_buf_pos485 == 0 )
 		return;
 
-	USART_WriteBuffer( AT91C_BASE_US0, &send_buf485, send_buf_pos485 );
+	char cnt;
+	for( cnt = 0; cnt < 16; cnt ++ )
+	{
+		if( USART_WriteBuffer( AT91C_BASE_US0, send_buf485, send_buf_pos485 ) ) break;
+	}
+	if( cnt == 16 )
+	{
+		printf("RS485 send timeout\n\r");
+		send_buf_pos485 = 0;
+		rs485_timeout = 0;
+		return;
+	}
+
+	if( send_buf485 == (unsigned char *)&send_buf485_[0][0] )
+		send_buf485 = (unsigned char *)&send_buf485_[1][0];
+	else
+		send_buf485 = (unsigned char *)&send_buf485_[0][0];
+
 	send_buf_pos485 = 0;
+	rs485_timeout = 0;
 }
 
 /**
@@ -369,8 +365,8 @@ inline int decord( unsigned char *src, int len, unsigned char *dst, int buf_max 
 
 inline int data_send( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask )
 {
-	static unsigned char data[34];
-	static int len, encode_len;
+	unsigned char data[34];
+	int len, encode_len;
 	len = data_pack( cnt, pwm, en, analog, analog_mask, data );
 
 	send_buf_pos = 0;
@@ -386,23 +382,38 @@ inline int data_send( short *cnt, short *pwm, char *en, short *analog, unsigned 
 }
 inline int data_send485( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask )
 {
-	static unsigned char data[34];
-	static int len, encode_len;
+	unsigned char data[34];
+	int len, encode_len;
 	len = data_pack( cnt, pwm, en, analog, analog_mask, data );
 
-	send_buf_pos485 = 0;
-	send_buf485[0] = COMMUNICATION_START_BYTE;
-	send_buf485[1] = saved_param.id485 + 0x40;
-	if( driver_param.ifmode == 0 ) send_buf485[1] = 0x40;
-	send_buf485[2] = 0x40 - 1;
-	encode_len = encode( ( unsigned char * )data, len, send_buf485 + 3, SEND_BUF_LEN - 4 );
+	send_buf485[0] = 0xAA;
+	send_buf_pos485 = 1;
+
+	unsigned char *buf;
+	int buf_len;
+	buf = &send_buf485[send_buf_pos485];
+	buf_len = 0;
+
+	buf[0] = COMMUNICATION_START_BYTE;
+	buf[1] = saved_param.id485 + 0x40;
+	if( driver_param.ifmode == 0 ) buf[1] = 0x40;
+	buf[2] = 0x40 - 1;
+	buf_len = 3;
+
+	encode_len = encode( ( unsigned char * )data, len, buf + buf_len, 
+			SEND_BUF_LEN - send_buf_pos485 - buf_len - 3 );
 	if( encode_len < 0 )
 		return encode_len;
-	send_buf485[encode_len + 3] = COMMUNICATION_END_BYTE;
-	send_buf_pos485 = encode_len + 4;
+	
+	buf_len += encode_len;
+	buf[buf_len] = COMMUNICATION_END_BYTE;
+	buf_len ++;
 
-	send_buf_pos485 = add_crc_485( send_buf485, send_buf_pos485 );
+	buf_len = add_crc_485( buf, buf_len );
+	send_buf_pos485 += buf_len;
 
+	//printf("send485\n\r");
+	while( rs485_timeout < saved_param.id485 * 4 + 4 );
 	flush485(  );
 	return encode_len;
 }
@@ -609,7 +620,12 @@ int data_analyze_( unsigned char *receive_buf,
 			break;
 #if (CRC == 8)
 		case STATE_CRC8:
-			if( verify_crc_485( line_full, len + 3 ) )
+			if( !(to == id || (id == 0 && to == -1)) )
+			{
+				state = STATE_IDLE;
+				receive_period = 1;
+			}
+			else if( verify_crc_485( line_full, len + 3 ) )
 			{
 				state = STATE_RECIEVED;
 				len --;
@@ -617,8 +633,9 @@ int data_analyze_( unsigned char *receive_buf,
 			else
 			{
 				state = STATE_IDLE;
+				receive_period = 1;
 				line[len - 2] = 0;
-				printf( "CRC8 mismatch: \"%s\"\n\r", (char*)line );
+				printf( "CRC8 X\"%s\"\n\r", (char*)line );
 			}
 			break;
 #elif (CRC == 16)
@@ -626,7 +643,13 @@ int data_analyze_( unsigned char *receive_buf,
 			state = STATE_CRC16_2;
 			break;
 		case STATE_CRC16_2:
-			if( verify_crc_485( line_full, len + 3 ) )
+			if( !(to == id || (id == 0 && to == -1)) )
+			{
+				state = STATE_IDLE;
+				receive_period = 1;
+				//printf( "not for me\n\r" );
+			}
+			else if( verify_crc_485( line_full, len + 3 ) )
 			{
 				state = STATE_RECIEVED;
 				len -= 2;
@@ -634,8 +657,9 @@ int data_analyze_( unsigned char *receive_buf,
 			else
 			{
 				state = STATE_IDLE;
+				receive_period = 1;
 				line[len - 3] = 0;
-				printf( "CRC16 mismatch: \"%s\"\n\r", (char*)line );
+				printf( "CRC16 X\"%s\"\n\r", (char*)line );
 			}
 			break;
 #endif
@@ -661,11 +685,14 @@ int data_analyze_( unsigned char *receive_buf,
 						rawdata[1] = rawdata[1] & 1;
 						command_analyze( rawdata, data_len );
 						driver_param.ifmode = fromto;
+						//printf("for me\n\r");
 					}
 					else if( from == -1 )
 					{
 						if( rawdata[0] == PARAM_servo ) com_en[imotor] = 1;
 						// Forward from USB(id: 0) to RS485(id: imotor/2)
+						send_buf485[send_buf_pos485] = 0xAA;
+						send_buf_pos485 ++;
 						unsigned char *buf;
 						int buf_len;
 						buf = &send_buf485[send_buf_pos485];
@@ -682,39 +709,15 @@ int data_analyze_( unsigned char *receive_buf,
 						buf_len = add_crc_485( buf, buf_len );
 						send_buf_pos485 += buf_len;
 
-						unsigned char *p;
-						p = data;
-						char st;
-						st = 0;
-						for( i = r_buf;; i ++ )
-						{
-							if( *p == COMMUNICATION_START_BYTE && st == 0 )
-							{
-								st = 1;
-							}
-							else if( *p == COMMUNICATION_END_BYTE && st == 1 )
-							{
-								st = 2;
-								break;
-							}
-							p ++;
-							if( i >= RECV_BUF_LEN )
-							{
-								i = 0;
-								p = receive_buf;
-							}
-							if( i == *w_receive_buf )
-								break;
-						}
-						if( (imotor & 1) == 0 ) st = 2;
-						if( st != 2 || send_buf_pos485 > 32 )
+						if( (rawdata[1] & 1) == 1 || send_buf_pos485 > 16 )
 						{
 							while( rs485_timeout < 4 );
 							flush485(  );
+							//printf("proxy sent\n\r");
 						}
 						else
 						{
-							send_buf_pos485 --;
+							//printf("proxy\n\r");
 						}
 					}
 				}
@@ -738,6 +741,7 @@ int data_analyze_( unsigned char *receive_buf,
 					tmp.byte[0] = rawdata[i++];
 					com_pwms[from * 2 + j] = tmp.integer;
 				}
+				//printf("enc\n\r");
 			}
 			len = 0;
 			receive_period = 1;
