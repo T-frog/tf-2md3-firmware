@@ -664,7 +664,7 @@ int data_analyze_( unsigned char *receive_buf,
 					}
 					else if( from == -1 )
 					{
-						com_en[imotor] = 1;
+						if( rawdata[0] == PARAM_servo ) com_en[imotor] = 1;
 						// Forward from USB(id: 0) to RS485(id: imotor/2)
 						unsigned char *buf;
 						int buf_len;
