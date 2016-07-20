@@ -632,7 +632,6 @@ int main(  )
 			}
 			driver_param.error.hall[0] = 0;
 			driver_param.error.hall[1] = 0;
-			driver_param.error_state = 0;
 			driver_param.error_state |= ERROR_WATCHDOG;
 			TRACE_ERROR( "Watchdog - parameter init\n\r" );
 			{
@@ -641,7 +640,9 @@ int main(  )
 				for(i = 0; i < COM_MOTORS; i ++)
 				{
 					if( com_en[i] ) printf( "%d ", i );
-					com_cnts[i] = 0;
+					if( !(saved_param.stored_data == TFROG_EEPROM_DATA_BIN ||
+								saved_param.stored_data == TFROG_EEPROM_DATA_BIN_LOCKED) )
+						com_cnts[i] = 0;
 					com_pwms[i] = 0;
 					com_en[i] = 0;
 				}
@@ -651,7 +652,11 @@ int main(  )
 			motor[0].servo_level = SERVO_LEVEL_STOP;
 			motor[1].servo_level = SERVO_LEVEL_STOP;
 			driver_param.watchdog = 0;
-			driver_param.ifmode = 0;
+			if( !(saved_param.stored_data == TFROG_EEPROM_DATA_BIN ||
+						saved_param.stored_data == TFROG_EEPROM_DATA_BIN_LOCKED) )
+			{
+				driver_param.ifmode = 0;
+			}
 		}
 		else
 		{
