@@ -55,6 +55,8 @@
 
 int velcontrol = 0;
 volatile unsigned char rs485_timeout = 100;
+volatile unsigned short tic = 0;
+
 Tfrog_EEPROM_data saved_param = TFROG_EEPROM_DEFAULT;
 
 extern unsigned char languageIdStringDescriptor[];
@@ -217,24 +219,22 @@ static void UsbDataReceived( unsigned int unused, unsigned char status, unsigned
 	}
 }
 
-
-void us0_received()
-{
-	rs485_timeout = 0;
-}
-
 void timer1_tic()
 {
 	volatile unsigned int dummy;
 	dummy = AT91C_BASE_TC1->TC_SR;
 	dummy = dummy;
 
+	tic ++;
 	rs485_timeout ++;
 	if( rs485_timeout == 255 ) rs485_timeout = 254;
-	
-	volatile static unsigned int read485;
-	read485 = AT91C_BASE_US0->US_RHR;
-	read485 = read485;
+
+	if( AT91C_BASE_US0->US_CSR & AT91C_US_RXRDY )
+	{
+		rs485_timeout = 0;
+		dummy = AT91C_BASE_US0->US_RHR;
+		dummy = dummy;
+	}
 }
 void tic_init()
 {
@@ -253,7 +253,7 @@ void tic_init()
 	AT91C_BASE_TC1->TC_RC  = 1500 / 23;
 	AT91C_BASE_TC1->TC_IER = AT91C_TC_CPCS;
 
-	AIC_ConfigureIT( AT91C_ID_TC1, 2 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, ( void ( * )( void ) )timer1_tic );
+	AIC_ConfigureIT( AT91C_ID_TC1, 7 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, ( void ( * )( void ) )timer1_tic );
 	AIC_EnableIT( AT91C_ID_TC1 );
 
 	AT91C_BASE_TC1->TC_CCR = AT91C_TC_SWTRG;
@@ -542,9 +542,6 @@ int main(  )
 	USART_ReadBuffer( AT91C_BASE_US0, rs485buf_next, RS485BUF_SIZE );
 
 	AT91C_BASE_US0->US_IDR = 0xFFFFFFFF;
-	AT91C_BASE_US0->US_IER = AT91C_US_RXRDY;
-	AIC_ConfigureIT( AT91C_ID_US0, 6 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, ( void ( * )( void ) )us0_received );
-	AIC_EnableIT( AT91C_ID_US0 );
 
 	short com_cnts_prev[COM_MOTORS];
 	{

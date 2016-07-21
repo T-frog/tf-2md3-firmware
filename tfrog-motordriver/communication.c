@@ -45,6 +45,7 @@ volatile int r_receive_buf485 = 0;
 extern const Pin pinPWMEnable;
 extern Tfrog_EEPROM_data saved_param;
 extern volatile char rs485_timeout;
+extern volatile short tic;
 
 
 #if (CRC == 16)
@@ -363,6 +364,17 @@ inline int decord( unsigned char *src, int len, unsigned char *dst, int buf_max 
 	return w_pos;
 }
 
+RAMFUNC short rs485_timeout_wait( unsigned char t, unsigned short timeout )
+{
+	tic = 0;
+	while( rs485_timeout < t )
+	{
+		if( tic > timeout )
+			return 0;
+	}
+	return 1;
+}
+
 inline int data_send( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask )
 {
 	unsigned char data[34];
@@ -413,9 +425,18 @@ inline int data_send485( short *cnt, short *pwm, char *en, short *analog, unsign
 	send_buf_pos485 += buf_len;
 
 	//printf("send485\n\r");
-	while( rs485_timeout < saved_param.id485 * 4 + 4 );
-	flush485(  );
-	return encode_len;
+	if( rs485_timeout_wait( saved_param.id485 * 3 + 4, 32 ) )
+	{
+		flush485(  );
+		return encode_len;
+	}
+	else
+	{
+		send_buf_pos485 = 0;
+		rs485_timeout = 0;
+		printf("rs485 skipped\n\r");
+		return -1;
+	}
 }
 
 /* オドメトリデータの送信 */
@@ -717,8 +738,16 @@ int data_analyze_( unsigned char *receive_buf,
 
 						if( (rawdata[1] & 1) == 1 || send_buf_pos485 > 16 )
 						{
-							while( rs485_timeout < 4 );
-							flush485(  );
+							if( rs485_timeout_wait( 4, 32 ) )
+							{
+								flush485(  );
+							}
+							else
+							{
+								send_buf_pos485 = 0;
+								rs485_timeout = 0;
+								printf("rs485 skipped\n\r");
+							}
 							//printf("proxy sent\n\r");
 						}
 						else
