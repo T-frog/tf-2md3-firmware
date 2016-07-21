@@ -423,7 +423,7 @@ inline int data_send485( short *cnt, short *pwm, char *en, short *analog, unsign
 	send_buf_pos485 += buf_len;
 
 	//printf("send485\n\r");
-	if( rs485_timeout_wait( saved_param.id485 * 3 + 4, 32 ) )
+	if( rs485_timeout_wait( saved_param.id485 * 4 + 4, 32 ) )
 	{
 		flush485(  );
 		return encode_len;
