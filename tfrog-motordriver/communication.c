@@ -257,24 +257,22 @@ void flush485( void )
 	if( send_buf_pos485 == 0 )
 		return;
 
-	char cnt;
-	for( cnt = 0; cnt < 16; cnt ++ )
+	tic = 0;
+	while( tic < 10 )
 	{
-		if( USART_WriteBuffer( AT91C_BASE_US0, send_buf485, send_buf_pos485 ) ) break;
-	}
-	if( cnt == 16 )
-	{
-		printf("RS485 send timeout\n\r");
-		send_buf_pos485 = 0;
-		rs485_timeout = 0;
-		return;
-	}
+		if( USART_WriteBuffer( AT91C_BASE_US0, send_buf485, send_buf_pos485 ) )
+		{
+			if( send_buf485 == (unsigned char *)&send_buf485_[0][0] )
+				send_buf485 = (unsigned char *)&send_buf485_[1][0];
+			else
+				send_buf485 = (unsigned char *)&send_buf485_[0][0];
 
-	if( send_buf485 == (unsigned char *)&send_buf485_[0][0] )
-		send_buf485 = (unsigned char *)&send_buf485_[1][0];
-	else
-		send_buf485 = (unsigned char *)&send_buf485_[0][0];
-
+			send_buf_pos485 = 0;
+			rs485_timeout = 0;
+			return;
+		}
+	}
+	printf("RS485 send timeout\n\r");
 	send_buf_pos485 = 0;
 	rs485_timeout = 0;
 }
