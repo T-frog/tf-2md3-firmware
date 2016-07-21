@@ -200,16 +200,21 @@ static void UsbDataReceived( unsigned int unused, unsigned char status, unsigned
 	{
 		static int remain = 0;
 
-		LED_on( 2 );
-		remain = data_fetch( usbBuffer, received + remain );
-
-		CDCDSerialDriver_Read( usbBuffer + remain, DATABUFFERSIZE - remain, ( TransferCallback ) UsbDataReceived, 0 );
-
 		// Check if bytes have been discarded
-		if( ( received == DATABUFFERSIZE ) && ( remaining > 0 ) )
+		if( ( received == DATABUFFERSIZE - remain ) && ( remaining > 0 ) )
 		{
 
 			TRACE_WARNING( "UsbDataReceived: %u bytes discarded\n\r", remaining );
+		}
+
+		LED_on( 2 );
+		remain = data_fetch( usbBuffer, received + remain );
+		CDCDSerialDriver_Read( usbBuffer + remain, DATABUFFERSIZE - remain, ( TransferCallback ) UsbDataReceived, 0 );
+
+		if( remain > 0 )
+		{
+			data_analyze(  );
+			printf("Flushing USB local recv_buf\n\r");
 		}
 	}
 	else

@@ -502,20 +502,15 @@ int data_fetch_( unsigned char *receive_buf,
 {
 	unsigned char *data_begin;
 
+	int end = *r_receive_buf - 1;
+	if(end < 0) end = RECV_BUF_LEN - 1;
+
 	data_begin = data;
 	for( ; len; len-- )
 	{
-		int w_rec = *w_receive_buf;
-
-		receive_buf[*w_receive_buf] = *data;
-		(*w_receive_buf)++;
-		data++;
-		if( *w_receive_buf >= RECV_BUF_LEN )
-			*w_receive_buf = 0;
-		if( *w_receive_buf == *r_receive_buf )
+		if( *w_receive_buf == end )
 		{
 			int len_remain = len;
-			*w_receive_buf = w_rec;
 			for( ; len; len-- )
 			{
 				*data_begin = *data;
@@ -524,6 +519,12 @@ int data_fetch_( unsigned char *receive_buf,
 			}
 			return len_remain;
 		}
+
+		receive_buf[*w_receive_buf] = *data;
+		(*w_receive_buf)++;
+		data++;
+		if( *w_receive_buf >= RECV_BUF_LEN )
+			*w_receive_buf = 0;
 	}
 	return 0;
 }
