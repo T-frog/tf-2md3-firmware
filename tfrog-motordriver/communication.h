@@ -84,7 +84,7 @@ typedef enum
 #endif
 /* protocol */
 #ifndef YP_PROTOCOL_NAME 
-#define YP_PROTOCOL_NAME "YPP:07:00"
+#define YP_PROTOCOL_NAME "YPP:08:00"
 #endif
 /* vendor */
 #ifndef YP_VENDOR_NAME 
