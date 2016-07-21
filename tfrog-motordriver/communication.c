@@ -719,8 +719,11 @@ int data_analyze_( unsigned char *receive_buf,
 					{
 						if( rawdata[0] == PARAM_servo ) com_en[imotor] = 1;
 						// Forward from USB(id: 0) to RS485(id: imotor/2)
-						send_buf485[send_buf_pos485] = 0xAA;
-						send_buf_pos485 ++;
+						if( send_buf_pos485 == 0 )
+						{
+							send_buf485[send_buf_pos485] = 0xAA;
+							send_buf_pos485 ++;
+						}
 						unsigned char *buf;
 						int buf_len;
 						buf = &send_buf485[send_buf_pos485];
@@ -737,7 +740,7 @@ int data_analyze_( unsigned char *receive_buf,
 						buf_len = add_crc_485( buf, buf_len );
 						send_buf_pos485 += buf_len;
 
-						if( (rawdata[1] & 1) == 1 || send_buf_pos485 > 16 )
+						if( send_buf_pos485 > SEND_BUF_LEN - 16 )
 						{
 							if( rs485_timeout_wait( 4, 32 ) )
 							{
@@ -753,6 +756,7 @@ int data_analyze_( unsigned char *receive_buf,
 						}
 						else
 						{
+							send_buf_pos485 --;
 							//printf("proxy\n\r");
 						}
 					}
@@ -791,6 +795,20 @@ int data_analyze_( unsigned char *receive_buf,
 			data = receive_buf;
 		}
 		if( receive_period ) *r_receive_buf = r_buf;
+	}
+	if( send_buf_pos485 > 0 )
+	{
+		if( rs485_timeout_wait( 4, 32 ) )
+		{
+			flush485(  );
+		}
+		else
+		{
+			send_buf_pos485 = 0;
+			rs485_timeout = 0;
+			printf("rs485 skipped\n\r");
+		}
+		//printf("proxy sent\n\r");
 	}
 	return 0;
 }
