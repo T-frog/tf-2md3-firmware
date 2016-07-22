@@ -189,7 +189,6 @@ static void VBus_Configure( void )
 //	ISR_Vbus( &pinVbus );
 }
 
-
 // ------------------------------------------------------------------------------
 // / Callback invoked when data has been received on the USB.
 // ------------------------------------------------------------------------------
@@ -198,28 +197,30 @@ static void UsbDataReceived( unsigned int unused, unsigned char status, unsigned
 	// Check that data has been received successfully
 	if( status == USBD_STATUS_SUCCESS )
 	{
-		static int remain = 0;
+		int remain = 0;
 
 		// Check if bytes have been discarded
-		if( ( received == DATABUFFERSIZE - remain ) && ( remaining > 0 ) )
+		if( ( received == DATABUFFERSIZE ) && ( remaining > 0 ) )
 		{
-
 			TRACE_WARNING( "UsbDataReceived: %u bytes discarded\n\r", remaining );
 		}
 
 		LED_on( 2 );
-		remain = data_fetch( usbBuffer, received + remain );
-		CDCDSerialDriver_Read( usbBuffer + remain, DATABUFFERSIZE - remain, ( TransferCallback ) UsbDataReceived, 0 );
-
+		remain = data_fetch( usbBuffer, received );
+		
 		if( remain > 0 )
 		{
+			printf("Flushing USB local recv_buf %d\n\r");
 			data_analyze(  );
-			printf("Flushing USB local recv_buf\n\r");
+
+			remain = data_fetch( usbBuffer, received );
+			if( remain > 0 )
+				printf("%d bytes discarded\n\r", remain);
 		}
+		CDCDSerialDriver_Read( usbBuffer, DATABUFFERSIZE, ( TransferCallback ) UsbDataReceived, 0 );
 	}
 	else
 	{
-
 		TRACE_WARNING( "UsbDataReceived: Transfer error\n\r" );
 	}
 }

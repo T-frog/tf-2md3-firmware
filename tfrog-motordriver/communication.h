@@ -97,11 +97,17 @@ typedef enum
 #endif
 
 
+#define SEND_BUF_LEN  128
+#define RECV_BUF_LEN  512
+
+
 int data_analyze(  );
 int data_analyze485(  );
 
 int data_fetch( unsigned char *data, int len );
 int data_fetch485( unsigned char *data, int len );
+
+int buf_left();
 
 RAMFUNC int data_send( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask );
 RAMFUNC int data_send485( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask );

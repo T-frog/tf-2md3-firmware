@@ -28,9 +28,6 @@
 #include "crc8.h"
 #endif
 
-#define SEND_BUF_LEN  64
-#define RECV_BUF_LEN  1024
-
 unsigned char send_buf[SEND_BUF_LEN];
 volatile unsigned long send_buf_pos = 0;
 unsigned char send_buf485_[2][SEND_BUF_LEN];
@@ -480,51 +477,41 @@ inline int data_fetch485( unsigned char *data, int len )
 		&w_receive_buf485, &r_receive_buf485,
 		data, len );
 }
-inline void char_fetch485( unsigned char data )
+inline int buf_left()
 {
-	int w_rec = w_receive_buf485;
+	int buf_left;
 
-	receive_buf485[w_receive_buf485] = data;
-	w_receive_buf485++;
-	if( w_receive_buf485 >= RECV_BUF_LEN )
-		w_receive_buf485 = 0;
-	if( w_receive_buf485 == r_receive_buf485 )
-	{
-		w_receive_buf485 = w_rec;
-	}
+	buf_left = r_receive_buf - w_receive_buf;
+	if( buf_left <= 0 ) buf_left += RECV_BUF_LEN;
+	buf_left --;
 
+	return buf_left;
 }
 int data_fetch_( unsigned char *receive_buf, 
 		volatile int *w_receive_buf, volatile int *r_receive_buf,
 		unsigned char *data, int len )
 {
-	unsigned char *data_begin;
+	int buf_left;
 
-	int end = *r_receive_buf - 1;
-	if(end < 0) end = RECV_BUF_LEN - 1;
+	buf_left = *r_receive_buf - *w_receive_buf;
+	if( buf_left <= 0 ) buf_left += RECV_BUF_LEN;
+	buf_left --;
 
-	data_begin = data;
-	for( ; len; len-- )
+	if( buf_left > len )
 	{
-		if( *w_receive_buf == end )
+		for( ; len; len -- )
 		{
-			int len_remain = len;
-			for( ; len; len-- )
+			receive_buf[*w_receive_buf] = *data;
+			(*w_receive_buf)++;
+			data++;
+			if( *w_receive_buf >= RECV_BUF_LEN )
 			{
-				*data_begin = *data;
-				data_begin++;
-				data++;
+				*w_receive_buf = 0;
 			}
-			return len_remain;
 		}
-
-		receive_buf[*w_receive_buf] = *data;
-		(*w_receive_buf)++;
-		data++;
-		if( *w_receive_buf >= RECV_BUF_LEN )
-			*w_receive_buf = 0;
+		return 0;
 	}
-	return 0;
+	return len;
 }
 
 inline int data_analyze(  )
@@ -535,6 +522,7 @@ inline int data_analyze485(  )
 {
 	return data_analyze_(receive_buf485, &w_receive_buf485, &r_receive_buf485, 1);
 }
+
 int data_analyze_( unsigned char *receive_buf, 
 		volatile int *w_receive_buf, volatile int *r_receive_buf, int fromto)
 {
@@ -564,7 +552,8 @@ int data_analyze_( unsigned char *receive_buf,
 		id = 0;
 	}
 
-	r_buf = *r_receive_buf;
+	int r_buf_b;
+	r_buf_b = r_buf = *r_receive_buf;
 	data = &receive_buf[*r_receive_buf];
 	len = 0;
 	for( ;; )
@@ -572,6 +561,7 @@ int data_analyze_( unsigned char *receive_buf,
 		char receive_period = 0;
 		if( r_buf == *w_receive_buf )
 			break;
+
 		line[len] = *data;
 		len++;
 		if(len > 63)
@@ -603,6 +593,7 @@ int data_analyze_( unsigned char *receive_buf,
 			else if( *data == COMMUNICATION_END_BYTE )
 			{
 				line[len - 1] = 0;
+
 				extended_command_analyze( ( char * )line );
 				len = 0;
 				receive_period = 1;
@@ -624,9 +615,17 @@ int data_analyze_( unsigned char *receive_buf,
 			if( *data == COMMUNICATION_START_BYTE )
 			{
 				len = 0;
-				state = STATE_RECIEVING;
-				receive_period = 1;
-				break;
+				if(fromto)
+				{
+					state = STATE_FROM;
+					line_full[0] = *data;
+				}
+				else
+				{
+					state = STATE_RECIEVING;
+					from = -1;
+					to = id;
+				}
 			}
 			if( *data == COMMUNICATION_END_BYTE )
 			{
@@ -709,6 +708,7 @@ int data_analyze_( unsigned char *receive_buf,
 					if(id * 2 <= imotor && imotor <= id * 2 + 1 )
 					{
 						rawdata[1] = rawdata[1] & 1;
+
 						command_analyze( rawdata, data_len );
 						driver_param.ifmode = fromto;
 						//printf("for me\n\r");
@@ -792,7 +792,8 @@ int data_analyze_( unsigned char *receive_buf,
 			r_buf = 0;
 			data = receive_buf;
 		}
-		if( receive_period ) *r_receive_buf = r_buf;
+		if( r_buf_b != *r_receive_buf ) return 0;
+		if( receive_period ) r_buf_b = *r_receive_buf = r_buf;
 	}
 	if( send_buf_pos485 > 0 )
 	{
@@ -1281,6 +1282,7 @@ inline int extended_command_analyze( char *data )
 		}
 		else
 		{
+			printf("unknown command \"%s\"\n\r", data);
 			send( data );
 			send( "\n0Ee\n\n" );
 		}
