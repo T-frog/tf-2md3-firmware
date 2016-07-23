@@ -213,7 +213,7 @@ static void UsbDataReceived( unsigned int unused, unsigned char status, unsigned
 		
 		if( remain > 0 )
 		{
-			printf("Flushing USB local recv_buf %d\n\r");
+			printf("Flushing USB local recv_buf\n\r");
 			data_analyze(  );
 
 			remain = data_fetch( usbBuffer, received );
