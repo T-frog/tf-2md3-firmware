@@ -100,10 +100,13 @@ static const Pin pins[] = {
 	PINS_USERIO,
 	PINS_RS485,
 #if defined(tfrog_rev5)
-	PINS_VERSION,
+	PIN_VERSION,
 #endif
 	PIN_LED_0, PIN_LED_1, PIN_LED_2
 };
+#if defined(tfrog_rev5)
+static const Pin pinVer[] = {PIN_VERSION};
+#endif
 
 // / VBus pin instance.
 static const Pin pinVbus = PIN_USB_VBUS;
@@ -566,7 +569,7 @@ int main(  )
 	}
 
 #if defined(tfrog_rev5)
-	if( !(AT91C_BASE_PIOA->PIO_PDSR & (1 << 16)) )
+	if( !(AT91C_BASE_PIOA->PIO_PDSR & pinVer->mask) )
 	{
 		driver_param.board_version = BOARD_R6B;
 		printf( "Board version: R6B\n\r" );
