@@ -1084,6 +1084,14 @@ inline int extended_command_analyze( char *data )
 		send( data );
 		send( "\n00P\n\n" );
 	}
+	else if( strstr( data, "$SETBUZZERLEVEL" ) == data )
+	{
+		saved_param.buz_lvl = atoi( data + 15 );
+		if( saved_param.buz_lvl > 4 ) saved_param.buz_lvl = 4;
+
+		send( data );
+		send( "\n00P\n\n" );
+	}
 	else if( strstr( data, "$EEPROMSAVE" ) == data )
 	{
 		if( EEPROM_Write( 0, &saved_param, sizeof(saved_param) ) < 0 )

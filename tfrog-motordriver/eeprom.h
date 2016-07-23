@@ -16,6 +16,7 @@ typedef struct _Tfrog_EEPROM_data
 	unsigned short PWM_deadtime;
 	unsigned char id485;
 	unsigned char stored_data;
+	unsigned char buz_lvl;
 } Tfrog_EEPROM_data;
 
 #define TFROG_EEPROM_ROBOTPARAM_ADDR  0x100
@@ -28,7 +29,8 @@ typedef struct _Tfrog_EEPROM_data
 	1200,\
 	20,\
 	0,\
-	0\
+	0,\
+	1\
 }
 
 #define TFROG_EEPROM_DATA_TEXT 0

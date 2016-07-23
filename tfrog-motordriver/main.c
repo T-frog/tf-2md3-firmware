@@ -101,10 +101,12 @@ static const Pin pins[] = {
 	PINS_RS485,
 #if defined(tfrog_rev5)
 	PIN_VERSION,
+	PIN_BUZ,
 #endif
 	PIN_LED_0, PIN_LED_1, PIN_LED_2
 };
 #if defined(tfrog_rev5)
+static const Pin pinBuz[] = {PIN_BUZ};
 static const Pin pinVer[] = {PIN_VERSION};
 #endif
 
@@ -234,6 +236,8 @@ RAMFUNC void us0_received()
 	AIC_DisableIT( AT91C_ID_US0 );
 }
 
+char buz_on = 0;
+char buz_cnt = 0;
 RAMFUNC void timer1_tic()
 {
 	volatile unsigned int dummy;
@@ -244,6 +248,24 @@ RAMFUNC void timer1_tic()
 	rs485_timeout ++;
 	if( rs485_timeout == 255 ) rs485_timeout = 254;
 	AIC_EnableIT( AT91C_ID_US0 );
+
+#if defined(tfrog_rev5)
+	if( driver_param.board_version == BOARD_R6B )
+	{
+		if( buz_on )
+		{
+			buz_cnt ++;
+			if( (buz_cnt & 0x7) < saved_param.buz_lvl )
+				PIO_Set( pinBuz );
+			else
+				PIO_Clear( pinBuz );
+		}
+		else
+		{
+			PIO_Clear( pinBuz );
+		}
+	}
+#endif
 }
 void tic_init()
 {
@@ -492,6 +514,8 @@ int main(  )
 			}
 			break;
 		}
+		if( saved_param.buz_lvl > 4 ) saved_param.buz_lvl = 0;
+
 		THEVA.GENERAL.PWM.HALF_PERIOD = saved_param.PWM_resolution;
 		THEVA.GENERAL.PWM.DEADTIME = saved_param.PWM_deadtime;
 	}
@@ -947,16 +971,21 @@ int main(  )
 
 			if( mscnt ++ >= ERROR_BLINK_MS )
 			{
-				
 				mscnt = 0;
 				if( driver_param.error_state )
 				{
 					if( driver_param.error_state & ( 1 << errnum ) )
 					{
 						if( error_pat[errnum] & ( 1 << blink ) )
+						{
 							LED_on( 0 );
+							buz_on = 1;
+						}
 						else
+						{
 							LED_off( 0 );
+							buz_on = 0;
+						}
 						blink ++;
 						if( blink > 10 )
 						{
@@ -970,12 +999,14 @@ int main(  )
 						if( errnum >= ERROR_NUM ) errnum = 0;
 						blink = 0;
 						LED_off( 0 );
+						buz_on = 0;
 						mscnt = ERROR_BLINK_MS - 1;
 					}
 				}
 				else
 				{
 					LED_off( 0 );
+					buz_on = 0;
 				}
 			}
 		}
