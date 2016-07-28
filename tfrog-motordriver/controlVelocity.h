@@ -13,6 +13,7 @@ typedef struct _MotorState
 	int vel;									// count/ms
 	int vel1;									// count/ms
 	int pos;									// count
+	unsigned int posc;							// count
 	int enc_buf;								// count
 	int spd;
 	int spd_cnt;
@@ -33,19 +34,20 @@ typedef struct _MotorState
 		char vel_changed;
 	} ref;
 	int error;
-	int error_integ;
+	int64_t error_integ;
 	char control_init;
 	YPSpur_servo_level servo_level;
 } MotorState;
 
 typedef struct _MotorParam
 {
-	unsigned short enc_rev;						// count/rev
-	unsigned short phase_offset;
-	unsigned short enc_rev_h;					// count/rev
-	unsigned short enc_type;					// count/rev
-	unsigned short enc_10hz;
-	unsigned short enc_drev[6];
+	unsigned int enc_rev;						// count/rev
+	unsigned int phase_offset;
+	unsigned int enc_rev_h;					// count/rev
+	unsigned int enc_rev_1p;
+	unsigned char enc_type;
+	unsigned int enc_10hz;
+	unsigned int enc_drev[6];
 	unsigned int enc_mul;
 	int enc0;									// count
 	int enc0tran;								// count

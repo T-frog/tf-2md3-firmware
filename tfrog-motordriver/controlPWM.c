@@ -110,6 +110,8 @@ void controlPWM_config( int i )
 	motor_param[i].enc_drev[5] = motor_param[i].enc_rev * 6 / 6;
 
 	motor_param[i].enc_10hz = motor_param[i].enc_rev * 10 * 16 / 1000;
+	motor_param[i].enc_rev_1p = motor_param[i].enc_rev / 100;
+	if( motor_param[i].enc_rev_1p == 0 ) motor_param[i].enc_rev_1p = 1;
 
 	motor_param[i].enc_mul = (unsigned int)( (uint64_t) SinTB_2PI * 0x40000 / motor_param[i].enc_rev );
 	motor_param[i].phase_offset = 0;
@@ -205,6 +207,7 @@ void FIQ_PWMPeriod(  )
 					motor_param[i].enc_type == 0 )
 			{
 				motor[i].pos += ( short )( enc[i] - _enc[i] );
+				motor[i].posc += ( short )( enc[i] - _enc[i] );
 				normalize( &motor[i].pos, 0, motor_param[i].enc_rev, motor_param[i].enc_rev );
 			}
 		}
@@ -271,19 +274,19 @@ void FIQ_PWMPeriod(  )
 				diff = motor_param[j].enc0tran - motor_param[j].enc0;
 				normalize( &diff, -motor_param[j].enc_rev_h, motor_param[j].enc_rev_h, motor_param[j].enc_rev );
 
-				if( diff == 0 )
+				if( _abs(diff) <= motor_param[j].enc_rev_1p )
 				{
 					motor_param[j].enc0tran = motor_param[j].enc0;
 				}
 				else if( diff > 0 )
 				{
-					motor_param[j].enc0tran --;
+					motor_param[j].enc0tran -= motor_param[j].enc_rev_1p;
 					if( motor_param[j].enc0tran <= -motor_param[j].enc_rev )
 						motor_param[j].enc0tran += motor_param[j].enc_rev;
 				}
 				else
 				{
-					motor_param[j].enc0tran ++;
+					motor_param[j].enc0tran += motor_param[j].enc_rev_1p;
 					if( motor_param[j].enc0tran >= motor_param[j].enc_rev )
 						motor_param[j].enc0tran -= motor_param[j].enc_rev;
 				}

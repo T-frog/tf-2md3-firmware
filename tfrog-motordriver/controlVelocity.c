@@ -83,9 +83,8 @@ void ISR_VelocityControl(  )
 				{
 					motor[i].ref.vel_buf = motor[i].ref.vel;
 					motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - motor[i].ref.vel_buf_prev )
-						* driver_param.control_s * driver_param.control_s
 						/ motor[i].ref.vel_interval;
-					// [cnt/msms] * 1000[ms/s] * 1000[ms/s] = [cnt/ss]
+					// [cnt/msms]
 
 					motor[i].ref.vel_buf_prev = motor[i].ref.vel_buf;
 					motor[i].ref.vel_interval = 0;
@@ -109,12 +108,16 @@ void ISR_VelocityControl(  )
 				}
 
 				// PI制御分 単位：加速度[cnt/ss]
-				acc_pi  = (int64_t)(motor[i].error * motor_param[i].Kp) * 1000;
+				acc_pi  = ((int64_t)motor[i].error * motor_param[i].Kp) * 1000;
 				// [cnt/ms] * 1000[ms/s] * Kp[1/s] = [cnt/ss]
-				acc_pi += (int64_t)motor[i].error_integ * motor_param[i].Ki;
+				acc_pi += motor[i].error_integ * motor_param[i].Ki;
 				// [cnt] * Ki[1/ss] = [cnt/ss]
 
-				acc[i] = (acc_pi + Filter1st_Filter( &accelf[i], motor[i].ref.vel_diff )) / 16;
+				acc[i] = (acc_pi
+						+ (int64_t)Filter1st_Filter( &accelf[i], motor[i].ref.vel_diff )
+						* driver_param.control_s * driver_param.control_s
+						// [cnt/msms] * 1000[ms/s] * 1000[ms/s] = [cnt/ss]
+						) / 16;
 			}
 			else
 			{
@@ -234,8 +237,8 @@ void ISR_VelocityControl(  )
 
 void timer0_vel_calc( )
 {
-	static unsigned short __enc[2];
-	unsigned short enc[2];
+	static unsigned int __enc[2];
+	unsigned int enc[2];
 	static char _spd_cnt[2]; 
 	int spd[2];
 	int i;
@@ -253,7 +256,7 @@ void timer0_vel_calc( )
 	LED_on(1);
 	for( i = 0; i < 2; i++ )
 	{
-		enc[i] = motor[i].enc;
+		enc[i] = motor[i].posc;
 		spd[i] = motor[i].spd;
 		motor[i].spd = 0;
 	}
@@ -263,7 +266,7 @@ void timer0_vel_calc( )
 		int __vel;
 		int vel;
 
-		__vel = ( short )( enc[i] - __enc[i] );
+		__vel = ( int )( enc[i] - __enc[i] );
 		motor[i].vel1 = __vel;
 
 		if( _abs( __vel ) > 6 || driver_param.fpga_version == 0 ) 
