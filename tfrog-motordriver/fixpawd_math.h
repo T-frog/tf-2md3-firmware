@@ -19,24 +19,24 @@
 #define FP4_LOG2E	DOUBLE2FP4(1.0/1.4426950408889634073599246810022)
 #define FP4_LOG2T	DOUBLE2FP4(1.0/3.3219280948873623478703194294948)
 
-INLINE fixp4 fp4sinf( fixp4 x );
-INLINE fixp4 fp4cosf( fixp4 x );
-INLINE fixp4 fp4sin( fixp4 x );
-INLINE fixp4 fp4cos( fixp4 x );
-INLINE fixp4 fp4atan( fixp4 x );
-INLINE fixp4 fp4atan2( fixp4 y, fixp4 x );
-INLINE fixp4 fp4sqrt( fixp4 x );
-INLINE fixp4 fp4sqrtf( fixp4 x );
-INLINE fixp4 fp4sqrtinv( fixp4 x );
-INLINE fixp4 fp4log2( fixp4 x );
-INLINE fixp4 fp4ln( fixp4 x );
-INLINE fixp4 fp4log( fixp4 x );
-INLINE fixp4 fp4logn( fixp4 x, fixp4 n );
-INLINE fixp4 fp4log2f( fixp4 x );
-INLINE fixp4 fp4lnf( fixp4 x );
-INLINE fixp4 fp4logf( fixp4 x );
-INLINE fixp4 fp4lognf( fixp4 x, fixp4 n );
-INLINE fixp4 fp4exp( fixp4 x );
+fixp4 fp4sinf( fixp4 x );
+fixp4 fp4cosf( fixp4 x );
+fixp4 fp4sin( fixp4 x );
+fixp4 fp4cos( fixp4 x );
+fixp4 fp4atan( fixp4 x );
+fixp4 fp4atan2( fixp4 y, fixp4 x );
+fixp4 fp4sqrt( fixp4 x );
+fixp4 fp4sqrtf( fixp4 x );
+fixp4 fp4sqrtinv( fixp4 x );
+fixp4 fp4log2( fixp4 x );
+fixp4 fp4ln( fixp4 x );
+fixp4 fp4log( fixp4 x );
+fixp4 fp4logn( fixp4 x, fixp4 n );
+fixp4 fp4log2f( fixp4 x );
+fixp4 fp4lnf( fixp4 x );
+fixp4 fp4logf( fixp4 x );
+fixp4 fp4lognf( fixp4 x, fixp4 n );
+fixp4 fp4exp( fixp4 x );
 
 /** Table for calc exp */
 static const fixp4 fp4_exp[36] = {

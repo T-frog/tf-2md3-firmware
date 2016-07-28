@@ -6,7 +6,7 @@
 
 #include "fixpawd_math.h"
 
-inline fixp4 abs( fixp4 x )
+fixp4 abs( fixp4 x )
 {
 	if( x < 0 )
 		return -x;
@@ -18,7 +18,7 @@ inline fixp4 abs( fixp4 x )
 	@param x [in] Input value
 	@return sin(x)
  */
-inline fixp4 fp4sinf( fixp4 x )
+fixp4 fp4sinf( fixp4 x )
 {
 	fixp4 x2;									// x^2
 	fixp4 xn;									// x^3, x^5, ...
@@ -42,7 +42,7 @@ inline fixp4 fp4sinf( fixp4 x )
 	@param x [in] Input value
 	@return sin(x)
  */
-inline fixp4 fp4sin( fixp4 x )
+fixp4 fp4sin( fixp4 x )
 {
 	char minus;									// Is output value < 0
 	fixp4 y;									// Output
@@ -82,7 +82,7 @@ inline fixp4 fp4sin( fixp4 x )
 	@param x [in] Input value
 	@return cos(x)
  */
-inline fixp4 fp4cosf( fixp4 x )
+fixp4 fp4cosf( fixp4 x )
 {
 	fixp4 x2;									// x^2
 	fixp4 xn;									// x^2, x^4, ...
@@ -104,7 +104,7 @@ inline fixp4 fp4cosf( fixp4 x )
 	@param x [in] Input value
 	@return cos(x)
  */
-inline fixp4 fp4cos( fixp4 x )
+fixp4 fp4cos( fixp4 x )
 {
 	char minus;									// Is output value < 0
 	fixp4 res;									// Output
@@ -148,7 +148,7 @@ inline fixp4 fp4cos( fixp4 x )
 	@param x [in] Input value
 	@return atan(x)
  */
-inline fixp4 fp4atan( fixp4 x )
+fixp4 fp4atan( fixp4 x )
 {
 	fixp4 xn;									// x^2, x^3, ...
 	fixp4 th;									// Output
@@ -221,7 +221,7 @@ inline fixp4 fp4atan( fixp4 x )
 	@param x [in] Input value x
 	@return atan2(y/x)
  */
-inline fixp4 fp4atan2( fixp4 y, fixp4 x )
+fixp4 fp4atan2( fixp4 y, fixp4 x )
 {
 	fixp4 th;									// Output
 
@@ -263,7 +263,7 @@ inline fixp4 fp4atan2( fixp4 y, fixp4 x )
 	@param x [in] Input value
 	@return sqrt(x)
  */
-inline fixp4 fp4sqrt( fixp4 x )
+fixp4 fp4sqrt( fixp4 x )
 {
 	fixp4 res;									// Output
 
@@ -285,7 +285,7 @@ inline fixp4 fp4sqrt( fixp4 x )
 	@param x [in] Input value
 	@return sqrt(x)
  */
-inline fixp4 fp4sqrtf( fixp4 x )
+fixp4 fp4sqrtf( fixp4 x )
 {
 	return fp4mulf( x, fp4sqrtinv( x ) );
 }
@@ -295,7 +295,7 @@ inline fixp4 fp4sqrtf( fixp4 x )
 	@param x [in] Input value
 	@return 1/sqrt(x)
  */
-inline fixp4 fp4sqrtinv( fixp4 x )
+fixp4 fp4sqrtinv( fixp4 x )
 {
 	fixp4 res;									// Output
 	fixp4 h, t;									// Temporary
@@ -394,7 +394,7 @@ inline fixp4 fp4sqrtinv( fixp4 x )
 	@param x [in] Input value
 	@return log2(x)
  */
-inline fixp4 fp4log2( fixp4 x )
+fixp4 fp4log2( fixp4 x )
 {
 	fixp4 res;									// Output
 	fixp4 fp;									// Fraction
@@ -434,7 +434,7 @@ inline fixp4 fp4log2( fixp4 x )
 	@param x [in] Input value
 	@return log2(x)
  */
-inline fixp4 fp4log2f( fixp4 x )
+fixp4 fp4log2f( fixp4 x )
 {
 	fixp4 res;									// Output
 	fixp4 fp;									// Fraction
@@ -474,7 +474,7 @@ inline fixp4 fp4log2f( fixp4 x )
 	@param x [in] Input value
 	@return ln(x)
  */
-inline fixp4 fp4ln( fixp4 x )
+fixp4 fp4ln( fixp4 x )
 {
 	return fp4mulf( fp4log2( x ), FP4_LOG2E );
 }
@@ -484,7 +484,7 @@ inline fixp4 fp4ln( fixp4 x )
 	@param x [in] Input value
 	@return log(x)
  */
-inline fixp4 fp4log( fixp4 x )
+fixp4 fp4log( fixp4 x )
 {
 	return fp4mulf( fp4log2( x ), FP4_LOG2T );
 }
@@ -495,7 +495,7 @@ inline fixp4 fp4log( fixp4 x )
 	@param n [in] Base value
 	@return log(x)
  */
-inline fixp4 fp4logn( fixp4 x, fixp4 n )
+fixp4 fp4logn( fixp4 x, fixp4 n )
 {
 	return fp4div( fp4log2( x ), fp4log2( n ) );
 }
@@ -505,7 +505,7 @@ inline fixp4 fp4logn( fixp4 x, fixp4 n )
 	@param x [in] Input value
 	@return ln(x)
  */
-inline fixp4 fp4lnf( fixp4 x )
+fixp4 fp4lnf( fixp4 x )
 {
 	return fp4mulf( fp4log2f( x ), FP4_LOG2E );
 }
@@ -515,7 +515,7 @@ inline fixp4 fp4lnf( fixp4 x )
 	@param x [in] Input value
 	@return log(x)
  */
-inline fixp4 fp4logf( fixp4 x )
+fixp4 fp4logf( fixp4 x )
 {
 	return fp4mulf( fp4log2f( x ), FP4_LOG2T );
 }
@@ -526,7 +526,7 @@ inline fixp4 fp4logf( fixp4 x )
 	@param n [in] Base value
 	@return log(x)
  */
-inline fixp4 fp4lognf( fixp4 x, fixp4 n )
+fixp4 fp4lognf( fixp4 x, fixp4 n )
 {
 	return fp4div( fp4log2f( x ), fp4log2f( n ) );
 }
@@ -536,7 +536,7 @@ inline fixp4 fp4lognf( fixp4 x, fixp4 n )
 	@param x [in] Input value
 	@return exp(x)
  */
-inline fixp4 fp4exp( fixp4 x )
+fixp4 fp4exp( fixp4 x )
 {
 	fixp4 res;									// Output
 	fixp4 mask;
