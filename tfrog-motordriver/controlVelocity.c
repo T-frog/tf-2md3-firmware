@@ -108,7 +108,7 @@ void ISR_VelocityControl(  )
 				}
 
 				// PI制御分 単位：加速度[cnt/ss]
-				acc_pi  = ((int64_t)motor[i].error * motor_param[i].Kp) * 1000;
+				acc_pi  = ((int64_t)motor[i].error * motor_param[i].Kp) * driver_param.control_s;
 				// [cnt/ms] * 1000[ms/s] * Kp[1/s] = [cnt/ss]
 				acc_pi += motor[i].error_integ * motor_param[i].Ki;
 				// [cnt] * Ki[1/ss] = [cnt/ss]
