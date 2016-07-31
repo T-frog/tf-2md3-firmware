@@ -114,7 +114,6 @@ void controlPWM_config( int i )
 	if( motor_param[i].enc_rev_1p == 0 ) motor_param[i].enc_rev_1p = 1;
 
 	motor_param[i].enc_mul = (unsigned int)( (uint64_t) SinTB_2PI * 0x40000 / motor_param[i].enc_rev );
-	motor_param[i].phase_offset = 0;
 	motor_param[i].enc_rev_h = motor_param[i].enc_rev / 2;
 
 	motor[i].ref.vel_diff = 0;
