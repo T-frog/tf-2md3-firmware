@@ -2,6 +2,7 @@
 #define __CONTROL_VELOCITY_H__
 
 #include <board.h>
+#include <stdint.h>
 #include "communication.h"
 
 #ifdef __cplusplus
