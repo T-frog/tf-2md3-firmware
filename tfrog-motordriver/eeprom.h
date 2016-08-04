@@ -17,6 +17,7 @@ typedef struct _Tfrog_EEPROM_data
 	unsigned char id485;
 	unsigned char stored_data;
 	unsigned char buz_lvl;
+	unsigned char high_frequency_encoder;
 } Tfrog_EEPROM_data;
 
 #define TFROG_EEPROM_ROBOTPARAM_ADDR  0x100
@@ -30,7 +31,8 @@ typedef struct _Tfrog_EEPROM_data
 	20,\
 	0,\
 	0,\
-	1\
+	1,\
+	0,\
 }
 
 #define TFROG_EEPROM_DATA_TEXT 0

@@ -16,6 +16,7 @@
 #include <stdint.h>
 
 #include "power.h"
+#include "eeprom.h"
 #include "controlPWM.h"
 #include "controlVelocity.h"
 #include "registerFPGA.h"
@@ -40,6 +41,8 @@ static const Pin pinPWMEnable = PIN_PWM_ENABLE;
 
 Filter1st accelf[2];
 Filter1st accelf0;
+
+extern Tfrog_EEPROM_data saved_param;
 
 // ------------------------------------------------------------------------------
 // / Velocity control loop (1ms)
@@ -312,7 +315,7 @@ void timer0_vel_calc( )
 			motor[i].vel = vel;
 		}
 		__enc[i] = enc[i];
-		motor[i].enc_buf = enc[i];
+		motor[i].enc_buf = enc[i] >> motor_param[i].enc_div;
 	}
 
 	LED_off(1);
@@ -348,6 +351,7 @@ void controlVelocity_init(  )
 		motor[i].servo_level = SERVO_LEVEL_STOP;
 		motor_param[i].motor_type = MOTOR_TYPE_AC3;
 		motor_param[i].enc_rev = 0;
+		motor_param[i].enc_div = 0;
 		motor_param[i].phase_offset = 0;
 		motor_param[i].enc_type = 2;
 	}
@@ -381,5 +385,13 @@ void controlVelocity_config(  )
 		AT91C_BASE_TC0->TC_CCR = AT91C_TC_SWTRG;
 	}
 
+	if( saved_param.high_frequency_encoder )
+	{
+		THEVA.GENERAL.ENCODER.HFREQ = 1;
+	}
+	else
+	{
+		THEVA.GENERAL.ENCODER.HFREQ = 0;
+	}
 }
 

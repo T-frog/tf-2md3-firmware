@@ -74,6 +74,7 @@ typedef struct _MotorParam
 		MOTOR_TYPE_DC,
 		MOTOR_TYPE_AC3
 	} motor_type;
+	unsigned short enc_div;
 } MotorParam;
 
 typedef struct _DriverParam

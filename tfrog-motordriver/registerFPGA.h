@@ -21,7 +21,12 @@ typedef volatile struct _REG_GENERAL
 		TVREG COUNT;							// 0xA 三角波カウント値
 		TVREG DEADTIME;							// 0xB デッドタイム生成長
 	} PWM;
-	TVREG Reserved1[4];							// 0xC-0xF 予約
+	struct
+	{
+		unsigned HFREQ:1;						// - High frequency count
+		unsigned Reserved:15;					// - 予約
+	} __attribute__ ( ( packed ) ) ENCODER;		// 0xC エンコーダカウント設定
+	TVREG Reserved1[3];							// 0xD-0xF 予約
 } REG_GENERAL;
 
 typedef volatile struct _REG_MOTOR

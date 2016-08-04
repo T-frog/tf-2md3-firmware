@@ -1063,6 +1063,13 @@ inline int extended_command_analyze( char *data )
 		send( data );
 		send( "\n00P\n\n" );
 	}
+	else if( strstr( data, "$HFREQENC" ) == data )
+	{
+		saved_param.high_frequency_encoder = hextoi( data + 9 );
+
+		send( data );
+		send( "\n00P\n\n" );
+	}
 	else if( strstr( data, "$SETNAME" ) == data )
 	{
 		strcpy( saved_param.robot_name, data + 8 );
@@ -1451,6 +1458,9 @@ inline int command_analyze( unsigned char *data, int len )
 			break;
 		case PARAM_enc_rev:
 			motor_param[imotor].enc_rev = i.integer;
+			break;
+		case PARAM_enc_div:
+			motor_param[imotor].enc_div = i.integer;
 			break;
 		case PARAM_enc_type:
 			motor_param[imotor].enc_type = i.integer;
