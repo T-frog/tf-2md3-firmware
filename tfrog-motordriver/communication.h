@@ -105,8 +105,8 @@ typedef enum
 int data_analyze(  );
 int data_analyze485(  );
 
-int data_fetch( unsigned char *data, int len );
-int data_fetch485( unsigned char *data, int len );
+RAMFUNC int data_fetch( unsigned char *data, int len );
+RAMFUNC int data_fetch485( unsigned char *data, int len );
 
 int buf_left();
 

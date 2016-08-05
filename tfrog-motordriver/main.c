@@ -197,7 +197,7 @@ static void VBus_Configure( void )
 // ------------------------------------------------------------------------------
 // / Callback invoked when data has been received on the USB.
 // ------------------------------------------------------------------------------
-static void UsbDataReceived( unsigned int unused, unsigned char status, unsigned int received, unsigned int remaining )
+RAMFUNC static void UsbDataReceived( unsigned int unused, unsigned char status, unsigned int received, unsigned int remaining )
 {
 	// Check that data has been received successfully
 	if( status == USBD_STATUS_SUCCESS )
