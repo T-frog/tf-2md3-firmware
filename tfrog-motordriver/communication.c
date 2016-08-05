@@ -898,6 +898,7 @@ inline int extended_command_analyze( char *data )
 	else if( strstr( data, "PP" ) == data )
 	{
 		char val[10];
+		char sep[2] = {0};
 		send( data );
 		send( "\n00P\nNAME:" );
 		send( saved_param.robot_name );
@@ -918,6 +919,24 @@ inline int extended_command_analyze( char *data )
 			send( "binary locked" );
 		else if( saved_param.stored_data == TFROG_EEPROM_DATA_BIN_SAVING )
 			send( "binary saving" );
+		send( "; \nOPTIONS:" );
+		if( saved_param.rely_hall > 0 )
+		{
+			send( "RELYHALL" );
+			sep[0] = ',';
+			sep[1] = 0;
+		}
+		if( saved_param.high_frequency_encoder > 0 )
+		{
+			send( sep );
+			send( "HFREQENC" );
+			sep[0] = ',';
+			sep[1] = 0;
+		}
+		send( sep );
+		send( "BUZ_LVL" );
+		itoa10( val, saved_param.buz_lvl );
+		send( val );
 		send( "; \n\n" );
 	}
 	else if( strstr( data, "$LOCKPARAM" ) == data )
@@ -1065,7 +1084,23 @@ inline int extended_command_analyze( char *data )
 	}
 	else if( strstr( data, "$HFREQENC" ) == data )
 	{
-		saved_param.high_frequency_encoder = hextoi( data + 9 );
+		saved_param.high_frequency_encoder = atoi( data + 9 );
+
+		if( saved_param.high_frequency_encoder )
+		{
+			THEVA.GENERAL.ENCODER.HFREQ = 1;
+		}
+		else
+		{
+			THEVA.GENERAL.ENCODER.HFREQ = 0;
+		}
+
+		send( data );
+		send( "\n00P\n\n" );
+	}
+	else if( strstr( data, "$RELYHALL" ) == data )
+	{
+		saved_param.rely_hall = hextoi( data + 9 );
 
 		send( data );
 		send( "\n00P\n\n" );

@@ -384,14 +384,5 @@ void controlVelocity_config(  )
 
 		AT91C_BASE_TC0->TC_CCR = AT91C_TC_SWTRG;
 	}
-
-	if( saved_param.high_frequency_encoder )
-	{
-		THEVA.GENERAL.ENCODER.HFREQ = 1;
-	}
-	else
-	{
-		THEVA.GENERAL.ENCODER.HFREQ = 0;
-	}
 }
 

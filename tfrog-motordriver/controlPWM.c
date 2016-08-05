@@ -198,19 +198,19 @@ void FIQ_PWMPeriod(  )
 		return;
 	}
 
+	for( i = 0; i < 2; i ++ )
+	{
+		if( motor_param[i].enc_type == 2 ||
+				motor_param[i].enc_type == 0 )
+		{
+			motor[i].pos += ( short )( enc[i] - _enc[i] );
+			motor[i].posc += ( short )( enc[i] - _enc[i] );
+			normalize( &motor[i].pos, 0, motor_param[i].enc_rev, motor_param[i].enc_rev );
+		}
+	}
+
 	if( !disabled )
 	{
-		for( i = 0; i < 2; i ++ )
-		{
-			if( motor_param[i].enc_type == 2 ||
-					motor_param[i].enc_type == 0 )
-			{
-				motor[i].pos += ( short )( enc[i] - _enc[i] );
-				motor[i].posc += ( short )( enc[i] - _enc[i] );
-				normalize( &motor[i].pos, 0, motor_param[i].enc_rev, motor_param[i].enc_rev );
-			}
-		}
-
 		// PWM計算
 		int pwm[2][3];
 		int phase[3];
@@ -509,7 +509,8 @@ void FIQ_PWMPeriod(  )
 				continue;
 			}
 			// ホール素子は高速域では信頼できない
-			if( _abs( motor[i].vel ) > motor_param[i].enc_10hz )
+			if( _abs( motor[i].vel ) > motor_param[i].enc_10hz && 
+					!saved_param.rely_hall )
 				continue;
 
 			// ゼロ点計算

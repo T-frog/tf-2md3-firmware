@@ -518,6 +518,15 @@ int main(  )
 
 		THEVA.GENERAL.PWM.HALF_PERIOD = saved_param.PWM_resolution;
 		THEVA.GENERAL.PWM.DEADTIME = saved_param.PWM_deadtime;
+
+		if( saved_param.high_frequency_encoder )
+		{
+			THEVA.GENERAL.ENCODER.HFREQ = 1;
+		}
+		else
+		{
+			THEVA.GENERAL.ENCODER.HFREQ = 0;
+		}
 	}
 
 	// connect if needed
