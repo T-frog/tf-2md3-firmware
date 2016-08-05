@@ -841,7 +841,7 @@ int main(  )
 				//printf( "ref.rate_buf:%d\n\r",		motor[mn].ref.rate_buf );
 				printf( "ref.vel_changed:%d\n\r",	motor[mn].ref.vel_changed );
 				printf( "error:%d\n\r",			motor[mn].error );
-				printf( "error_integ:%d\n\r",		motor[mn].error_integ );
+				printf( "error_integ:%d\n\r",		(int)motor[mn].error_integ );
 				//printf( "control_init:%d\n\r",	motor[mn].control_init );
 				printf( "vsrc:%d\n\r",				driver_param.vsrc );
 				printf( "vsrc0:%d\n\r",				driver_param.vsrc_rated );
