@@ -1051,7 +1051,7 @@ inline int extended_command_analyze( char *data )
 	}
 	else if( strstr( data, "$SETID" ) == data )
 	{
-		saved_param.id485 = hextoi( data + 6 );
+		saved_param.id485 = atoi( data + 6 );
 
 		send( data );
 		send( "\n00P\n\n" );
