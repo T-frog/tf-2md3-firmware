@@ -75,6 +75,8 @@ typedef enum
 #define COMMUNICATION_START_BYTE	0x09
 #define COMMUNICATION_END_BYTE		0x0a
 
+#define COMMAND_LEN		(1/*START*/ + 1/*param*/ + 1/*id*/ + 4/*data*/ + 1/*end*/)
+
 /* firmware */
 #ifndef YP_FIRMWARE_NAME
 #define YP_FIRMWARE_NAME "DEBUG_BUILD_VERSION"

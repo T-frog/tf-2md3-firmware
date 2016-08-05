@@ -552,8 +552,7 @@ int data_analyze_( unsigned char *receive_buf,
 		id = 0;
 	}
 
-	int r_buf_b;
-	r_buf_b = r_buf = *r_receive_buf;
+	r_buf = *r_receive_buf;
 	data = &receive_buf[*r_receive_buf];
 	len = 0;
 	for( ;; )
@@ -792,8 +791,7 @@ int data_analyze_( unsigned char *receive_buf,
 			r_buf = 0;
 			data = receive_buf;
 		}
-		if( r_buf_b != *r_receive_buf ) return 0;
-		if( receive_period ) r_buf_b = *r_receive_buf = r_buf;
+		if( receive_period ) *r_receive_buf = r_buf;
 	}
 	if( send_buf_pos485 > 0 )
 	{

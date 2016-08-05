@@ -194,6 +194,7 @@ static void VBus_Configure( void )
 //	ISR_Vbus( &pinVbus );
 }
 
+volatile unsigned char usb_read_pause = 0;
 // ------------------------------------------------------------------------------
 // / Callback invoked when data has been received on the USB.
 // ------------------------------------------------------------------------------
@@ -212,17 +213,21 @@ RAMFUNC static void UsbDataReceived( unsigned int unused, unsigned char status, 
 
 		LED_on( 2 );
 		remain = data_fetch( usbBuffer, received );
-		
+
 		if( remain > 0 )
 		{
-			printf("Flushing USB local recv_buf\n\r");
-			data_analyze(  );
-
-			remain = data_fetch( usbBuffer, received );
-			if( remain > 0 )
-				printf("%d bytes discarded\n\r", remain);
+			printf("%d bytes discarded\n\r", remain);
 		}
-		CDCDSerialDriver_Read( usbBuffer, DATABUFFERSIZE, ( TransferCallback ) UsbDataReceived, 0 );
+
+		if( buf_left() < COMMAND_LEN * 2 )
+		{
+			printf( "Buffer nealy full\n\rPause USB read\n\r" );
+			usb_read_pause = 1;
+		}
+		else
+		{
+			CDCDSerialDriver_Read( usbBuffer, DATABUFFERSIZE, ( TransferCallback ) UsbDataReceived, 0 );
+		}
 	}
 	else
 	{
@@ -858,13 +863,26 @@ int main(  )
 			}
 		}
 		
+		if( usb_read_pause )
+		{
+			printf( "Flushing commands\n\r" );
+		}
 		data_analyze(  );
+
+		if( usb_read_pause )
+		{
+			usb_read_pause = 0;
+			CDCDSerialDriver_Read( usbBuffer, DATABUFFERSIZE, ( TransferCallback ) UsbDataReceived, 0 );
+			printf( "Resume USB read\n\r" );
+		}
+
 		data_analyze485(  );
+
 		if( connecting )
 		{
 			if( USBD_GetState(  ) >= USBD_STATE_CONFIGURED )
 			{
-				printf( "Start receiving data on the USB\n\r" );
+				printf( "Start USB read\n\r" );
 				// Start receiving data on the USB
 				CDCDSerialDriver_Read( usbBuffer, DATABUFFERSIZE, ( TransferCallback ) UsbDataReceived, 0 );
 				connecting = 0;
