@@ -465,19 +465,19 @@ inline int data_pack( short *cnt, short *pwm, char *en, short *analog, unsigned 
 	return len;
 }
 
-inline int data_fetch( unsigned char *data, int len )
+int data_fetch( unsigned char *data, int len )
 {
 	return data_fetch_( receive_buf, 
 		&w_receive_buf, &r_receive_buf,
 		data, len );
 }
-inline int data_fetch485( unsigned char *data, int len )
+int data_fetch485( unsigned char *data, int len )
 {
 	return data_fetch_( receive_buf485, 
 		&w_receive_buf485, &r_receive_buf485,
 		data, len );
 }
-inline int buf_left()
+int buf_left()
 {
 	int buf_left;
 
