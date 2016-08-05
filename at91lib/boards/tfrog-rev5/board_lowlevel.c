@@ -81,8 +81,7 @@
 //------------------------------------------------------------------------------
 void defaultSpuriousHandler( void )
 {
-    TRACE_ERROR( "Invalid Interrupt\n\r");
-    while (1);
+    TRACE_ERROR( "Invalid Interrupt (spurious)\n\r");
 }
 
 //------------------------------------------------------------------------------
@@ -90,7 +89,7 @@ void defaultSpuriousHandler( void )
 //------------------------------------------------------------------------------
 void defaultFiqHandler( void )
 {
-    TRACE_ERROR( "Invalid Interrupt\n\r");
+    TRACE_ERROR( "Invalid Interrupt (fiq)\n\r");
     while (1);
 }
 
@@ -99,7 +98,7 @@ void defaultFiqHandler( void )
 //------------------------------------------------------------------------------
 void defaultIrqHandler( void )
 {
-    TRACE_ERROR( "Invalid Interrupt\n\r");
+    TRACE_ERROR( "Invalid Interrupt (irq)\n\r");
     while (1);
 }
 
