@@ -549,7 +549,7 @@ int data_analyze_( unsigned char *receive_buf,
 	static unsigned char line_full[64+3];
 	static unsigned char *line = line_full + 3;
 	unsigned char *data;
-	int r_buf, len;
+	int r_buf, len, w_buf;
 	short from = -1, to = -1;
 	short id = saved_param.id485;
 	enum
@@ -573,12 +573,13 @@ int data_analyze_( unsigned char *receive_buf,
 	}
 
 	r_buf = *r_receive_buf;
-	data = &receive_buf[*r_receive_buf];
+	w_buf = *w_receive_buf;
+	data = &receive_buf[r_buf];
 	len = 0;
 	for( ;; )
 	{
 		char receive_period = 0;
-		if( r_buf == *w_receive_buf )
+		if( r_buf == w_buf )
 			break;
 
 		line[len] = *data;
