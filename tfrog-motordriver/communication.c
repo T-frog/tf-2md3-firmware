@@ -1062,6 +1062,8 @@ int extended_command_analyze( char *data )
 			send( "\n00P\n\n" );
 			flush( );
 			FLASHD_ClearGPNVM( 2 );
+			AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST | AT91C_RSTC_PROCRST | AT91C_RSTC_PERRST;
+			while( 1 );
 		}
 		else
 		{
