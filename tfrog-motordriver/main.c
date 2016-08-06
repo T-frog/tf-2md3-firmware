@@ -247,7 +247,6 @@ void us0_received()
 }
 
 char buz_on = 0;
-char buz_cnt = 0;
 void timer1_tic()
 {
 	volatile unsigned int dummy;
@@ -255,8 +254,8 @@ void timer1_tic()
 	dummy = dummy;
 
 	tic ++;
-	rs485_timeout ++;
-	if( rs485_timeout == 255 ) rs485_timeout = 254;
+	if( rs485_timeout < 255 )
+		rs485_timeout ++;
 	AIC_EnableIT( AT91C_ID_US0 );
 
 #if defined(tfrog_rev5)
@@ -264,15 +263,14 @@ void timer1_tic()
 	{
 		if( buz_on )
 		{
-			buz_cnt ++;
-			if( (buz_cnt & 0x7) < saved_param.buz_lvl )
-				PIO_Set( pinBuz );
+			if( (tic & 0x7) < saved_param.buz_lvl )
+				pinBuz->pio->PIO_SODR = pinBuz->mask;
 			else
-				PIO_Clear( pinBuz );
+				pinBuz->pio->PIO_CODR = pinBuz->mask;
 		}
 		else
 		{
-			PIO_Clear( pinBuz );
+			pinBuz->pio->PIO_CODR = pinBuz->mask;
 		}
 	}
 #endif
