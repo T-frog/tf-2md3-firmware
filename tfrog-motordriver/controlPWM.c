@@ -259,6 +259,11 @@ void FIQ_PWMPeriod(  )
 		{
 			int64_t rate;
 
+			if( motor[j].servo_level == SERVO_LEVEL_STOP ||
+					motor[j].servo_level == SERVO_LEVEL_OPENFREE )
+			{
+				continue;
+			}
 			rate = motor[j].ref.rate * PWM_init / 2048;
 
 			if( driver_param.vsrc_rated != 0 )
