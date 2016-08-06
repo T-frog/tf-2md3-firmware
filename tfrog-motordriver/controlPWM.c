@@ -144,7 +144,7 @@ void FIQ_PWMPeriod(  )
 
 	{
 		// PWM周波数が高い場合は処理を間引く
-		// PWM_resolution 1000以下で一回間引き
+		// PWM_resolution 2000以下で一回間引き
 		static int thin = 0;
 
 		thin ++;
