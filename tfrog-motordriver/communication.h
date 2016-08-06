@@ -101,7 +101,7 @@ typedef enum
 
 
 #define SEND_BUF_LEN  128
-#define RECV_BUF_LEN  512
+#define RECV_BUF_LEN  256
 
 
 int data_analyze(  );
