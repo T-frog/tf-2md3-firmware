@@ -78,6 +78,11 @@ unsigned char *stringDescriptors2[3] = {
 	manufacturerStringDescriptor2
 };
 
+static void UsbDataReceived( unsigned int unused, unsigned char status, unsigned int received, unsigned int remaining ) RAMFUNC;
+void us0_received() RAMFUNC;
+void timer1_tic() RAMFUNC;
+
+
 // ------------------------------------------------------------------------------
 // Definitions
 // ------------------------------------------------------------------------------
@@ -198,7 +203,7 @@ volatile unsigned char usb_read_pause = 0;
 // ------------------------------------------------------------------------------
 // / Callback invoked when data has been received on the USB.
 // ------------------------------------------------------------------------------
-RAMFUNC static void UsbDataReceived( unsigned int unused, unsigned char status, unsigned int received, unsigned int remaining )
+static void UsbDataReceived( unsigned int unused, unsigned char status, unsigned int received, unsigned int remaining )
 {
 	// Check that data has been received successfully
 	if( status == USBD_STATUS_SUCCESS )
@@ -235,7 +240,7 @@ RAMFUNC static void UsbDataReceived( unsigned int unused, unsigned char status, 
 	}
 }
 
-RAMFUNC void us0_received()
+void us0_received()
 {
 	rs485_timeout = 0;
 	AIC_DisableIT( AT91C_ID_US0 );
@@ -243,7 +248,7 @@ RAMFUNC void us0_received()
 
 char buz_on = 0;
 char buz_cnt = 0;
-RAMFUNC void timer1_tic()
+void timer1_tic()
 {
 	volatile unsigned int dummy;
 	dummy = AT91C_BASE_TC1->TC_SR;

@@ -45,8 +45,28 @@ extern volatile char rs485_timeout;
 extern volatile short tic;
 
 
+unsigned short crc16(unsigned char *buf, int len) RAMFUNC;
+unsigned char crc8(unsigned char *buf, int len) RAMFUNC;
+int add_crc_485(unsigned char *buf, int len) RAMFUNC;
+char verify_crc_485(unsigned char *buf, int len) RAMFUNC;
+int send( char *buf ) RAMFUNC;
+int nsend( char *buf, int len ) RAMFUNC;
+void flush( void ) RAMFUNC;
+void flush485( void ) RAMFUNC;
+int encode( unsigned char *src, int len, unsigned char *dst, int buf_max ) RAMFUNC;
+int decord( unsigned char *src, int len, unsigned char *dst, int buf_max ) RAMFUNC;
+short rs485_timeout_wait( unsigned char t, unsigned short timeout ) RAMFUNC;
+int data_send( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask ) RAMFUNC;
+int data_send485( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask ) RAMFUNC;
+int data_fetch_( unsigned char *receive_buf, 
+		volatile int *w_receive_buf, volatile int *r_receive_buf,
+		unsigned char *data, int len ) RAMFUNC;
+int command_analyze( unsigned char *data, int len ) RAMFUNC;
+
+
+
 #if (CRC == 16)
-RAMFUNC unsigned short crc16(unsigned char *buf, int len)
+unsigned short crc16(unsigned char *buf, int len)
 {
 	unsigned short ret = 0;
 	unsigned char *pos;
@@ -59,7 +79,7 @@ RAMFUNC unsigned short crc16(unsigned char *buf, int len)
 	return ret;
 }
 #elif (CRC == 8)
-RAMFUNC unsigned char crc8(unsigned char *buf, int len)
+unsigned char crc8(unsigned char *buf, int len)
 {
 	unsigned char ret = 0;
 	unsigned char *pos;
@@ -73,7 +93,7 @@ RAMFUNC unsigned char crc8(unsigned char *buf, int len)
 }
 #endif
 
-RAMFUNC int add_crc_485(unsigned char *buf, int len)
+int add_crc_485(unsigned char *buf, int len)
 {
 #if (CRC == 16)
 	unsigned short crc = crc16( buf, len );
@@ -92,7 +112,7 @@ RAMFUNC int add_crc_485(unsigned char *buf, int len)
 	return len;
 }
 
-RAMFUNC char verify_crc_485(unsigned char *buf, int len)
+char verify_crc_485(unsigned char *buf, int len)
 {
 #if (CRC == 16)
 	if( crc16(buf, len - 2) == (buf[len - 2] | buf[len - 1] << 8))
@@ -277,7 +297,7 @@ void flush485( void )
 /**
  * @brief エンコード
  */
-inline int encode( unsigned char *src, int len, unsigned char *dst, int buf_max )
+int encode( unsigned char *src, int len, unsigned char *dst, int buf_max )
 {
 	static int pos, s_pos, w_pos;
 	static unsigned short b;
@@ -321,7 +341,7 @@ inline int encode( unsigned char *src, int len, unsigned char *dst, int buf_max 
  * @param buf_max[in] デコード後のデータバッファのサイズ
  * @return デコード後のバイト数
  */
-inline int decord( unsigned char *src, int len, unsigned char *dst, int buf_max )
+int decord( unsigned char *src, int len, unsigned char *dst, int buf_max )
 {
 	static unsigned short dat, b;
 	static int s_pos, w_pos;
@@ -359,7 +379,7 @@ inline int decord( unsigned char *src, int len, unsigned char *dst, int buf_max 
 	return w_pos;
 }
 
-RAMFUNC short rs485_timeout_wait( unsigned char t, unsigned short timeout )
+short rs485_timeout_wait( unsigned char t, unsigned short timeout )
 {
 	tic = 0;
 	while( rs485_timeout < t )
@@ -370,7 +390,7 @@ RAMFUNC short rs485_timeout_wait( unsigned char t, unsigned short timeout )
 	return 1;
 }
 
-inline int data_send( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask )
+int data_send( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask )
 {
 	unsigned char data[34];
 	int len, encode_len;
@@ -387,7 +407,7 @@ inline int data_send( short *cnt, short *pwm, char *en, short *analog, unsigned 
 	flush(  );
 	return encode_len;
 }
-inline int data_send485( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask )
+int data_send485( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask )
 {
 	unsigned char data[34];
 	int len, encode_len;
@@ -514,11 +534,11 @@ int data_fetch_( unsigned char *receive_buf,
 	return len;
 }
 
-inline int data_analyze(  )
+int data_analyze(  )
 {
 	return data_analyze_(receive_buf, &w_receive_buf, &r_receive_buf, 0);
 }
-inline int data_analyze485(  )
+int data_analyze485(  )
 {
 	return data_analyze_(receive_buf485, &w_receive_buf485, &r_receive_buf485, 1);
 }
@@ -813,7 +833,7 @@ int data_analyze_( unsigned char *receive_buf,
 int ext_continue = -1;
 // //////////////////////////////////////////////////
 /* 受信したYPSpur拡張コマンドの解析 */
-inline int extended_command_analyze( char *data )
+int extended_command_analyze( char *data )
 {
 	static int i;
 
@@ -1342,7 +1362,7 @@ inline int extended_command_analyze( char *data )
 
 // //////////////////////////////////////////////////
 /* 受信したコマンドの解析 */
-inline int command_analyze( unsigned char *data, int len )
+int command_analyze( unsigned char *data, int len )
 {
 	static int imotor;
 

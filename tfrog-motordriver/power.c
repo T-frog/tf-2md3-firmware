@@ -13,6 +13,9 @@
 
 static const Pin pinsLED[] = { PIN_LED_0, PIN_LED_1, PIN_LED_2 };
 
+void LED_off( int num ) RAMFUNC;
+void LED_on( int num ) RAMFUNC;
+
 void LED_on( int num )
 {
 	PIO_Clear(&pinsLED[num]);

@@ -130,8 +130,8 @@ extern char com_en[COM_MOTORS];
 
 void controlVelocity_init(  );
 void controlVelocity_config(  );
-RAMFUNC void ISR_VelocityControl(  );
-RAMFUNC void timer0_vel_calc(  );
+void ISR_VelocityControl(  );
+void timer0_vel_calc(  );
 
 
 #ifdef __cplusplus

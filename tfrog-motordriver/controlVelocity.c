@@ -44,6 +44,11 @@ Filter1st accelf0;
 
 extern Tfrog_EEPROM_data saved_param;
 
+
+void ISR_VelocityControl(  ) RAMFUNC;
+void timer0_vel_calc( ) RAMFUNC;
+
+
 // ------------------------------------------------------------------------------
 // / Velocity control loop (1ms)
 //   Called from main loop

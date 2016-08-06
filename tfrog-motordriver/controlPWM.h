@@ -3,8 +3,8 @@
 
 void controlPWM_init(  );
 void controlPWM_config(  );
-RAMFUNC void FIQ_PWMPeriod(  );
-RAMFUNC int _abs( int x );
-RAMFUNC void normalize( int *val, int min, int max, int resolution );
+void FIQ_PWMPeriod(  );
+int _abs( int x );
+void normalize( int *val, int min, int max, int resolution );
 
 #endif

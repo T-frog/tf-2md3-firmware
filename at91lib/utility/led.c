@@ -48,6 +48,10 @@ static const unsigned int numLeds = PIO_LISTSIZE(pinsLeds);
 //         Global Functions
 //------------------------------------------------------------------------------
 
+unsigned char LED_Set(unsigned int led) RAMFUNC;
+unsigned char LED_Clear(unsigned int led) RAMFUNC;
+unsigned char LED_Toggle(unsigned int led) RAMFUNC;
+
 //------------------------------------------------------------------------------
 /// Configures the pin associated with the given LED number. If the LED does
 /// not exist on the board, the function does nothing.

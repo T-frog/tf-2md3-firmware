@@ -56,6 +56,12 @@
 //         Definitions
 //------------------------------------------------------------------------------
 
+static void UDP_EndOfTransfer(unsigned char bEndpoint, char bStatus) RAMFUNC;
+static void UDP_WritePayload(unsigned char bEndpoint) RAMFUNC;
+static void UDP_EndpointHandler(unsigned char bEndpoint) RAMFUNC;
+void USBD_InterruptHandler(void) RAMFUNC;
+
+
 //------------------------------------------------------------------------------
 /// \page "UDP register field values"
 ///

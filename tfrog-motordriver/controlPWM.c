@@ -44,8 +44,12 @@ int PWM_deadtime;
 int PWM_cpms;
 
 
+void FIQ_PWMPeriod(  ) RAMFUNC;
+
+
+
 #define SinTB_2PI 4096
-RAMFUNC short sin_(int x)
+inline short sin_(int x)
 {
 	if( x < 1024 ) return SinTB[x];
 	else if( x < 2048 ) return SinTB[2048 - x];
@@ -57,7 +61,7 @@ extern Tfrog_EEPROM_data saved_param;
 extern volatile char rs485_timeout;
 
 
-void normalize( int *val, int min, int max, int resolution )
+inline void normalize( int *val, int min, int max, int resolution )
 {
 	if( resolution <= 0 ) return;
 	while( *val < min )
@@ -66,7 +70,7 @@ void normalize( int *val, int min, int max, int resolution )
 		*val -= resolution;
 }
 
-int _abs( int x )
+inline int _abs( int x )
 {
 	if( x < 0 ) return -x;
 	return x;

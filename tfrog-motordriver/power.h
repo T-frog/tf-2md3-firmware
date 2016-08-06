@@ -3,7 +3,7 @@
 
 void LowPowerMode( void );
 void NormalPowerMode( void );
-RAMFUNC void LED_on( int num );
-RAMFUNC void LED_off( int num );
+void LED_on( int num );
+void LED_off( int num );
 
 #endif

@@ -38,6 +38,9 @@
 //         Global functions
 //------------------------------------------------------------------------------
 
+void AIC_EnableIT(unsigned int source) RAMFUNC;
+void AIC_DisableIT(unsigned int source) RAMFUNC;
+
 //------------------------------------------------------------------------------
 /// Configures an interrupt in the AIC. The interrupt is identified by its
 /// source (AT91C_ID_xxx) and is configured to use the specified mode and

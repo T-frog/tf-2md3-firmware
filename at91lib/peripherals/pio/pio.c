@@ -205,6 +205,9 @@ static void PIO_SetOutput(
 //         Global Functions
 //------------------------------------------------------------------------------
 
+void PIO_Set(const Pin *pin) RAMFUNC;
+void PIO_Clear(const Pin *pin) RAMFUNC;
+
 //------------------------------------------------------------------------------
 /// Configures a list of Pin instances, each of which can either hold a single
 /// pin or a group of pins, depending on the mask value; all pins are configured
