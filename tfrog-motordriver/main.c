@@ -999,7 +999,7 @@ int main(  )
 			velcontrol = 0;
 			ISR_VelocityControl(  );
 
-			if( mscnt ++ >= ERROR_BLINK_MS )
+			/*if( mscnt ++ >= ERROR_BLINK_MS )
 			{
 				mscnt = 0;
 				if( driver_param.error_state )
@@ -1038,7 +1038,7 @@ int main(  )
 					LED_off( 0 );
 					buz_on = 0;
 				}
-			}
+			}*/
 		}
 		LED_off( 2 );
 	}

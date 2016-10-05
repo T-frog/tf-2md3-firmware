@@ -131,6 +131,12 @@ void controlPWM_config( int i )
 // ------------------------------------------------------------------------------
 // / PWM control interrupt (every PWM period) 20us/50us
 // ------------------------------------------------------------------------------
+
+char phase_test[2] = {0, 0};
+char phase_test_prev[2] = {0, 0};
+int amp_prev[2][3] = {{0, 0, 0}, {0, 0, 0}};
+int amp_control[2] = {4096, 4096};
+
 void FIQ_PWMPeriod(  )
 {
 	int i;
@@ -184,8 +190,8 @@ void FIQ_PWMPeriod(  )
 		// Short-mode brake
 		for( i = 0; i < 3*2; i ++ )
 		{
-			THEVA.MOTOR[i%2].PWM[i/2].H = PWM_resolution;
-			THEVA.MOTOR[i%2].PWM[i/2].L = PWM_resolution;
+			THEVA.MOTOR[i%2].PWM[i/2].H = PWM_resolution + 1;
+			THEVA.MOTOR[i%2].PWM[i/2].L = 0;
 		}
 		PWM_init = 0;
 		init = 0;
@@ -210,6 +216,50 @@ void FIQ_PWMPeriod(  )
 			motor[i].pos += ( short )( enc[i] - _enc[i] );
 			motor[i].posc += ( short )( enc[i] - _enc[i] );
 			normalize( &motor[i].pos, 0, motor_param[i].enc_rev, motor_param[i].enc_rev );
+		}
+	}
+
+	for( i = 0; i < 2; i ++ )
+	{
+		phase_test_prev[i] = phase_test[i];
+		if( phase_test_prev[i] != 0 )
+		{
+			int up = 0;
+			switch( _abs(phase_test_prev[i]) )
+			{
+			case 1:
+				if( hall[i] & HALL_W ) up = -1;
+				else up = 1;
+				break;
+			case 2:
+		//		if( hall[i] & HALL_V ) up = -1;
+		//		else up = 1;
+				break;
+			case 3:
+				if( hall[i] & HALL_U ) up = -1;
+				else up = 1;
+				break;
+			default:
+				break;
+			}
+			if( phase_test_prev[i] < 0 )
+				up = -up;
+
+			if( _abs(motor[i].ref.vel) > 1 )
+			{
+				if( up > 0 )
+				{
+					LED_on(0);
+					amp_control[i] += 256;
+					if( amp_control[i] > 4096 * 2 ) amp_control[i] = 4096 * 2;
+				}
+				else if( up < 0 )
+				{
+					LED_off(0);
+					amp_control[i] -= 256;
+					if( amp_control[i] < 4096 / 2 ) amp_control[i] = 4096 / 2;
+				}
+			}
 		}
 	}
 
@@ -331,6 +381,7 @@ void FIQ_PWMPeriod(  )
 					int pwmt;
 
 					pwmt = ( int )sin_(phase[i]%SinTB_2PI) * rate / (4096 * 2);
+					pwmt = pwmt * amp_control[j] / 4096;
 					pwmt += PWM_center;
 					if( pwmt < PWM_abs_min )
 						pwmt = PWM_abs_min;
@@ -347,8 +398,8 @@ void FIQ_PWMPeriod(  )
 			{
 				for( i = 0; i < 3; i ++ )
 				{
-					THEVA.MOTOR[j].PWM[i].H = PWM_resolution;
-					THEVA.MOTOR[j].PWM[i].L = PWM_resolution;
+					THEVA.MOTOR[j].PWM[i].H = PWM_resolution + 1;
+					THEVA.MOTOR[j].PWM[i].L = PWM_resolution + 1;
 				}
 			}
 			else if( _abs( motor[j].ref.torque ) < driver_param.zero_torque ||
@@ -356,28 +407,59 @@ void FIQ_PWMPeriod(  )
 			{
 				for( i = 0; i < 3; i++ )
 				{
-					THEVA.MOTOR[j].PWM[i].H = 0;
+					THEVA.MOTOR[j].PWM[i].H = PWM_resolution + 1;
 					THEVA.MOTOR[j].PWM[i].L = 0;
 				}
 			}
 			else
 			{
+				int avg = pwm[j][0] + pwm[j][1] + pwm[j][2];
+				phase_test[j] = 0;
 				for( i = 0; i < 3; i++ )
 				{
-					THEVA.MOTOR[j].PWM[i].H = pwm[j][i];
-					THEVA.MOTOR[j].PWM[i].L = PWM_resolution;
+					int amp;
+					amp = pwm[j][i] * 3 - avg;
+					if( amp_prev[j][i] < 0 && 0 <= amp )
+					{
+						phase_test[j] = (i + 1);
+					}
+					else if( amp_prev[j][i] >= 0 && 0 > amp )
+					{
+						phase_test[j] = -(i + 1);
+					}
+					amp_prev[j][i] = amp;
+				}
+
+				for( i = 0; i < 3; i++ )
+				{
+					if( _abs(phase_test[j]) == i + 1 /*|| _abs(phase_test_prev[j]) == i + 1*/ )
+					{
+						THEVA.MOTOR[j].PWM[i].H = PWM_resolution + 1;
+						THEVA.MOTOR[j].PWM[i].L = 0;
+					}
+					else
+					{
+						THEVA.MOTOR[j].PWM[i].H = pwm[j][i];
+						THEVA.MOTOR[j].PWM[i].L = PWM_resolution;
+					}
 				}
 			}
 		}
 	}
-
+	/*
+				if(phase_test[0] == 1) 
+					LED_on(0);
+				else
+					LED_off(0);
+*/
 	// ゼロ点計算
 	for( i = 0; i < 2; i++ )
 	{
 		int u, v, w;
 
 		if( motor_param[i].motor_type != MOTOR_TYPE_DC &&
-				motor_param[i].enc_type != 0 )
+				motor_param[i].enc_type != 0 &&
+				motor[i].servo_level != SERVO_LEVEL_STOP )
 		{
 			char dir;
 			unsigned short halldiff;
