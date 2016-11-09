@@ -22,6 +22,7 @@
 #include "controlVelocity.h"
 #include "power.h"
 #include "eeprom.h"
+#include "filter.h"
 
 static const Pin pinsLeds[] = { PINS_LEDS };
 
@@ -43,6 +44,8 @@ int PWM_thinning = 0;
 int PWM_deadtime;
 int PWM_cpms;
 
+Filter1st vel_bb_f[2];
+Filter1st vel_dec_f[2];
 
 void FIQ_PWMPeriod(  ) RAMFUNC;
 
@@ -78,6 +81,13 @@ inline int _abs( int x )
 
 void controlPWM_config( int i )
 {
+	Filter1st vel_bb_f0;
+	Filter1st vel_dec_f0;
+	Filter1st_CreateLPF( &vel_bb_f0, 20 );
+	vel_bb_f[0] = vel_bb_f[1] = vel_bb_f0;
+	Filter1st_CreateLPF( &vel_dec_f0, 10 );
+	vel_dec_f[0] = vel_dec_f[1] = vel_dec_f0;
+
 	motor[i].pos = 0;
 	motor[i].vel = 0;
 	motor[i].error_integ = 0;
@@ -132,10 +142,10 @@ void controlPWM_config( int i )
 // / PWM control interrupt (every PWM period) 20us/50us
 // ------------------------------------------------------------------------------
 
+char phase_up[2] = {0, 0};
 char phase_test[2] = {0, 0};
 char phase_test_prev[2] = {0, 0};
 int amp_prev[2][3] = {{0, 0, 0}, {0, 0, 0}};
-int amp_control[2] = {4096, 4096};
 
 void FIQ_PWMPeriod(  )
 {
@@ -221,7 +231,6 @@ void FIQ_PWMPeriod(  )
 
 	for( i = 0; i < 2; i ++ )
 	{
-		phase_test_prev[i] = phase_test[i];
 		if( phase_test_prev[i] != 0 )
 		{
 			int up = 0;
@@ -232,8 +241,8 @@ void FIQ_PWMPeriod(  )
 				else up = 1;
 				break;
 			case 2:
-		//		if( hall[i] & HALL_V ) up = -1;
-		//		else up = 1;
+				if( hall[i] & HALL_V ) up = -1;
+				else up = 1;
 				break;
 			case 3:
 				if( hall[i] & HALL_U ) up = -1;
@@ -250,16 +259,29 @@ void FIQ_PWMPeriod(  )
 				if( up > 0 )
 				{
 					LED_on(0);
-					amp_control[i] += 256;
-					if( amp_control[i] > 4096 * 2 ) amp_control[i] = 4096 * 2;
+					phase_up[i] = 64;
 				}
 				else if( up < 0 )
 				{
 					LED_off(0);
-					amp_control[i] -= 256;
-					if( amp_control[i] < 4096 / 2 ) amp_control[i] = 4096 / 2;
+					phase_up[i] = 0;
 				}
 			}
+			else
+			{
+				phase_up[i] = 0;
+			}
+		}
+	}
+	if( cnt % 256 == 0)
+	{
+		for( i = 0; i < 2; i ++ )
+		{
+			motor[i].vel_bb = Filter1st_Filter( &vel_bb_f[i], phase_up[i] );
+			if( motor[i].vel_bb > 62 || motor[i].toq_limit != 0 )
+				motor[i].vel_dec = Filter1st_Filter( &vel_dec_f[i], 32 );
+			else
+				motor[i].vel_dec = Filter1st_Filter( &vel_dec_f[i], 0 );
 		}
 	}
 
@@ -381,7 +403,6 @@ void FIQ_PWMPeriod(  )
 					int pwmt;
 
 					pwmt = ( int )sin_(phase[i]%SinTB_2PI) * rate / (4096 * 2);
-					pwmt = pwmt * amp_control[j] / 4096;
 					pwmt += PWM_center;
 					if( pwmt < PWM_abs_min )
 						pwmt = PWM_abs_min;
@@ -414,6 +435,7 @@ void FIQ_PWMPeriod(  )
 			else
 			{
 				int avg = pwm[j][0] + pwm[j][1] + pwm[j][2];
+				phase_test_prev[j] = phase_test[j];
 				phase_test[j] = 0;
 				for( i = 0; i < 3; i++ )
 				{
@@ -432,7 +454,8 @@ void FIQ_PWMPeriod(  )
 
 				for( i = 0; i < 3; i++ )
 				{
-					if( _abs(phase_test[j]) == i + 1 /*|| _abs(phase_test_prev[j]) == i + 1*/ )
+					if( _abs(phase_test[j]) == i + 1 ||
+							_abs(phase_test_prev[j]) == i + 1 )
 					{
 						THEVA.MOTOR[j].PWM[i].H = PWM_resolution + 1;
 						THEVA.MOTOR[j].PWM[i].L = 0;
@@ -446,12 +469,6 @@ void FIQ_PWMPeriod(  )
 			}
 		}
 	}
-	/*
-				if(phase_test[0] == 1) 
-					LED_on(0);
-				else
-					LED_off(0);
-*/
 	// ゼロ点計算
 	for( i = 0; i < 2; i++ )
 	{

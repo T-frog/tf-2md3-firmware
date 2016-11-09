@@ -75,57 +75,65 @@ void ISR_VelocityControl(  )
 			if( motor[i].servo_level >= SERVO_LEVEL_VELOCITY && 
 					motor[i].servo_level != SERVO_LEVEL_OPENFREE )
 			{
-				int64_t acc_pi;
-
-				// 積分
-				if( motor[i].control_init )
+				if( motor_param[i].enc_type != 0 )
 				{
-					motor[i].ref.vel_diff = 0;
-					motor[i].error = 0;
-					motor[i].error_integ = 0;
-					motor[i].control_init = 0;
-				}
+					int64_t acc_pi;
 
-				motor[i].ref.vel_interval++;
-				if( motor[i].ref.vel_changed )
+					// 積分
+					if( motor[i].control_init )
+					{
+						motor[i].ref.vel_diff = 0;
+						motor[i].error = 0;
+						motor[i].error_integ = 0;
+						motor[i].control_init = 0;
+					}
+
+					motor[i].ref.vel_interval++;
+					if( motor[i].ref.vel_changed )
+					{
+						motor[i].ref.vel_buf = motor[i].ref.vel;
+						motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - motor[i].ref.vel_buf_prev )
+							/ motor[i].ref.vel_interval;
+						// [cnt/msms]
+
+						motor[i].ref.vel_buf_prev = motor[i].ref.vel_buf;
+						motor[i].ref.vel_interval = 0;
+
+						motor[i].ref.vel_changed = 0;
+					}
+					else if(motor[i].ref.vel_interval > 128)
+					{
+						motor[i].ref.vel_diff = 0;
+					}
+
+					motor[i].error = motor[i].ref.vel_buf - motor[i].vel;
+					motor[i].error_integ += motor[i].error;
+					if( motor[i].error_integ > motor_param[i].integ_max )
+					{
+						motor[i].error_integ = motor_param[i].integ_max;
+					}
+					else if( motor[i].error_integ < motor_param[i].integ_min )
+					{
+						motor[i].error_integ = motor_param[i].integ_min;
+					}
+
+					// PI制御分 単位：加速度[cnt/ss]
+					acc_pi  = ((int64_t)motor[i].error * motor_param[i].Kp) * driver_param.control_s;
+					// [cnt/ms] * 1000[ms/s] * Kp[1/s] = [cnt/ss]
+					acc_pi += motor[i].error_integ * motor_param[i].Ki;
+					// [cnt] * Ki[1/ss] = [cnt/ss]
+
+					acc[i] = (acc_pi
+							+ (int64_t)Filter1st_Filter( &accelf[i], motor[i].ref.vel_diff )
+							* driver_param.control_s * driver_param.control_s
+							// [cnt/msms] * 1000[ms/s] * 1000[ms/s] = [cnt/ss]
+							) / 16;
+				}
+				else
 				{
-					motor[i].ref.vel_buf = motor[i].ref.vel;
-					motor[i].ref.vel_diff = ( motor[i].ref.vel_buf - motor[i].ref.vel_buf_prev )
-						/ motor[i].ref.vel_interval;
-					// [cnt/msms]
-
-					motor[i].ref.vel_buf_prev = motor[i].ref.vel_buf;
-					motor[i].ref.vel_interval = 0;
-
-					motor[i].ref.vel_changed = 0;
+					acc[i] = motor[i].vel_bb * motor[i].dir
+					   	* motor_param[i].Kp * driver_param.control_s / 64;
 				}
-				else if(motor[i].ref.vel_interval > 128)
-				{
-					motor[i].ref.vel_diff = 0;
-				}
-
-				motor[i].error = motor[i].ref.vel_buf - motor[i].vel;
-				motor[i].error_integ += motor[i].error;
-				if( motor[i].error_integ > motor_param[i].integ_max )
-				{
-					motor[i].error_integ = motor_param[i].integ_max;
-				}
-				else if( motor[i].error_integ < motor_param[i].integ_min )
-				{
-					motor[i].error_integ = motor_param[i].integ_min;
-				}
-
-				// PI制御分 単位：加速度[cnt/ss]
-				acc_pi  = ((int64_t)motor[i].error * motor_param[i].Kp) * driver_param.control_s;
-				// [cnt/ms] * 1000[ms/s] * Kp[1/s] = [cnt/ss]
-				acc_pi += motor[i].error_integ * motor_param[i].Ki;
-				// [cnt] * Ki[1/ss] = [cnt/ss]
-
-				acc[i] = (acc_pi
-						+ (int64_t)Filter1st_Filter( &accelf[i], motor[i].ref.vel_diff )
-						* driver_param.control_s * driver_param.control_s
-						// [cnt/msms] * 1000[ms/s] * 1000[ms/s] = [cnt/ss]
-						) / 16;
 			}
 			else
 			{
@@ -198,10 +206,16 @@ void ISR_VelocityControl(  )
 			if( toq[i] >= motor_param[i].torque_limit )
 			{
 				toq[i] = motor_param[i].torque_limit;
+				motor[i].toq_limit = 1;
 			}
-			if( toq[i] <= -motor_param[i].torque_limit )
+			else if( toq[i] <= -motor_param[i].torque_limit )
 			{
 				toq[i] = -motor_param[i].torque_limit;
+				motor[i].toq_limit = -1;
+			}
+			else
+			{
+				motor[i].toq_limit = 0;
 			}
 
 			// トルク→pwm変換
@@ -306,8 +320,8 @@ void timer0_vel_calc( )
 		
 		if(motor_param[i].enc_type == 0)
 		{
-			motor[i].vel = motor[i].ref.vel;
-			motor[i].vel1 = motor[i].ref.vel / 16;
+			motor[i].vel = motor[i].ref.vel * (64 - motor[i].vel_dec) / 64;
+			motor[i].vel1 = motor[i].vel / 16;
 			motor[i].enc += motor[i].vel1;
 			enc[i] = motor[i].enc;
 
@@ -354,6 +368,7 @@ void controlVelocity_init(  )
 		motor[i].error_integ = 0;
 		motor[i].control_init = 0;
 		motor[i].servo_level = SERVO_LEVEL_STOP;
+		motor[i].vel_bb = 0;
 		motor_param[i].motor_type = MOTOR_TYPE_AC3;
 		motor_param[i].enc_rev = 0;
 		motor_param[i].enc_div = 0;

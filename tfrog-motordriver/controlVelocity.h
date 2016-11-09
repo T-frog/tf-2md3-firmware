@@ -20,6 +20,9 @@ typedef struct _MotorState
 	int spd_cnt;
 	unsigned short enc;
 	short dir;
+	int vel_bb;
+	int vel_dec;
+	char toq_limit;
 
 	struct
 	{

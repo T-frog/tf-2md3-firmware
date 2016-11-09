@@ -1,6 +1,8 @@
 #ifndef __FILTER_H__
 #define __FILTER_H__
 
+#define FIXED_POINT 4096
+
 typedef struct
 {
 	int k[4];
