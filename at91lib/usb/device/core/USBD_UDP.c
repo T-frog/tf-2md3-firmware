@@ -127,7 +127,7 @@ void USBD_InterruptHandler(void) RAMFUNC;
 		if( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) == (flags) ) break; \
 		if( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) == (flags) ) break; \
 		if( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) == (flags) ) break; \
-		/*TRACE_ERROR("SET_CSR Timedout\n\r");*/ \
+		TRACE_ERROR("SET_CSR Timeout (%x)\n\r", flags); \
 	} while (0);
         //while ( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) != (flags)); 
 
@@ -146,7 +146,7 @@ void USBD_InterruptHandler(void) RAMFUNC;
 		if( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) != (flags) ) break; \
 		if( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) != (flags) ) break; \
 		if( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) != (flags) ) break; \
-		/*TRACE_ERROR("CLEAR_CSR Timedout\n\r");*/ \
+		TRACE_ERROR("CLEAR_CSR Timedout (%x)\n\r", flags); \
 	} while (0);
         //while ( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) == (flags)); 
 //------------------------------------------------------------------------------
