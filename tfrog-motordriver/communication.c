@@ -454,6 +454,86 @@ int data_send485( short *cnt, short *pwm, char *en, short *analog, unsigned shor
 	}
 }
 
+int int_send( const char param, const char id, const int value )
+{
+	unsigned char data[8];
+	int len, encode_len;
+	data[0] = param;
+	data[1] = id;
+	Integer4 v;
+	v.integer = value;
+	data[2] = v.byte[3];
+	data[3] = v.byte[2];
+	data[4] = v.byte[1];
+	data[5] = v.byte[0];
+	len = 6;
+
+	send_buf_pos = 0;
+	send_buf[0] = COMMUNICATION_INT_BYTE;
+	encode_len = encode( ( unsigned char * )data, len, send_buf + 1, SEND_BUF_LEN - 2 );
+	if( encode_len < 0 )
+		return encode_len;
+	send_buf[encode_len + 1] = COMMUNICATION_END_BYTE;
+	send_buf_pos = encode_len + 2;
+
+	flush(  );
+	return encode_len;
+}
+int int_send485( const char param, const char id, const int value )
+{
+	unsigned char data[8];
+	int len, encode_len;
+	data[0] = param;
+	data[1] = id;
+	Integer4 v;
+	v.integer = value;
+	data[2] = v.byte[3];
+	data[3] = v.byte[2];
+	data[4] = v.byte[1];
+	data[5] = v.byte[0];
+	len = 6;
+
+	send_buf485[0] = 0xAA;
+	send_buf_pos485 = 1;
+
+	unsigned char *buf;
+	int buf_len;
+	buf = &send_buf485[send_buf_pos485];
+	buf_len = 0;
+
+	buf[0] = COMMUNICATION_START_BYTE;
+	buf[1] = saved_param.id485 + 0x40;
+	if( driver_param.ifmode == 0 ) buf[1] = 0x40;
+	buf[2] = 0x40 - 1;
+	buf_len = 3;
+
+	encode_len = encode( ( unsigned char * )data, len, buf + buf_len, 
+			SEND_BUF_LEN - send_buf_pos485 - buf_len - 3 );
+	if( encode_len < 0 )
+		return encode_len;
+	
+	buf_len += encode_len;
+	buf[buf_len] = COMMUNICATION_END_BYTE;
+	buf_len ++;
+
+	buf_len = add_crc_485( buf, buf_len );
+	send_buf_pos485 += buf_len;
+
+	//printf("send485\n\r");
+	if( rs485_timeout_wait( saved_param.id485 * 4 + 4, 32 ) )
+	{
+		flush485(  );
+		return encode_len;
+	}
+	else
+	{
+		send_buf_pos485 = 0;
+		rs485_timeout = 0;
+		printf("rs485 skipped\n\r");
+		return -1;
+	}
+}
+
 /* オドメトリデータの送信 */
 inline int data_pack( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask, unsigned char *data )
 {
@@ -566,6 +646,11 @@ int data_analyze_( unsigned char *receive_buf,
 		STATE_CRC16_2,
 #endif
 	} state = STATE_IDLE;
+	enum
+	{
+		ISOCHRONOUS,
+		INTERRUPT
+	} mode = ISOCHRONOUS;
 
 	if( !fromto )
 	{
@@ -595,7 +680,8 @@ int data_analyze_( unsigned char *receive_buf,
 		switch ( state )
 		{
 		case STATE_IDLE:
-			if( *data == COMMUNICATION_START_BYTE )
+			if( *data == COMMUNICATION_START_BYTE || 
+					*data == COMMUNICATION_INT_BYTE )
 			{
 				len = 0;
 				if(fromto)
@@ -609,6 +695,10 @@ int data_analyze_( unsigned char *receive_buf,
 					from = -1;
 					to = id;
 				}
+				if( *data == COMMUNICATION_START_BYTE )
+					mode = ISOCHRONOUS;
+				else
+					mode = INTERRUPT;
 			}
 			else if( *data == COMMUNICATION_END_BYTE )
 			{
@@ -632,7 +722,8 @@ int data_analyze_( unsigned char *receive_buf,
 			len = 0;
 			break;
 		case STATE_RECIEVING:
-			if( *data == COMMUNICATION_START_BYTE )
+			if( *data == COMMUNICATION_START_BYTE || 
+					*data == COMMUNICATION_INT_BYTE )
 			{
 				len = 0;
 				if(fromto)
@@ -646,6 +737,10 @@ int data_analyze_( unsigned char *receive_buf,
 					from = -1;
 					to = id;
 				}
+				if( *data == COMMUNICATION_START_BYTE )
+					mode = ISOCHRONOUS;
+				else
+					mode = INTERRUPT;
 			}
 			if( *data == COMMUNICATION_END_BYTE )
 			{
@@ -785,21 +880,33 @@ int data_analyze_( unsigned char *receive_buf,
 			{
 				// Forward packet from RS485 to USB
 				data_len = decord( line, len - 1, rawdata, 16 );
-				Integer2 tmp;
-				int i = 0, j;
-				for( j = 0; j < 2; j ++ )
+				if( mode == ISOCHRONOUS )
 				{
-					tmp.byte[1] = rawdata[i++];
-					tmp.byte[0] = rawdata[i++];
-					com_cnts[from * 2 + j] = tmp.integer;
+					Integer2 tmp;
+					int i = 0, j;
+					for( j = 0; j < 2; j ++ )
+					{
+						tmp.byte[1] = rawdata[i++];
+						tmp.byte[0] = rawdata[i++];
+						com_cnts[from * 2 + j] = tmp.integer;
+					}
+					for( j = 0; j < 2; j ++ )
+					{
+						tmp.byte[1] = rawdata[i++];
+						tmp.byte[0] = rawdata[i++];
+						com_pwms[from * 2 + j] = tmp.integer;
+					}
+					//printf("enc\n\r");
 				}
-				for( j = 0; j < 2; j ++ )
+				else
 				{
-					tmp.byte[1] = rawdata[i++];
-					tmp.byte[0] = rawdata[i++];
-					com_pwms[from * 2 + j] = tmp.integer;
+					Integer4 value;
+					value.byte[0] = rawdata[5];
+					value.byte[1] = rawdata[4];
+					value.byte[2] = rawdata[3];
+					value.byte[3] = rawdata[2];
+					int_send( rawdata[0], from * 2 + rawdata[1], value.integer );
 				}
-				//printf("enc\n\r");
 			}
 			len = 0;
 			receive_period = 1;
