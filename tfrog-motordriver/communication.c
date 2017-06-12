@@ -1310,14 +1310,16 @@ int extended_command_analyze( char *data )
 		if( tmp & HALL_U ) num[0] = 'U'; else num[0] = '-';
 		if( tmp & HALL_V ) num[1] = 'V'; else num[1] = '-';
 		if( tmp & HALL_W ) num[2] = 'W'; else num[2] = '-';
-		num[3] = 0;
+		if( tmp & HALL_Z ) num[3] = 'Z'; else num[3] = '-';
+		num[4] = 0;
 		send( num );
 		send( "," );
 		tmp = THEVA.MOTOR[1].ROT_DETECTER.HALL;
 		if( tmp & HALL_U ) num[0] = 'U'; else num[0] = '-';
 		if( tmp & HALL_V ) num[1] = 'V'; else num[1] = '-';
 		if( tmp & HALL_W ) num[2] = 'W'; else num[2] = '-';
-		num[3] = 0;
+		if( tmp & HALL_Z ) num[3] = 'Z'; else num[3] = '-';
+		num[4] = 0;
 		send( num );
 		send( "\n" );
 
@@ -1339,6 +1341,27 @@ int extended_command_analyze( char *data )
 		nhex( num, THEVA.MOTOR[1].SPEED, 4 );
 		num[4] = 0;
 		send( num );
+		send( "\n" );
+
+		send( "O_R " );
+		nhex( num, THEVA.MOTOR[0].INDEX_RISE_ANGLE, 4 );
+		num[4] = 0;
+		send( num );
+		send( "," );
+		nhex( num, THEVA.MOTOR[1].INDEX_RISE_ANGLE, 4 );
+		num[4] = 0;
+		send( num );
+		send( "\n" );
+
+		send( "O_F " );
+		nhex( num, THEVA.MOTOR[0].INDEX_FALL_ANGLE, 4 );
+		num[4] = 0;
+		send( num );
+		send( "," );
+		nhex( num, THEVA.MOTOR[1].INDEX_FALL_ANGLE, 4 );
+		num[4] = 0;
+		send( num );
+		send( "\n" );
 
 		send( "\n\n" );
 	}

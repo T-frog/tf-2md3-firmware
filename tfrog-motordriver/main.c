@@ -435,6 +435,11 @@ int main(  )
 		driver_param.zero_torque = 0 * 65536;
 		driver_param.fpga_version = 1;
 	}
+	else if( ( (volatile TVREG)(THEVA.GENERAL.ID) & 0xFF00 ) == 0x0200 )
+	{
+		driver_param.zero_torque = 0 * 65536;
+		driver_param.fpga_version = 2;
+	}
 
 	// FPGA test
 	printf( "FPGA test\n\r" );
