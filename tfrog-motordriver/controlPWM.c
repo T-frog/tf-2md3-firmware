@@ -209,8 +209,8 @@ void FIQ_PWMPeriod(  )
 		{
 			motor[i].pos += ( short )( enc[i] - _enc[i] );
 			motor[i].posc = ( motor[i].posc & 0xFFFF0000 ) | enc[i];
-			if( _enc[i] < 0x4000 && enc[i] > 0xC000 ) motor[i].posc += 0x10000;
-			else if( _enc[i] > 0xC000 && enc[i] < 0x4000 ) motor[i].posc -= 0x10000;
+			if( _enc[i] < 0x4000 && enc[i] > 0xC000 ) motor[i].posc -= 0x10000;
+			else if( _enc[i] > 0xC000 && enc[i] < 0x4000 ) motor[i].posc += 0x10000;
 			normalize( &motor[i].pos, 0, motor_param[i].enc_rev, motor_param[i].enc_rev );
 		}
 	}
