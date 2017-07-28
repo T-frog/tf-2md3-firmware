@@ -501,7 +501,7 @@ int int_send485( const char param, const char id, const int value )
 	buf = &send_buf485[send_buf_pos485];
 	buf_len = 0;
 
-	buf[0] = COMMUNICATION_START_BYTE;
+	buf[0] = COMMUNICATION_INT_BYTE;
 	buf[1] = saved_param.id485 + 0x40;
 	if( driver_param.ifmode == 0 ) buf[1] = 0x40;
 	buf[2] = 0x40 - 1;
@@ -1667,4 +1667,3 @@ int command_analyze( unsigned char *data, int len )
 	driver_param.watchdog = 0;
 	return 0;
 }
-
