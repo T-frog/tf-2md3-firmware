@@ -30,11 +30,12 @@ script: true
 
 deploy:
   provider: releases
+  skip_cleanup: true
   api_key:
     secure: XpzbmHNim/Feyyr+RVPyx+AbS1WOmb4PIL8R4B0KFz+macXm847suGUCU+9zYozObuYkc6mJ5CdHXfKf/6yJSY1ndyfY9mZQknSx7yoLFBjlzAokWKtF61KBxVf+Z8Zpjy5l3YhDDaemFNfUqUYDK6sv+nbIPJayuFDl8PyFmpke7e3rX0IU5fSOkDOpqVguZu2VYqKFCu4/Z/6wUBm+0+HMMx2deV8X47EY957C5eMbrJvJBlQ/RJMybQ1Id1Aj6oCEc5q5DKu7k5T1JTWHTVLlAGLX2EnpP61TCZloGRWLtL1EGk6cKK59AlSZlQ0HfoIHOwunrmqx5II5Wq/kRyhCYKwpw54ajAhSgjHMbc3G7zns1N05QaPDx4NgDiLxRAAGX/lLRXXF6CncqAIJWlbks5DSq5N0TiqT/JGh/P/blaavXujUt0U9xjGSx4Oz4bpw23k8I8weTnSnkmTL2H5yI4RXbjd/ezu6Ktnac1/a+LnwFm6N64xjxlHqo5GlVWoWuNRPSqjwbxFMLIDeeNv9rfZxZPObFcLCief5j1jN+2O9PZMMr1mdpMimKZsy2C7fTJfXbFmngZu+t6z2M3IC0jSiRqF03xoh5EFgWlQBvxrw9kwofDWgA4uycgvJfHdPd8A7BMAk2m3hnRTjN8uqalnHTLx0MqKZRisNTX8=
   file:
-    - tfrog-motordriver/bin/${RELEASE_FILENAME_R4}
-    - tfrog-motordriver/bin/${RELEASE_FILENAME_R6}
+    - ${TRAVIS_BUILD_DIR}/tfrog-motordriver/bin/${RELEASE_FILENAME_R4}
+    - ${TRAVIS_BUILD_DIR}/tfrog-motordriver/bin/${RELEASE_FILENAME_R6}
   on:
     tags: true
 
