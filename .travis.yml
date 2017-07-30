@@ -10,14 +10,15 @@ cache:
 env:
   global:
     - TOOLCHAIN_URI="https://developer.arm.com/-/media/Files/downloads/gnu-rm/6-2017q2/gcc-arm-none-eabi-6-2017-q2-update-linux.tar.bz2?product=GNU%20ARM%20Embedded%20Toolchain,64-bit,,Linux,6-2017-q2-update"
+    - TOOLCHAIN_ARCHIVE=gcc-arm-none-eabi.tar.bz2
     - RELEASE_FILENAME_R4=tf-2md3-r4-${TRAVIS_TAG}.bin
     - RELEASE_FILENAME_R6=tf-2md3-r6-${TRAVIS_TAG}.bin
 
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install wget
-  - if [ ! -f ${TOOLCHAIN_URI} ]; then wget --trust-server-names -P ${HOME}/cache ${TOOLCHAIN_URI}; fi
-  - sudo tar xjf ${HOME}/cache/gcc-arm-*.tar.bz2 --strip-components 1 -C /usr
+  - if [ ! -f ${HOME}/cache/${TOOLCHAIN_ARCHIVE} ]; then wget --trust-server-names -O ${HOME}/cache/${TOOLCHAIN_ARCHIVE} ${TOOLCHAIN_URI}; fi
+  - sudo tar xjf ${HOME}/cache/${TOOLCHAIN_ARCHIVE} --strip-components 1 -C /usr
 
 install:
   - cd tfrog-motordriver/
