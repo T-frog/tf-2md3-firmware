@@ -43,6 +43,7 @@ extern const Pin pinPWMEnable;
 extern Tfrog_EEPROM_data saved_param;
 extern volatile char rs485_timeout;
 extern volatile short tic;
+extern volatile unsigned char usb_read_pause;
 
 
 unsigned short crc16(unsigned char *buf, int len) RAMFUNC;
@@ -669,12 +670,28 @@ int data_analyze_( unsigned char *receive_buf,
 
 		line[len] = *data;
 		len++;
+
+		char clear_buffer = 0;
+		if(fromto && len > COMMAND_LEN485 + 1)
+		{
+			clear_buffer = 1;
+			printf("ignoring broken 485 data\n\r");
+		}
 		if(len > 63)
+		{
+			clear_buffer = 1;
+			printf("recv buf overflow\n\r");
+		}
+		if(!fromto && usb_read_pause == 1 && len > COMMAND_LEN * 2)
+		{
+			clear_buffer = 1;
+			printf("clearing recv buf (USB buffer overflow (%d))\n\r", len);
+		}
+		if(clear_buffer)
 		{
 			len = 0;
 			receive_period = 1;
 			state = STATE_IDLE;
-			printf("receive buffer overrun\n\r");
 		}
 
 		switch ( state )

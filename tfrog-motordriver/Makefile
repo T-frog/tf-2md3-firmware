@@ -55,7 +55,8 @@ CHIP := $(shell $(chip))
 TRACE_LEVEL = 2
 
 # Optimization level, put in comment for debugging
-OPTIMIZATION = -O3 -mcpu=arm7tdmi -marm -fno-aggressive-loop-optimizations
+CPUSPEC = -mcpu=arm7tdmi -marm
+OPTIMIZATION = -O3 -fno-aggressive-loop-optimizations
 # -fomit-frame-pointer -funroll-loops
 
 # AT91 library directory
@@ -93,9 +94,11 @@ INCLUDES += -I$(AT91LIB)/memories
 FIRMINFO ?= 
 
 CFLAGS = -Wall -mlong-calls $(FIRMINFO) #-ffunction-sections
-CFLAGS += $(OPTIMIZATION) $(INCLUDES) -D$(CHIP) -DTRACE_LEVEL=$(TRACE_LEVEL)
-ASFLAGS = $(OPTIMIZATION) $(INCLUDES) -D$(CHIP) -D__ASSEMBLY__
-LDFLAGS = $(OPTIMIZATION) -nostartfiles -Wl,--gc-sections -L$(COMPILER_PREFIX)/lib
+CFLAGS += $(CPUSPEC) $(OPTIMIZATION) $(INCLUDES) -D$(CHIP) -DTRACE_LEVEL=$(TRACE_LEVEL)
+CFLAGS2 = -Wall -mlong-calls $(FIRMINFO) #-ffunction-sections
+CFLAGS2 += $(CPUSPEC) -O0 $(INCLUDES) -D$(CHIP) -DTRACE_LEVEL=$(TRACE_LEVEL)
+ASFLAGS = $(CPUSPEC) -O0 $(INCLUDES) -D$(CHIP) -D__ASSEMBLY__
+LDFLAGS = $(CPUSPEC) -O0 -nostartfiles -Wl,--gc-sections -L$(COMPILER_PREFIX)/lib
 
 #-------------------------------------------------------------------------------
 #		Files
@@ -133,12 +136,13 @@ C_OBJECTS += USBEndpointDescriptor.o USBConfigurationDescriptor.o
 C_OBJECTS += led.o string.o stdio.o
 C_OBJECTS += flashd_efc.o flashd_eefc.o
 C_OBJECTS += aic.o dbgu.o usart.o pio.o pio_it.o pmc.o efc.o eefc.o 
-C_OBJECTS += board_memories.o
-C_OBJECTS += board_lowlevel.o
 C_OBJECTS += power.o math.o filter.o
 C_OBJECTS += eeprom.o adc.o io.o
 C_OBJECTS += controlVelocity.o controlPWM.o communication.o
 C_OBJECTS += fixpawd.o fixpawd_math.o
+
+# Low level object files (don't optimize them)
+C_OBJECTS2 = board_lowlevel.o board_memories.o
 
 # Objects built from Assembly source files
 ASM_OBJECTS = board_cstartup.o
@@ -158,15 +162,19 @@ $(BIN) $(OBJ):
 
 define RULES
 C_OBJECTS_$(1) = $(addprefix $(OBJ)/$(1)_, $(C_OBJECTS))
+C_OBJECTS2_$(1) = $(addprefix $(OBJ)/$(1)_, $(C_OBJECTS2))
 ASM_OBJECTS_$(1) = $(addprefix $(OBJ)/$(1)_, $(ASM_OBJECTS))
 
-$(1): $$(ASM_OBJECTS_$(1)) $$(C_OBJECTS_$(1))
+$(1): $$(ASM_OBJECTS_$(1)) $$(C_OBJECTS_$(1)) $$(C_OBJECTS2_$(1))
 	$(CC) $(LDFLAGS) -T"$(AT91LIB)/boards/$(BOARD)/$(CHIP)/$$@.lds" -o $(OUTPUT)-$$@.elf $$^
 	$(OBJCOPY) -O binary $(OUTPUT)-$$@.elf $(OUTPUT)-$$@.bin
 	$(SIZE) $$^ $(OUTPUT)-$$@.elf
 
 $$(C_OBJECTS_$(1)): $(OBJ)/$(1)_%.o: %.c Makefile $(OBJ) $(BIN)
 	$(CC) $(CFLAGS) -D$(1) -c -o $$@ $$<
+
+$$(C_OBJECTS2_$(1)): $(OBJ)/$(1)_%.o: %.c Makefile $(OBJ) $(BIN)
+	$(CC) $(CFLAGS2) -D$(1) -c -o $$@ $$<
 
 $$(ASM_OBJECTS_$(1)): $(OBJ)/$(1)_%.o: %.S Makefile $(OBJ) $(BIN)
 	$(CC) $(ASFLAGS) -D$(1) -c -o $$@ $$<

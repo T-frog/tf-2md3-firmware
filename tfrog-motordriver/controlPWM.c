@@ -120,6 +120,11 @@ void controlPWM_config( int i )
 	motor_param[i].enc_mul = (unsigned int)( (uint64_t) SinTB_2PI * 0x40000 / motor_param[i].enc_rev );
 	motor_param[i].enc_rev_h = motor_param[i].enc_rev / 2;
 
+	// normalize phase offset
+	motor_param[i].phase_offset = motor_param[i].phase_offset % motor_param[i].enc_rev;
+	if(motor_param[i].phase_offset < 0)
+		motor_param[i].phase_offset += motor_param[i].enc_rev;
+
 	motor[i].ref.vel_diff = 0;
 	motor[i].ref.vel_interval = 0;
 	motor[i].ref.vel_changed = 0;
