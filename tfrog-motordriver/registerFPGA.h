@@ -45,7 +45,9 @@ typedef volatile struct _REG_MOTOR
 		TVREG H;								// ハイサイドコンパレートレベル
 		TVREG L;								// ハイサイドコンパレートレベル
 	} PWM[3];									// 0x4-0x9 
-	TVREG Reserved1[5];							// 0xA-0xE 予約
+	TVREG INDEX_RISE_ANGLE;						// 0xA
+	TVREG INDEX_FALL_ANGLE;						// 0xB
+	TVREG Reserved1[3];							// 0xC-0xE 予約
 	TVREG INVERT;								// 0xF 反転
 } REG_MOTOR;
 

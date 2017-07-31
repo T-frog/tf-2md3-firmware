@@ -72,7 +72,15 @@ typedef enum
 	PARAM_phase_offset,
 } YPSpur_loco_param;
 
+typedef enum
+{
+	INT_enc_index_rise = 0,
+	INT_enc_index_fall,
+} YPSpur_loco_interrupt;
+
+
 #define COMMUNICATION_START_BYTE	0x09
+#define COMMUNICATION_INT_BYTE  	0x07
 #define COMMUNICATION_END_BYTE		0x0a
 
 #define COMMAND_LEN		(1/*START*/ + 1/*param*/ + 1/*id*/ + 4/*data*/ + 1/*end*/)
@@ -88,7 +96,7 @@ typedef enum
 #endif
 /* protocol */
 #ifndef YP_PROTOCOL_NAME 
-#define YP_PROTOCOL_NAME "YPP:08:00"
+#define YP_PROTOCOL_NAME "YPP:09:00"
 #endif
 /* vendor */
 #ifndef YP_VENDOR_NAME 
@@ -115,6 +123,8 @@ int buf_left();
 
 int data_send( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask );
 int data_send485( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask );
+int int_send( const char param, const char id, const int value );
+int int_send485( const char param, const char id, const int value );
 int data_pack( short *cnt, short *pwm, char *en, short *analog, unsigned short analog_mask, unsigned char *data );
 
 int decord( unsigned char *src, int len, unsigned char *dst, int buf_max );

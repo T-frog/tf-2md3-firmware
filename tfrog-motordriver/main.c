@@ -307,7 +307,7 @@ void tic_init()
 int main(  )
 {
 	static short analog[16];
-	short enc_buf2[2];
+	static int com_index[2][2];
 	int err_cnt;
 	Filter1st voltf;
 	int vbuslv = 0;
@@ -435,6 +435,11 @@ int main(  )
 		driver_param.zero_torque = 0 * 65536;
 		driver_param.fpga_version = 1;
 	}
+	else if( ( (volatile TVREG)(THEVA.GENERAL.ID) & 0xFF00 ) == 0x0200 )
+	{
+		driver_param.zero_torque = 0 * 65536;
+		driver_param.fpga_version = 2;
+	}
 
 	// FPGA test
 	printf( "FPGA test\n\r" );
@@ -549,7 +554,6 @@ int main(  )
 
 	printf( "PWM control init\n\r" );
 	// Configure PWM control
-	enc_buf2[0] = enc_buf2[1] = 0;
 	controlPWM_init(  );
 
 	if( saved_param.stored_data == TFROG_EEPROM_DATA_BIN ||
@@ -596,13 +600,11 @@ int main(  )
 	AIC_ConfigureIT( AT91C_ID_US0, 4 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, ( void ( * )( void ) )us0_received );
 	AIC_EnableIT( AT91C_ID_US0 );
 
-	short com_cnts_prev[COM_MOTORS];
 	{
 		int i;
 		for(i = 0; i < COM_MOTORS; i ++)
 		{
 			com_cnts[i] = 0;
-			com_cnts_prev[i] = 0;
 			com_pwms[i] = 0;
 			com_en[i] = 0;
 		}
@@ -937,15 +939,8 @@ int main(  )
 			com_pwms[1] = motor[1].ref.rate_buf;
 			if( driver_param.ifmode == 0 )
 			{
-				com_cnts[0] = ( short )( ( short )motor[0].enc_buf - ( short )enc_buf2[0] );
-				com_cnts[1] = ( short )( ( short )motor[1].enc_buf - ( short )enc_buf2[1] );
-				for(i = 2; i < COM_MOTORS; i ++)
-				{
-					short tmp;
-					tmp = com_cnts[i];
-					com_cnts[i] = ( short )( ( short )com_cnts[i] - ( short )com_cnts_prev[i] );
-					com_cnts_prev[i] = tmp;
-				}
+				com_cnts[0] = motor[0].enc_buf;
+				com_cnts[1] = motor[1].enc_buf;
 				data_send( com_cnts, com_pwms, com_en, analog, mask );
 			}
 			else
@@ -956,12 +951,33 @@ int main(  )
 			}
 			for(i = 2; i < COM_MOTORS; i ++)
 			{
-				com_cnts[i] = com_cnts_prev[i];
 				com_pwms[i] = 0;
 			}
 
-			enc_buf2[0] = motor[0].enc_buf;
-			enc_buf2[1] = motor[1].enc_buf;
+			for(i = 0; i < 2; i ++)
+			{
+				const short index_r = THEVA.MOTOR[i].INDEX_RISE_ANGLE;
+				const short index_f = THEVA.MOTOR[i].INDEX_FALL_ANGLE;
+
+				if(index_r != com_index[i][0])
+				{
+					// New rising edge
+					if( driver_param.ifmode == 0 )
+						int_send( INT_enc_index_rise, i, index_r );
+					else	
+						int_send485( INT_enc_index_rise, i, index_r );
+				}
+				else if(index_f != com_index[i][1])
+				{
+					// New falling edge
+					if( driver_param.ifmode == 0 )
+						int_send( INT_enc_index_fall, i, index_f );
+					else	
+						int_send485( INT_enc_index_fall, i, index_f );
+				}
+				com_index[i][0] = index_r;
+				com_index[i][1] = index_f;
+			}
 
 			driver_param.cnt_updated = 0;
 			driver_param.vsrc = Filter1st_Filter( &voltf, (int)( analog[ 7 ] & 0x0FFF ) );
