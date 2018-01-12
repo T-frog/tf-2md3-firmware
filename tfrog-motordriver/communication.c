@@ -1550,6 +1550,7 @@ int command_analyze( unsigned char *data, int len )
 		if( motor[imotor].servo_level != SERVO_LEVEL_VELOCITY &&
 				i.integer == SERVO_LEVEL_VELOCITY )
 		{
+			controlVelocity_config(  );
 			// servo levelが速度制御に推移した
 			motor[imotor].control_init = 1;
 		}
