@@ -64,7 +64,9 @@ void ISR_VelocityControl(  )
 
 	if( motor[0].servo_level > SERVO_LEVEL_STOP ||
 			motor[1].servo_level > SERVO_LEVEL_STOP )
+	{
 		driver_param.cnt_updated++;
+	}
 
 	for( i = 0; i < 2; i++ )
 	{
@@ -237,6 +239,7 @@ void ISR_VelocityControl(  )
 			if( driver_param.cnt_updated == 5 )
 			{
 				motor[i].ref.rate_buf = pwm_sum[i];
+				motor[i].enc_buf2 = motor[i].enc_buf;
 				pwm_sum[i] = 0;
 			}
 		}
