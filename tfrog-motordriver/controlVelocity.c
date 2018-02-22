@@ -29,6 +29,7 @@ short com_cnts[COM_MOTORS];
 short com_pwms[COM_MOTORS];
 char com_en[COM_MOTORS];
 int pwm_sum[2] = { 0, 0 };
+int pwm_num[2] = { 0, 0 };
 
 extern int watchdog;
 extern int velcontrol;
@@ -229,6 +230,7 @@ void ISR_VelocityControl(  )
 			motor[i].ref.rate = out_pwm[i];
 
 			pwm_sum[i] += out_pwm[i];
+      pwm_num[i]++;
 		}
 	}
 }
@@ -320,9 +322,10 @@ void timer0_vel_calc( )
 		{
 			if( driver_param.cnt_updated == 5 )
 			{
-				motor[i].ref.rate_buf = pwm_sum[i];
+				motor[i].ref.rate_buf = pwm_sum[i] * 5 / pwm_num[i];
 				motor[i].enc_buf2 = motor[i].enc_buf;
 				pwm_sum[i] = 0;
+				pwm_num[i] = 0;
 			}
 		}
 	}
