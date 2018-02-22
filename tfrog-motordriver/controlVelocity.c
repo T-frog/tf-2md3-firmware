@@ -28,6 +28,7 @@ DriverParam driver_param;
 short com_cnts[COM_MOTORS];
 short com_pwms[COM_MOTORS];
 char com_en[COM_MOTORS];
+int pwm_sum[2] = { 0, 0 };
 
 extern int watchdog;
 extern int velcontrol;
@@ -56,17 +57,10 @@ void timer0_vel_calc( ) RAMFUNC;
 void ISR_VelocityControl(  )
 {
 	// volatile unsigned int status;
-	static int pwm_sum[2] = { 0, 0 };
 	int i;
 	int64_t toq[2];
 	int64_t out_pwm[2];
 	int64_t acc[2];
-
-	if( motor[0].servo_level > SERVO_LEVEL_STOP ||
-			motor[1].servo_level > SERVO_LEVEL_STOP )
-	{
-		driver_param.cnt_updated++;
-	}
 
 	for( i = 0; i < 2; i++ )
 	{
@@ -235,13 +229,6 @@ void ISR_VelocityControl(  )
 			motor[i].ref.rate = out_pwm[i];
 
 			pwm_sum[i] += out_pwm[i];
-
-			if( driver_param.cnt_updated == 5 )
-			{
-				motor[i].ref.rate_buf = pwm_sum[i];
-				motor[i].enc_buf2 = motor[i].enc_buf;
-				pwm_sum[i] = 0;
-			}
 		}
 	}
 }
@@ -259,7 +246,9 @@ void timer0_vel_calc( )
 			motor[1].servo_level > SERVO_LEVEL_STOP )
 	{
 		driver_param.watchdog ++;
+		driver_param.cnt_updated++;
 	}
+
 	
 	dummy = AT91C_BASE_TC0->TC_SR;
 	dummy = dummy;
@@ -324,6 +313,18 @@ void timer0_vel_calc( )
 		}
 		__enc[i] = enc[i];
 		motor[i].enc_buf = enc[i] >> motor_param[i].enc_div;
+	}
+	for( i = 0; i < 2; i++ )
+	{
+		if( motor[i].servo_level >= SERVO_LEVEL_TORQUE )
+		{
+			if( driver_param.cnt_updated == 5 )
+			{
+				motor[i].ref.rate_buf = pwm_sum[i];
+				motor[i].enc_buf2 = motor[i].enc_buf;
+				pwm_sum[i] = 0;
+			}
+		}
 	}
 
 	LED_off(1);
