@@ -16,6 +16,7 @@ typedef struct _MotorState
 	int pos;									// count
 	unsigned int posc;							// count
 	int enc_buf;								// count
+	int enc_buf2;								// count
 	int spd;
 	int spd_cnt;
 	unsigned short enc;

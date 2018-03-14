@@ -910,6 +910,9 @@ int main(  )
 			int i;
 			// static long cnt = 0;
 			/* 約5msおき */
+			driver_param.cnt_updated -= 5;
+			if( driver_param.cnt_updated >= 5 )
+				driver_param.cnt_updated -= 5;
 
 			mask = driver_param.admask;			// analog_mask;
 			if( driver_param.io_mask[0] )
@@ -939,14 +942,14 @@ int main(  )
 			com_pwms[1] = motor[1].ref.rate_buf;
 			if( driver_param.ifmode == 0 )
 			{
-				com_cnts[0] = motor[0].enc_buf;
-				com_cnts[1] = motor[1].enc_buf;
+				com_cnts[0] = motor[0].enc_buf2;
+				com_cnts[1] = motor[1].enc_buf2;
 				data_send( com_cnts, com_pwms, com_en, analog, mask );
 			}
 			else
 			{
-				com_cnts[0] = ( short )motor[0].enc_buf;
-				com_cnts[1] = ( short )motor[1].enc_buf;
+				com_cnts[0] = ( short )motor[0].enc_buf2;
+				com_cnts[1] = ( short )motor[1].enc_buf2;
 				data_send485( com_cnts, com_pwms, com_en, analog, mask );
 			}
 			for(i = 2; i < COM_MOTORS; i ++)
@@ -979,7 +982,6 @@ int main(  )
 				com_index[i][1] = index_f;
 			}
 
-			driver_param.cnt_updated = 0;
 			driver_param.vsrc = Filter1st_Filter( &voltf, (int)( analog[ 7 ] & 0x0FFF ) );
 			ADC_Start();
 
