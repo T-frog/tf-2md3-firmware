@@ -28,7 +28,11 @@ void ADC_Init()
 
   AT91C_BASE_ADC->ADC_CR = AT91C_ADC_SWRST;
 
-  AT91C_BASE_ADC->ADC_MR = AT91C_ADC_TRGEN_DIS | AT91C_ADC_LOWRES_10_BIT | AT91C_ADC_SLEEP_NORMAL_MODE | (prescal << 8) | (startup << 16) | (shtim << 24);
+  AT91C_BASE_ADC->ADC_MR =
+      AT91C_ADC_TRGEN_DIS |
+      AT91C_ADC_LOWRES_10_BIT |
+      AT91C_ADC_SLEEP_NORMAL_MODE |
+      (prescal << 8) | (startup << 16) | (shtim << 24);
 
   AT91C_BASE_ADC->ADC_CHER = 0xFF;
 }

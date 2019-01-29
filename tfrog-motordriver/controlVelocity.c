@@ -111,10 +111,11 @@ void ISR_VelocityControl()
         acc_pi += motor[i].error_integ * motor_param[i].Ki;
         // [cnt] * Ki[1/ss] = [cnt/ss]
 
-        acc[i] = (acc_pi + (int64_t)Filter1st_Filter(&accelf[i], motor[i].ref.vel_diff) * driver_param.control_s * driver_param.control_s
-                  // [cnt/msms] * 1000[ms/s] * 1000[ms/s] = [cnt/ss]
-                  ) /
+        acc[i] = (acc_pi +
+                  (int64_t)Filter1st_Filter(&accelf[i], motor[i].ref.vel_diff) *
+                      driver_param.control_s * driver_param.control_s) /
                  16;
+        // [cnt/msms] * 1000[ms/s] * 1000[ms/s] = [cnt/ss]
       }
       else
       {

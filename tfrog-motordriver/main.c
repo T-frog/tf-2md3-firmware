@@ -77,7 +77,8 @@ unsigned char* stringDescriptors2[3] = {
   manufacturerStringDescriptor2
 };
 
-static void UsbDataReceived(unsigned int unused, unsigned char status, unsigned int received, unsigned int remaining) RAMFUNC;
+static void UsbDataReceived(
+    unsigned int unused, unsigned char status, unsigned int received, unsigned int remaining) RAMFUNC;
 void us0_received() RAMFUNC;
 void timer1_tic() RAMFUNC;
 
