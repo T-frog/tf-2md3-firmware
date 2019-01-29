@@ -1,4 +1,3 @@
-
 /**
 	@file fixp.c
 	@brief Fixed point value operation
@@ -12,9 +11,9 @@
 	@param b [in] Input value B
 	@return A*B
  */
-fixp4 fp4mulf( fixp4 a, fixp4 b )
+fixp4 fp4mulf(fixp4 a, fixp4 b)
 {
-	return ( fixp4 ) ( ( ( long long )a * b ) / FP4_ONE );
+  return (fixp4)(((long long)a * b) / FP4_ONE);
 }
 
 /**
@@ -23,18 +22,18 @@ fixp4 fp4mulf( fixp4 a, fixp4 b )
 	@param b [in] Input value B
 	@return A*B
  */
-fixp4 fp4mul( fixp4 a, fixp4 b )
+fixp4 fp4mul(fixp4 a, fixp4 b)
 {
-	long long y;
+  long long y;
 
-	y = ( long long )a *b;
-	y = y >> FP4_POINTBIT;
+  y = (long long)a * b;
+  y = y >> FP4_POINTBIT;
 
-	if( y > 0x7FFFFFFF )
-		return 0x7FFFFFFF;
-	if( y < -0x7FFFFFFF )
-		return -0x7FFFFFFF;
-	return ( fixp4 ) y;
+  if (y > 0x7FFFFFFF)
+    return 0x7FFFFFFF;
+  if (y < -0x7FFFFFFF)
+    return -0x7FFFFFFF;
+  return (fixp4)y;
 }
 
 /**
@@ -43,9 +42,9 @@ fixp4 fp4mul( fixp4 a, fixp4 b )
 	@param b [in] Input value B
 	@return A/B
  */
-fixp4 fp4div( fixp4 a, fixp4 b )
+fixp4 fp4div(fixp4 a, fixp4 b)
 {
-	return ( fixp4 ) ( ( ( long long )a * FP4_ONE ) / b );
+  return (fixp4)(((long long)a * FP4_ONE) / b);
 }
 
 /**
@@ -53,9 +52,9 @@ fixp4 fp4div( fixp4 a, fixp4 b )
 	@param a [in] Input value A
 	@return A expressed in fixed point
  */
-fixp4 double2fp4( double a )
+fixp4 double2fp4(double a)
 {
-	return ( fixp4 ) ( a * FP4_MUL + 0.5 );
+  return (fixp4)(a * FP4_MUL + 0.5);
 }
 
 /**
@@ -63,9 +62,9 @@ fixp4 double2fp4( double a )
 	@param a [in] Input value A
 	@return A expressed in fixed point
  */
-fixp4 int2fp4( int a )
+fixp4 int2fp4(int a)
 {
-	return ( fixp4 ) ( a * FP4_ONE );
+  return (fixp4)(a * FP4_ONE);
 }
 
 /**
@@ -73,7 +72,7 @@ fixp4 int2fp4( int a )
 	@param a [in] Input value A
 	@return A expressed in double
  */
-double fp42double( fixp4 a )
+double fp42double(fixp4 a)
 {
-	return ( double )a *FP4_DIV;
+  return (double)a * FP4_DIV;
 }

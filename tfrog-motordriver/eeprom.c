@@ -17,171 +17,173 @@
 #include "communication.h"
 #include "eeprom.h"
 
-
-void msleep( int ms )
+void msleep(int ms)
 {
-	volatile unsigned int dummy = 0;
-	int i = 0;
+  volatile unsigned int dummy = 0;
+  int i = 0;
 
-	AT91C_BASE_PITC->PITC_PIMR = AT91C_PITC_PITEN | 0x667;
+  AT91C_BASE_PITC->PITC_PIMR = AT91C_PITC_PITEN | 0x667;
 
-	for( i = 0; i < ms * 3; i ++ )
-	{
-		while( !( AT91C_BASE_PITC->PITC_PISR & AT91C_PITC_PITS) );
-		dummy = AT91C_BASE_PITC->PITC_PIVR ;
-		dummy = dummy ;
-	}
+  for (i = 0; i < ms * 3; i++)
+  {
+    while (!(AT91C_BASE_PITC->PITC_PISR & AT91C_PITC_PITS))
+      ;
+    dummy = AT91C_BASE_PITC->PITC_PIVR;
+    dummy = dummy;
+  }
 }
 
-void EEPROM_Init(  )
+void EEPROM_Init()
 {
-#if defined( tfrog_rev5 )
-	static const Pin pinsEEPROM[] = { PINS_EEPROM };
-	static const Pin pinsEEPROM_reset[] = { PINS_EEPROM_TWD, PINS_EEPROM_TWCK };
-	int i;
+#if defined(tfrog_rev5)
+  static const Pin pinsEEPROM[] = { PINS_EEPROM };
+  static const Pin pinsEEPROM_reset[] = { PINS_EEPROM_TWD, PINS_EEPROM_TWCK };
+  int i;
 
-	PIO_Configure( pinsEEPROM_reset, PIO_LISTSIZE( pinsEEPROM_reset ) );
-	PIO_Set( &pinsEEPROM_reset[0] );
-	PIO_Set( &pinsEEPROM_reset[1] );
+  PIO_Configure(pinsEEPROM_reset, PIO_LISTSIZE(pinsEEPROM_reset));
+  PIO_Set(&pinsEEPROM_reset[0]);
+  PIO_Set(&pinsEEPROM_reset[1]);
 
-	for( i = 0; i < 10; i ++ )
-	{
-		PIO_Set( &pinsEEPROM_reset[0] );
-		msleep( 1 );
-		PIO_Clear( &pinsEEPROM_reset[0] );
-		msleep( 1 );
-	}
+  for (i = 0; i < 10; i++)
+  {
+    PIO_Set(&pinsEEPROM_reset[0]);
+    msleep(1);
+    PIO_Clear(&pinsEEPROM_reset[0]);
+    msleep(1);
+  }
 
-	PIO_Set( &pinsEEPROM_reset[0] );
-	PIO_Set( &pinsEEPROM_reset[1] );
-	msleep( 1 );
-	PIO_Clear( &pinsEEPROM_reset[0] );
-	msleep( 1 );
-	PIO_Clear( &pinsEEPROM_reset[1] );
-	msleep( 1 );
+  PIO_Set(&pinsEEPROM_reset[0]);
+  PIO_Set(&pinsEEPROM_reset[1]);
+  msleep(1);
+  PIO_Clear(&pinsEEPROM_reset[0]);
+  msleep(1);
+  PIO_Clear(&pinsEEPROM_reset[1]);
+  msleep(1);
 
-	AT91C_BASE_PMC->PMC_PCER = 1 << AT91C_ID_TWI;
-	PIO_Configure( pinsEEPROM, PIO_LISTSIZE( pinsEEPROM ) );
+  AT91C_BASE_PMC->PMC_PCER = 1 << AT91C_ID_TWI;
+  PIO_Configure(pinsEEPROM, PIO_LISTSIZE(pinsEEPROM));
 
-	AT91C_BASE_TWI->TWI_CR   = AT91C_TWI_SWRST;
+  AT91C_BASE_TWI->TWI_CR = AT91C_TWI_SWRST;
 
-	AT91C_BASE_TWI->TWI_CWGR = 0x00007575;
-	AT91C_BASE_TWI->TWI_CR   = AT91C_TWI_MSEN | AT91C_TWI_SVDIS;
-	AT91C_BASE_TWI->TWI_MMR  = AT91C_TWI_IADRSZ_1_BYTE;
+  AT91C_BASE_TWI->TWI_CWGR = 0x00007575;
+  AT91C_BASE_TWI->TWI_CR = AT91C_TWI_MSEN | AT91C_TWI_SVDIS;
+  AT91C_BASE_TWI->TWI_MMR = AT91C_TWI_IADRSZ_1_BYTE;
 
-	{
-		char dummy[8];
-		EEPROM_Read( 0, dummy, 8 );
-	}
-#elif defined( tfrog_rev4 )
-	FLASHD_Initialize( BOARD_MCK );
+  {
+    char dummy[8];
+    EEPROM_Read(0, dummy, 8);
+  }
+#elif defined(tfrog_rev4)
+  FLASHD_Initialize(BOARD_MCK);
 #endif
 }
 
-int EEPROM_Read( int addr, void *data, int len )
+int EEPROM_Read(int addr, void* data, int len)
 {
-#if defined( tfrog_rev5 )
-	int page;
-	int recieved;
+#if defined(tfrog_rev5)
+  int page;
+  int recieved;
 
-	page = addr >> 8;
-	addr = addr & 0xFF;
-	AT91C_BASE_TWI->TWI_CR   = AT91C_TWI_MSEN | AT91C_TWI_SVDIS;
-	AT91C_BASE_TWI->TWI_MMR  = ( ( 0x50 | page ) << 16 ) | AT91C_TWI_IADRSZ_1_BYTE | AT91C_TWI_MREAD;
-	AT91C_BASE_TWI->TWI_IADR = addr;
+  page = addr >> 8;
+  addr = addr & 0xFF;
+  AT91C_BASE_TWI->TWI_CR = AT91C_TWI_MSEN | AT91C_TWI_SVDIS;
+  AT91C_BASE_TWI->TWI_MMR = ((0x50 | page) << 16) | AT91C_TWI_IADRSZ_1_BYTE | AT91C_TWI_MREAD;
+  AT91C_BASE_TWI->TWI_IADR = addr;
 
-	while( !( AT91C_BASE_TWI->TWI_SR & AT91C_TWI_TXCOMP_MASTER ) );
-	if( len == 1 )
-	{
-		AT91C_BASE_TWI->TWI_CR   = AT91C_TWI_START | AT91C_TWI_STOP;
-	}
-	else
-	{
-		AT91C_BASE_TWI->TWI_CR   = AT91C_TWI_START;
-	}
+  while (!(AT91C_BASE_TWI->TWI_SR & AT91C_TWI_TXCOMP_MASTER))
+    ;
+  if (len == 1)
+  {
+    AT91C_BASE_TWI->TWI_CR = AT91C_TWI_START | AT91C_TWI_STOP;
+  }
+  else
+  {
+    AT91C_BASE_TWI->TWI_CR = AT91C_TWI_START;
+  }
 
-	recieved = 0;
-	do
-	{
-		if( AT91C_BASE_TWI->TWI_SR & AT91C_TWI_RXRDY )
-		{
-			((unsigned char*)data)[recieved] = AT91C_BASE_TWI->TWI_RHR;
-			recieved ++;
+  recieved = 0;
+  do
+  {
+    if (AT91C_BASE_TWI->TWI_SR & AT91C_TWI_RXRDY)
+    {
+      ((unsigned char*)data)[recieved] = AT91C_BASE_TWI->TWI_RHR;
+      recieved++;
 
-			if( recieved < len )
-			{
-				if( recieved == len - 1 )
-					AT91C_BASE_TWI->TWI_CR   = AT91C_TWI_STOP;
-				continue;
-			}
-	
-			while( !( AT91C_BASE_TWI->TWI_SR & AT91C_TWI_TXCOMP_MASTER ) );
-			return recieved;
-		}
-	}
-	while( 1 );
-#elif defined( tfrog_rev4 )
-	memcpy( data, ( void * )( FLASH_USERDATA_START + addr ), len );
-	return len;
+      if (recieved < len)
+      {
+        if (recieved == len - 1)
+          AT91C_BASE_TWI->TWI_CR = AT91C_TWI_STOP;
+        continue;
+      }
+
+      while (!(AT91C_BASE_TWI->TWI_SR & AT91C_TWI_TXCOMP_MASTER))
+        ;
+      return recieved;
+    }
+  } while (1);
+#elif defined(tfrog_rev4)
+  memcpy(data, (void*)(FLASH_USERDATA_START + addr), len);
+  return len;
 #endif
-	return -1;
+  return -1;
 }
 
-int EEPROM_Write( int addr, void *data, int len )
+int EEPROM_Write(int addr, void* data, int len)
 {
-#if defined( tfrog_rev5 )
-	int page, addr_l;
-	int sent;
+#if defined(tfrog_rev5)
+  int page, addr_l;
+  int sent;
 
-	sent = 0;
+  sent = 0;
 
-	do
-	{
-		AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
-		while( !( AT91C_BASE_TWI->TWI_SR & AT91C_TWI_TXCOMP_MASTER ) );
+  do
+  {
+    AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
+    while (!(AT91C_BASE_TWI->TWI_SR & AT91C_TWI_TXCOMP_MASTER))
+      ;
 
-		page   = addr >> 8;
-		addr_l = addr & 0xFF;
-		AT91C_BASE_TWI->TWI_CR   = AT91C_TWI_MSEN | AT91C_TWI_SVDIS;
-		AT91C_BASE_TWI->TWI_MMR  = ( ( 0x50 | page ) << 16 ) | AT91C_TWI_IADRSZ_1_BYTE;
-		AT91C_BASE_TWI->TWI_IADR = addr_l;
+    page = addr >> 8;
+    addr_l = addr & 0xFF;
+    AT91C_BASE_TWI->TWI_CR = AT91C_TWI_MSEN | AT91C_TWI_SVDIS;
+    AT91C_BASE_TWI->TWI_MMR = ((0x50 | page) << 16) | AT91C_TWI_IADRSZ_1_BYTE;
+    AT91C_BASE_TWI->TWI_IADR = addr_l;
 
-		while( !( AT91C_BASE_TWI->TWI_SR & AT91C_TWI_TXRDY_MASTER ) );
-		AT91C_BASE_TWI->TWI_THR  = ((unsigned char*)data)[sent];
+    while (!(AT91C_BASE_TWI->TWI_SR & AT91C_TWI_TXRDY_MASTER))
+      ;
+    AT91C_BASE_TWI->TWI_THR = ((unsigned char*)data)[sent];
 
-		do
-		{
-			while( !( AT91C_BASE_TWI->TWI_SR & AT91C_TWI_TXRDY_MASTER ) );
-			sent ++;
-			addr ++;
-			if( sent < len )
-			{
-				if( ( addr & 0x0F ) == 0x00 )
-				{
-					// Wait for 5ms
-					AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
-					msleep( 5 );
-					break;
-				}
-				AT91C_BASE_TWI->TWI_THR  = ((unsigned char*)data)[sent];
-				continue;
-			}
-			else
-			{
-				while( !( AT91C_BASE_TWI->TWI_SR & AT91C_TWI_TXCOMP_MASTER ) );
-				AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
+    do
+    {
+      while (!(AT91C_BASE_TWI->TWI_SR & AT91C_TWI_TXRDY_MASTER))
+        ;
+      sent++;
+      addr++;
+      if (sent < len)
+      {
+        if ((addr & 0x0F) == 0x00)
+        {
+          // Wait for 5ms
+          AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
+          msleep(5);
+          break;
+        }
+        AT91C_BASE_TWI->TWI_THR = ((unsigned char*)data)[sent];
+        continue;
+      }
+      else
+      {
+        while (!(AT91C_BASE_TWI->TWI_SR & AT91C_TWI_TXCOMP_MASTER))
+          ;
+        AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 
-				return sent;
-			}
-		}
-		while( 1 );
-	}
-	while( 1 );
-	return -2;
-#elif defined( tfrog_rev4 )
-	FLASHD_Write( (unsigned int)( FLASH_USERDATA_START + addr), data, len );
-	return len;
+        return sent;
+      }
+    } while (1);
+  } while (1);
+  return -2;
+#elif defined(tfrog_rev4)
+  FLASHD_Write((unsigned int)(FLASH_USERDATA_START + addr), data, len);
+  return len;
 #endif
-	return -1;
+  return -1;
 }
-
