@@ -1691,10 +1691,13 @@ int command_analyze(unsigned char* data, int len)
         motor_param[imotor].phase_offset = i.integer;
         break;
       case PARAM_enc_rev:
-        motor_param[imotor].enc_rev = i.integer;
+        motor_param[imotor].enc_rev_raw = i.integer;
         break;
       case PARAM_enc_div:
         motor_param[imotor].enc_div = i.integer;
+        break;
+      case PARAM_enc_denominator:
+        motor_param[imotor].enc_denominator = i.integer;
         break;
       case PARAM_enc_type:
         motor_param[imotor].enc_type = i.integer;

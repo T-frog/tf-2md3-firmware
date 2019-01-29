@@ -103,6 +103,8 @@ void controlPWM_config(int i)
 
   motor[i].ref.rate = 0;
 
+  motor_param[i].enc_rev = (int)motor_param[i].enc_rev_raw / (int)motor_param[i].enc_denominator;
+
   motor_param[i].enc_drev[0] = motor_param[i].enc_rev * 1 / 6;
   motor_param[i].enc_drev[1] = motor_param[i].enc_rev * 2 / 6;
   motor_param[i].enc_drev[2] = motor_param[i].enc_rev * 3 / 6;
@@ -115,7 +117,9 @@ void controlPWM_config(int i)
   if (motor_param[i].enc_rev_1p == 0)
     motor_param[i].enc_rev_1p = 1;
 
-  motor_param[i].enc_mul = (unsigned int)((uint64_t)SinTB_2PI * 0x40000 / motor_param[i].enc_rev);
+  motor_param[i].enc_mul =
+      (unsigned int)((uint64_t)SinTB_2PI * 0x40000 * motor_param[i].enc_denominator /
+                     motor_param[i].enc_rev_raw);
   motor_param[i].enc_rev_h = motor_param[i].enc_rev / 2;
 
   // normalize phase offset
@@ -217,7 +221,7 @@ void FIQ_PWMPeriod()
         motor[i].posc -= 0x10000;
       else if (_enc[i] > 0xC000 && enc[i] < 0x4000)
         motor[i].posc += 0x10000;
-      normalize(&motor[i].pos, 0, motor_param[i].enc_rev, motor_param[i].enc_rev);
+      normalize(&motor[i].pos, 0, motor_param[i].enc_rev_raw, motor_param[i].enc_rev_raw);
     }
   }
 
