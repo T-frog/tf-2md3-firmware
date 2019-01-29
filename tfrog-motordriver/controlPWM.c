@@ -330,7 +330,7 @@ void FIQ_PWMPeriod()
         break;
         case MOTOR_TYPE_AC3:
           phase[2] = motor[j].pos - motor_param[j].enc0tran;
-          phase[2] = (uint64_t)(phase[2] + motor_param[j].phase_offset) *
+          phase[2] = (int64_t)(phase[2] + motor_param[j].phase_offset) *
                          motor_param[j].enc_mul / 0x40000 +
                      SinTB_2PI + SinTB_2PI / 4;
           phase[1] = phase[2] - SinTB_2PI / 3;
@@ -340,7 +340,10 @@ void FIQ_PWMPeriod()
           {
             int pwmt;
 
-            pwmt = (int)sin_(phase[i] % SinTB_2PI) * rate / (4096 * 2);
+            int p = phase[i] % SinTB_2PI;
+            if (p < 0)
+              p += SinTB_2PI;
+            pwmt = (int)sin_(p) * rate / (4096 * 2);
             pwmt += PWM_center;
             if (pwmt < PWM_abs_min)
               pwmt = PWM_abs_min;
