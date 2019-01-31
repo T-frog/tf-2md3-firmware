@@ -64,6 +64,7 @@ typedef enum
   PARAM_enc_type,
   PARAM_control_cycle,
   PARAM_enc_div,
+  PARAM_enc_denominator,
   PARAM_servo = 64,
   PARAM_watch_dog_limit,
   PARAM_io_dir = 96,
@@ -95,7 +96,7 @@ typedef enum
 #endif
 /* protocol */
 #ifndef YP_PROTOCOL_NAME
-#define YP_PROTOCOL_NAME "YPP:09:00"
+#define YP_PROTOCOL_NAME "YPP:10:01"
 #endif
 /* vendor */
 #ifndef YP_VENDOR_NAME

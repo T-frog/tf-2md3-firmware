@@ -76,6 +76,8 @@ typedef struct _MotorParam
     MOTOR_TYPE_AC3
   } motor_type;
   unsigned short enc_div;
+  unsigned short enc_denominator;
+  unsigned int enc_rev_raw;  // count/rev
 } MotorParam;
 
 typedef struct _DriverParam
