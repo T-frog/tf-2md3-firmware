@@ -77,6 +77,7 @@ typedef enum
 {
   INT_enc_index_rise = 0,
   INT_enc_index_fall,
+  INT_error_state,
 } YPSpur_loco_interrupt;
 
 #define COMMUNICATION_START_BYTE 0x09
