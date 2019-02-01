@@ -1596,6 +1596,9 @@ int command_analyze(unsigned char* data, int len)
     case PARAM_ad_mask:
       driver_param.admask = i.integer;
       break;
+    case PARAM_protocol_version:
+      driver_param.protocol_version = i.integer;
+      break;
     default:
       param_set = 1;
   }

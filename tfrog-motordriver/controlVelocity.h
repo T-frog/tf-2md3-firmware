@@ -118,6 +118,7 @@ typedef struct _DriverParam
     BOARD_R6A,
     BOARD_R6B
   } board_version;
+  unsigned char protocol_version;
 } DriverParam;
 
 #define ERROR_NUM 4

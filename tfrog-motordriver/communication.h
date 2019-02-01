@@ -71,12 +71,14 @@ typedef enum
   PARAM_io_data,
   PARAM_ad_mask,
   PARAM_phase_offset,
+  PARAM_protocol_version,
 } YPSpur_loco_param;
 
 typedef enum
 {
   INT_enc_index_rise = 0,
   INT_enc_index_fall,
+  INT_error_state,
 } YPSpur_loco_interrupt;
 
 #define COMMUNICATION_START_BYTE 0x09

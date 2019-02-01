@@ -1050,6 +1050,20 @@ int main()
       if (mscnt++ >= ERROR_BLINK_MS)
       {
         mscnt = 0;
+        if (driver_param.protocol_version >= 10 &&
+            (motor[0].servo_level >= SERVO_LEVEL_TORQUE ||
+             motor[1].servo_level >= SERVO_LEVEL_TORQUE))
+        {
+          if (driver_param.ifmode == 0)
+          {
+            int_send(INT_error_state, 0, driver_param.error_state);
+          }
+          else
+          {
+            int_send485(INT_error_state, 0, driver_param.error_state);
+          }
+        }
+
         if (driver_param.error_state)
         {
           if (driver_param.error_state & (1 << errnum))
