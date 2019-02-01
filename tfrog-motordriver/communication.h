@@ -133,8 +133,6 @@ int encode(unsigned char* src, int len, unsigned char* dst, int buf_max);
 int extended_command_analyze(char* data);
 int command_analyze(unsigned char* data, int len);
 
-inline int data_analyze_(unsigned char* receive_buf,
-                         volatile int* w_receive_buf, volatile int* r_receive_buf, int fromto);
 int data_fetch_(unsigned char* receive_buf,
                 volatile int* w_receive_buf, volatile int* r_receive_buf,
                 unsigned char* data, int len);

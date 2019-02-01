@@ -616,17 +616,9 @@ int data_fetch_(unsigned char* receive_buf,
   return len;
 }
 
-int data_analyze()
-{
-  return data_analyze_(receive_buf, &w_receive_buf, &r_receive_buf, 0);
-}
-int data_analyze485()
-{
-  return data_analyze_(receive_buf485, &w_receive_buf485, &r_receive_buf485, 1);
-}
-
-int data_analyze_(unsigned char* receive_buf,
-                  volatile int* w_receive_buf, volatile int* r_receive_buf, int fromto)
+static inline int data_analyze_(
+    unsigned char* receive_buf,
+    volatile int* w_receive_buf, volatile int* r_receive_buf, int fromto)
 {
   static unsigned char line_full[64 + 3];
   static unsigned char* line = line_full + 3;
@@ -956,6 +948,15 @@ int data_analyze_(unsigned char* receive_buf,
     //printf("proxy sent\n\r");
   }
   return 0;
+}
+
+int data_analyze()
+{
+  return data_analyze_(receive_buf, &w_receive_buf, &r_receive_buf, 0);
+}
+int data_analyze485()
+{
+  return data_analyze_(receive_buf485, &w_receive_buf485, &r_receive_buf485, 1);
 }
 
 int ext_continue = -1;

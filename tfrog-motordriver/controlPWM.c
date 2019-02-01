@@ -19,11 +19,6 @@
 #include "power.h"
 #include "eeprom.h"
 
-static const Pin pinsLeds[] = { PINS_LEDS };
-
-static const unsigned int numLeds = PIO_LISTSIZE(pinsLeds);
-
-static const Pin pinPWMCycle = PIN_PWM_CYCLE;
 static const Pin pinPWMCycle2 = PIN_PWM_CYCLE2;
 
 // / PWM Enable pin instance.

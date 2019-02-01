@@ -30,13 +30,6 @@ int pwm_num[2] = { 0, 0 };
 extern int watchdog;
 extern int velcontrol;
 
-static const Pin pinsLeds[] = { PINS_LEDS };
-
-static const unsigned int numLeds = PIO_LISTSIZE(pinsLeds);
-
-// / PWM Enable pin instance.
-static const Pin pinPWMEnable = PIN_PWM_ENABLE;
-
 Filter1st accelf[2];
 Filter1st accelf0;
 
