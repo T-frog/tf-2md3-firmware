@@ -346,6 +346,7 @@ void controlVelocity_init()
   Filter1st_CreateLPF(&accelf0, ACCEL_FILTER_TIME);
   accelf[0] = accelf[1] = accelf0;
 
+  driver_param.protocol_version = 0;
   driver_param.cnt_updated = 0;
   driver_param.watchdog_limit = 600;
   driver_param.admask = 0;
