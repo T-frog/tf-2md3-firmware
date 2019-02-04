@@ -61,6 +61,17 @@ inline void normalize(int* val, int min, int max, int resolution)
     *val -= resolution;
 }
 
+inline void normalize_mod(int* val, int min, int max, int resolution)
+{
+  if (resolution <= 0)
+    return;
+  *val = (*val) % resolution;
+  if (*val < min)
+    *val += resolution;
+  else if (*val >= max)
+    *val -= resolution;
+}
+
 inline int _abs(int x)
 {
   if (x < 0)
@@ -548,9 +559,10 @@ void FIQ_PWMPeriod()
       // Check hall signal consistency
       if (motor_param[i].enc_type == 2)
       {
-        int err = (motor_param[i].enc0 - enc0);
-        normalize(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev);
-        if (_abs(err) > motor_param[i].enc_rev / 12)
+        int err = motor_param[i].enc0 - enc0;
+        normalize_mod(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev);
+        // In worst case, initial encoder origin can have offset of motor_param[i].enc_rev/12.
+        if (_abs(err) > motor_param[i].enc_rev / 6)
         {
           motor[i].error_state |= ERROR_HALL_ENC;
         }
