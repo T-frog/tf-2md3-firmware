@@ -9,6 +9,16 @@
 extern "C" {
 #endif
 
+typedef enum _ErrorID
+{
+  ERROR_NONE = 0,
+  ERROR_LOW_VOLTAGE = 0x0001,
+  ERROR_HALL_SEQ = 0x0002,
+  ERROR_HALL_ENC = 0x0004,
+  ERROR_WATCHDOG = 0x0008,
+} ErrorID;
+#define ERROR_NUM 4
+
 typedef struct _MotorState
 {
   int vel;            // count/ms
@@ -39,6 +49,7 @@ typedef struct _MotorState
   int64_t error_integ;
   char control_init;
   YPSpur_servo_level servo_level;
+  ErrorID error_state;
 } MotorState;
 
 typedef struct _MotorParam
@@ -106,22 +117,12 @@ typedef struct _DriverParam
   } error;
   enum
   {
-    ERROR_NONE = 0,
-    ERROR_LOW_VOLTAGE = 0x0001,
-    ERROR_HALL1 = 0x0002,
-    ERROR_HALL2 = 0x0004,
-    ERROR_WATCHDOG = 0x0008
-  } error_state;
-  enum
-  {
     BOARD_R4,
     BOARD_R6A,
     BOARD_R6B
   } board_version;
   unsigned char protocol_version;
 } DriverParam;
-
-#define ERROR_NUM 4
 
 extern MotorState motor[2];
 extern MotorParam motor_param[2];
