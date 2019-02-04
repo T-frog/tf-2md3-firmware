@@ -646,7 +646,8 @@ int main()
   driver_param.error.low_voltage = 0;
   driver_param.error.hall[0] = 0;
   driver_param.error.hall[1] = 0;
-  driver_param.error_state = 0;
+  motor[0].error_state = 0;
+  motor[1].error_state = 0;
   driver_param.ifmode = 0;
   driver_param.watchdog = 0;
   motor[0].servo_level = SERVO_LEVEL_STOP;
@@ -700,7 +701,8 @@ int main()
       }
       driver_param.error.hall[0] = 0;
       driver_param.error.hall[1] = 0;
-      driver_param.error_state |= ERROR_WATCHDOG;
+      motor[0].error_state |= ERROR_WATCHDOG;
+      motor[1].error_state |= ERROR_WATCHDOG;
       TRACE_ERROR("Watchdog - parameter init\n\r");
       {
         int i;
@@ -731,7 +733,10 @@ int main()
     {
       if (motor[0].servo_level != SERVO_LEVEL_STOP ||
           motor[1].servo_level != SERVO_LEVEL_STOP)
-        driver_param.error_state &= ~ERROR_WATCHDOG;
+      {
+        motor[0].error_state &= ~ERROR_WATCHDOG;
+        motor[1].error_state &= ~ERROR_WATCHDOG;
+      }
     }
 
     // Check current level on VBus
@@ -1030,14 +1035,20 @@ int main()
       if (driver_param.vsrc > 310 * 8 * VSRC_DIV)
       {
         if (driver_param.error.low_voltage < 100)
+        {
           driver_param.error.low_voltage++;
+        }
         else
-          driver_param.error_state &= ~ERROR_LOW_VOLTAGE;
+        {
+          motor[0].error_state &= ~ERROR_LOW_VOLTAGE;
+          motor[1].error_state &= ~ERROR_LOW_VOLTAGE;
+        }
       }
       else
       {
         driver_param.error.low_voltage = 0;
-        driver_param.error_state |= ERROR_LOW_VOLTAGE;
+        motor[0].error_state |= ERROR_LOW_VOLTAGE;
+        motor[1].error_state |= ERROR_LOW_VOLTAGE;
       }
     }
 
@@ -1049,26 +1060,31 @@ int main()
 
       if (mscnt++ >= ERROR_BLINK_MS)
       {
-        mscnt = 0;
-        if (driver_param.protocol_version >= 10 &&
+        if (mscnt == ERROR_BLINK_MS &&
+            driver_param.protocol_version >= 10 &&
             (motor[0].servo_level >= SERVO_LEVEL_TORQUE ||
              motor[1].servo_level >= SERVO_LEVEL_TORQUE))
         {
           if (driver_param.ifmode == 0)
           {
-            int_send(INT_error_state, 0, driver_param.error_state);
+            int_send(INT_error_state, 0, motor[0].error_state);
+            int_send(INT_error_state, 1, motor[1].error_state);
           }
           else
           {
-            int_send485(INT_error_state, 0, driver_param.error_state);
+            int_send485(INT_error_state, 0, motor[0].error_state);
+            int_send485(INT_error_state, 1, motor[1].error_state);
           }
         }
+        mscnt = 0;
 
-        if (driver_param.error_state)
+        if (motor[0].error_state || motor[1].error_state)
         {
-          if (driver_param.error_state & (1 << errnum))
+          const int motor_id = errnum / ERROR_NUM;
+          const int error_id = errnum % ERROR_NUM;
+          if (motor[motor_id].error_state & (1 << (error_id)))
           {
-            if (error_pat[errnum] & (1 << blink))
+            if (error_pat[motor_id][error_id] & (1 << blink))
             {
               LED_on(0);
               buz_on = 1;
@@ -1088,12 +1104,12 @@ int main()
           else
           {
             errnum++;
-            if (errnum >= ERROR_NUM)
+            if (errnum >= ERROR_NUM * 2)
               errnum = 0;
             blink = 0;
             LED_off(0);
             buz_on = 0;
-            mscnt = ERROR_BLINK_MS - 1;
+            mscnt = ERROR_BLINK_MS;
           }
         }
         else

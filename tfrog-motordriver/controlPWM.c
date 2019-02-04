@@ -182,7 +182,7 @@ void FIQ_PWMPeriod()
   }
 
   int disabled = 0;
-  if (driver_param.error_state)
+  if (motor[0].error_state || motor[1].error_state)
   {
     // Short-mode brake
     for (i = 0; i < 3 * 2; i++)
@@ -415,15 +415,7 @@ void FIQ_PWMPeriod()
         if (driver_param.error.hall[i] > 12)
         {
           // エラー検出後、1周以内に再度エラーがあれば停止
-          switch (i)
-          {
-            case 0:
-              driver_param.error_state |= ERROR_HALL1;
-              break;
-            case 1:
-              driver_param.error_state |= ERROR_HALL2;
-              break;
-          }
+          motor[i].error_state |= ERROR_HALL_SEQ;
         }
         continue;
       }
@@ -536,25 +528,40 @@ void FIQ_PWMPeriod()
         motor[i].spd_cnt = cnt;
         continue;
       }
+
+      int enc0 = 0;
+
+      // ゼロ点計算
+      if (w == -1)
+        enc0 = motor[i].pos - motor_param[i].enc_drev[0] + dir - 1;
+      else if (v == 1)
+        enc0 = motor[i].pos - motor_param[i].enc_drev[1] + dir - 1;
+      else if (u == -1)
+        enc0 = motor[i].pos - motor_param[i].enc_drev[2] + dir - 1;
+      else if (w == 1)
+        enc0 = motor[i].pos - motor_param[i].enc_drev[3] + dir - 1;
+      else if (v == -1)
+        enc0 = motor[i].pos - motor_param[i].enc_drev[4] + dir - 1;
+      else if (u == 1)
+        enc0 = motor[i].pos - motor_param[i].enc_drev[5] + dir - 1;
+
+      // Check hall signal consistency
+      if (motor_param[i].enc_type == 2)
+      {
+        int err = (motor_param[i].enc0 - enc0);
+        normalize(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev);
+        if (_abs(err) > motor_param[i].enc_rev / 12)
+        {
+          motor[i].error_state |= ERROR_HALL_ENC;
+        }
+      }
+
       // ホール素子は高速域では信頼できない
       if (_abs(motor[i].vel) > motor_param[i].enc_10hz &&
           !saved_param.rely_hall)
         continue;
 
-      // ゼロ点計算
-
-      if (w == -1)
-        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[0] + dir - 1;
-      else if (v == 1)
-        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[1] + dir - 1;
-      else if (u == -1)
-        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[2] + dir - 1;
-      else if (w == 1)
-        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[3] + dir - 1;
-      else if (v == -1)
-        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[4] + dir - 1;
-      else if (u == 1)
-        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[5] + dir - 1;
+      motor_param[i].enc0 = enc0;
     }
   }
 
