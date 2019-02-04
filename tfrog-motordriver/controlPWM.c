@@ -81,12 +81,6 @@ inline int _abs(int x)
 
 void controlPWM_config(int i)
 {
-  motor[i].pos = 0;
-  motor[i].vel = 0;
-  motor[i].error_integ = 0;
-  motor_param[i].enc0 = 0;
-  motor_param[i].enc0tran = 0;
-
   switch (motor_param[i].motor_type)
   {
     case MOTOR_TYPE_DC:
@@ -139,6 +133,41 @@ void controlPWM_config(int i)
   motor[i].error_integ = 0;
   motor[i].vel = 0;
   motor[i].dir = 0;
+  motor[i].pos = 0;
+
+  motor_param[i].enc0 = 0;
+  motor_param[i].enc0tran = 0;
+
+  if (motor_param[i].motor_type != MOTOR_TYPE_DC &&
+      motor_param[i].enc_type != 0)
+  {
+    const unsigned short hall = *(unsigned short*)&THEVA.MOTOR[i].ROT_DETECTER;
+
+    if (hall & HALL_U)
+    {
+      if (hall & HALL_V)
+        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 5 / 12;  // 150度
+      else if (hall & HALL_W)
+        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 1 / 12;  // 30度
+      else
+        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 3 / 12;  // 90度
+    }
+    else
+    {
+      if (!(hall & HALL_V))
+        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 11 / 12;  // 330度
+      else if (!(hall & HALL_W))
+        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 7 / 12;  // 210度
+      else
+        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 9 / 12;  // 270度
+    }
+    if (motor_param[i].enc_type == 3)
+    {
+      motor[i].pos = motor[i].pos - motor_param[i].enc0;
+      motor_param[i].enc0 = 0;
+    }
+  }
+  motor_param[i].enc0tran = motor_param[i].enc0;
 }
 
 // ------------------------------------------------------------------------------
@@ -243,36 +272,6 @@ void FIQ_PWMPeriod()
       PWM_init++;
       if (PWM_init > 2048)
         PWM_init = 2048;
-      for (i = 0; i < 2; i++)
-      {
-        motor[i].pos = 0;
-        motor[i].vel = 0;
-        motor[i].error_integ = 0;
-        if (hall[i] & HALL_U)
-        {
-          if (hall[i] & HALL_V)
-            motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 5 / 12;  // 150度
-          else if (hall[i] & HALL_W)
-            motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 1 / 12;  // 30度
-          else
-            motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 3 / 12;  // 90度
-        }
-        else
-        {
-          if (!(hall[i] & HALL_V))
-            motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 11 / 12;  // 330度
-          else if (!(hall[i] & HALL_W))
-            motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 7 / 12;  // 210度
-          else
-            motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 9 / 12;  // 270度
-        }
-        if (motor_param[i].enc_type == 3)
-        {
-          motor[i].pos = motor[i].pos - motor_param[i].enc0;
-          motor_param[i].enc0 = 0;
-        }
-        motor_param[i].enc0tran = motor_param[i].enc0;
-      }
     }
     for (j = 0; j < 2; j++)
     {
@@ -557,7 +556,7 @@ void FIQ_PWMPeriod()
         enc0 = motor[i].pos - motor_param[i].enc_drev[5] + dir - 1;
 
       // Check hall signal consistency
-      if (motor_param[i].enc_type == 2)
+      if (motor_param[i].enc_type == 2 && motor[i].servo_level > SERVO_LEVEL_STOP)
       {
         int err = motor_param[i].enc0 - enc0;
         normalize_mod(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev);
