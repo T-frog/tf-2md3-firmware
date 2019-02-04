@@ -1020,13 +1020,17 @@ int main()
       driver_param.vsrc = Filter1st_Filter(&voltf, (int)(analog[7] & 0x0FFF));
       ADC_Start();
 
-      if (driver_param.vsrc < driver_param.vsrc_rated / 4)
+      const int vsrc_rated = _abs(driver_param.vsrc_rated);
+      if (driver_param.vsrc < vsrc_rated / 4)
       {
         driver_param.vsrc_factor = 0;
       }
-      else if (driver_param.vsrc_rated >= 0x03FF)
+      else if (vsrc_rated >= 0x03FF)
       {
-        driver_param.vsrc_factor = 32768;
+        if (driver_param.vsrc_rated < 0)
+          driver_param.vsrc_factor = -32768;
+        else
+          driver_param.vsrc_factor = 32768;
       }
       else
       {
