@@ -1058,7 +1058,7 @@ int main()
       velcontrol = 0;
       ISR_VelocityControl();
 
-      if (mscnt++ >= ERROR_BLINK_MS)
+      if (++mscnt >= ERROR_BLINK_MS)
       {
         if (mscnt == ERROR_BLINK_MS &&
             driver_param.protocol_version >= 10 &&
