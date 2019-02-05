@@ -89,6 +89,7 @@ typedef struct _MotorParam
   unsigned short enc_div;
   unsigned short enc_denominator;
   unsigned int enc_rev_raw;  // count/rev
+  char rotation_dir;
 } MotorParam;
 
 typedef struct _DriverParam

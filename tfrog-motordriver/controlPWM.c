@@ -335,9 +335,10 @@ void FIQ_PWMPeriod()
           if (pwmt > PWM_abs_max)
             pwmt = PWM_abs_max;
           pwm[j][0] = pwmt;
+          break;
         }
-        break;
         case MOTOR_TYPE_AC3:
+        {
           phase[2] = motor[j].pos - motor_param[j].enc0tran;
           phase[2] = (int64_t)(phase[2] + motor_param[j].phase_offset) *
                          motor_param[j].enc_mul / 0x40000 +
@@ -360,7 +361,14 @@ void FIQ_PWMPeriod()
               pwmt = PWM_abs_max;
             pwm[j][i] = pwmt;
           }
+          if (motor_param[j].rotation_dir != 1)
+          {
+            const int tmp = pwm[j][0];
+            pwm[j][0] = pwm[j][2];
+            pwm[j][2] = tmp;
+          }
           break;
+        }
       }
     }
     for (j = 0; j < 2; j++)
