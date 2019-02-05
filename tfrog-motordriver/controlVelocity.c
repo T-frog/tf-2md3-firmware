@@ -356,6 +356,7 @@ void controlVelocity_init()
     motor[i].control_init = 0;
     motor[i].servo_level = SERVO_LEVEL_STOP;
     motor_param[i].motor_type = MOTOR_TYPE_AC3;
+    motor_param[i].rotation_dir = 1;
     motor_param[i].enc_rev = 0;
     motor_param[i].enc_rev_raw = 0;
     motor_param[i].enc_div = 0;

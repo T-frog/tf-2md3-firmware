@@ -1683,10 +1683,15 @@ int command_analyze(unsigned char* data, int len)
           case 0:
             motor_param[imotor].motor_type = MOTOR_TYPE_DC;
             break;
+          case -3:
           case 3:
             motor_param[imotor].motor_type = MOTOR_TYPE_AC3;
             break;
         }
+        if (i.integer < 0)
+          motor_param[imotor].rotation_dir = -1;
+        else
+          motor_param[imotor].rotation_dir = 1;
         break;
       case PARAM_watch_dog_limit:
         driver_param.watchdog_limit = i.integer;
