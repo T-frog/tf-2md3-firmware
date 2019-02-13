@@ -655,7 +655,6 @@ int main()
   // Driver loop
   while (1)
   {
-    AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 
     if (err_chk++ % 20 == 0)
     {
@@ -826,6 +825,7 @@ int main()
       if (DBGU_IsRxReady())
       {
         buf[nbuf] = DBGU_GetChar();
+
         if (buf[nbuf] == '\n' || buf[nbuf] == '\r')
         {
           buf[nbuf] = 0;
@@ -858,6 +858,12 @@ int main()
             {
               printf("RS-485: send '%s'\n\r", &buf[1]);
               USART_WriteBuffer(AT91C_BASE_US0, &buf[1], nbuf - 1);
+            }
+            break;
+            case 't':
+            {
+              printf("Clear WDTC_WDCR\n\r");
+              AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
             }
             break;
           }
