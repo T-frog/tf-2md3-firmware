@@ -47,7 +47,7 @@ $ tf2md3_flash DEVICE_PATH FIRMWARE.bin
 
 ## LICENSE
 
-Deliverables of tf-2md3-firmware code are inherited from at91lib license as below.
+Some part of tf-2md3-firmware code are licensed under the at91lib license as below.
 
 ```
 /* ----------------------------------------------------------------------------
