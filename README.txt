@@ -47,7 +47,7 @@ $ tf2md3_flash DEVICE_PATH FIRMWARE.bin
 
 # LICENSE
 
-Derivatives of tf-2md3-firmware code inherit at91lib license.
+Deliverables of tf-2md3-firmware code are inherited from at91lib license as below.
 
 /* ----------------------------------------------------------------------------
  *         ATMEL Microcontroller Software Support 
