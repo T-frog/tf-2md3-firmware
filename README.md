@@ -1,8 +1,8 @@
 Contributer: Atsushi Watanabe at Tsukuba University
 
-# Compile Firmware
+## Compile Firmware
 
-## Setting Development Environment
+### Setting Development Environment
 
 This is a quick guide which contains all the tools you'll need to install on your development environment.
 
@@ -29,14 +29,14 @@ $ wget https://developer.arm.com/-/media/Files/downloads/gnu-rm/6-2017q2/gcc-arm
 $ sudo tar xjf gcc-arm-none-eabi.tar.bz2 --strip-components 1 -C /usr
 ```
 
-## Compile
+### Compile
 
 ```
 $ cd tfrog-motordriver
 $ make
 ```
 
-# Flash Firmware
+## Flash Firmware
 
 **DEVICE_PATH**: Full path to a mounted device
 **FIRMWARE**: A path to a compiled firmware
@@ -45,7 +45,7 @@ $ make
 $ tf2md3_flash DEVICE_PATH FIRMWARE.bin
 ```
 
-# LICENSE
+## LICENSE
 
 Deliverables of tf-2md3-firmware code are inherited from at91lib license as below.
 
