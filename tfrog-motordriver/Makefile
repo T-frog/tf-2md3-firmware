@@ -72,6 +72,9 @@ include $(AT91LIB)/boards/$(BOARD)/board.mak
 BIN = bin
 OBJ = obj
 
+# 1: Enabling heartbeat feature, otherwise 0
+HEARTBEAT = 1
+
 #-------------------------------------------------------------------------------
 #		Tools
 #-------------------------------------------------------------------------------
@@ -94,9 +97,9 @@ INCLUDES += -I$(AT91LIB)/memories
 FIRMINFO ?= 
 
 CFLAGS = -Wall -mlong-calls $(FIRMINFO) #-ffunction-sections
-CFLAGS += $(CPUSPEC) $(OPTIMIZATION) $(INCLUDES) -D$(CHIP) -DTRACE_LEVEL=$(TRACE_LEVEL)
+CFLAGS += $(CPUSPEC) $(OPTIMIZATION) $(INCLUDES) -D$(CHIP) -DTRACE_LEVEL=$(TRACE_LEVEL) -HEARTBEAT=$(HEARTBEAT)
 CFLAGS2 = -Wall -mlong-calls $(FIRMINFO) #-ffunction-sections
-CFLAGS2 += $(CPUSPEC) -O0 $(INCLUDES) -D$(CHIP) -DTRACE_LEVEL=$(TRACE_LEVEL)
+CFLAGS2 += $(CPUSPEC) -O0 $(INCLUDES) -D$(CHIP) -DTRACE_LEVEL=$(TRACE_LEVEL) -HEARTBEAT=$(HEARTBEAT)
 ASFLAGS = $(CPUSPEC) -O0 $(INCLUDES) -D$(CHIP) -D__ASSEMBLY__
 LDFLAGS = $(CPUSPEC) -O0 -nostartfiles -Wl,--gc-sections -L$(COMPILER_PREFIX)/lib
 
