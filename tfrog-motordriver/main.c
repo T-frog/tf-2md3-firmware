@@ -864,7 +864,8 @@ int main()
             break;
             case 't':
             {
-              AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
+              if (HEARTBEAT)
+                AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
             }
             break;
           }
