@@ -633,17 +633,9 @@ int data_fetch_(unsigned char* receive_buf,
   return len;
 }
 
-int data_analyze()
-{
-  return data_analyze_(receive_buf, &w_receive_buf, &r_receive_buf, 0);
-}
-int data_analyze485()
-{
-  return data_analyze_(receive_buf485, &w_receive_buf485, &r_receive_buf485, 1);
-}
-
-int data_analyze_(unsigned char* receive_buf,
-                  volatile int* w_receive_buf, volatile int* r_receive_buf, int fromto)
+static inline int data_analyze_(
+    unsigned char* receive_buf,
+    volatile int* w_receive_buf, volatile int* r_receive_buf, int fromto)
 {
   static unsigned char line_full[64 + 3];
   static unsigned char* line = line_full + 3;
@@ -973,6 +965,15 @@ int data_analyze_(unsigned char* receive_buf,
     //printf("proxy sent\n\r");
   }
   return 0;
+}
+
+int data_analyze()
+{
+  return data_analyze_(receive_buf, &w_receive_buf, &r_receive_buf, 0);
+}
+int data_analyze485()
+{
+  return data_analyze_(receive_buf485, &w_receive_buf485, &r_receive_buf485, 1);
 }
 
 int ext_continue = -1;
@@ -1613,6 +1614,9 @@ int command_analyze(unsigned char* data, int len)
     case PARAM_ad_mask:
       driver_param.admask = i.integer;
       break;
+    case PARAM_protocol_version:
+      driver_param.protocol_version = i.integer;
+      break;
     default:
       param_set = 1;
   }
@@ -1696,10 +1700,15 @@ int command_analyze(unsigned char* data, int len)
           case 0:
             motor_param[imotor].motor_type = MOTOR_TYPE_DC;
             break;
+          case -3:
           case 3:
             motor_param[imotor].motor_type = MOTOR_TYPE_AC3;
             break;
         }
+        if (i.integer < 0)
+          motor_param[imotor].rotation_dir = -1;
+        else
+          motor_param[imotor].rotation_dir = 1;
         break;
       case PARAM_watch_dog_limit:
         driver_param.watchdog_limit = i.integer;
@@ -1708,10 +1717,13 @@ int command_analyze(unsigned char* data, int len)
         motor_param[imotor].phase_offset = i.integer;
         break;
       case PARAM_enc_rev:
-        motor_param[imotor].enc_rev = i.integer;
+        motor_param[imotor].enc_rev_raw = i.integer;
         break;
       case PARAM_enc_div:
         motor_param[imotor].enc_div = i.integer;
+        break;
+      case PARAM_enc_denominator:
+        motor_param[imotor].enc_denominator = i.integer;
         break;
       case PARAM_enc_type:
         motor_param[imotor].enc_type = i.integer;

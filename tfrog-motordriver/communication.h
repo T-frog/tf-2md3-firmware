@@ -81,18 +81,21 @@ typedef enum
   PARAM_enc_type,
   PARAM_control_cycle,
   PARAM_enc_div,
+  PARAM_enc_denominator,
   PARAM_servo = 64,
   PARAM_watch_dog_limit,
   PARAM_io_dir = 96,
   PARAM_io_data,
   PARAM_ad_mask,
   PARAM_phase_offset,
+  PARAM_protocol_version,
 } YPSpur_loco_param;
 
 typedef enum
 {
   INT_enc_index_rise = 0,
   INT_enc_index_fall,
+  INT_error_state,
 } YPSpur_loco_interrupt;
 
 #define COMMUNICATION_START_BYTE 0x09
@@ -112,7 +115,7 @@ typedef enum
 #endif
 /* protocol */
 #ifndef YP_PROTOCOL_NAME
-#define YP_PROTOCOL_NAME "YPP:09:00"
+#define YP_PROTOCOL_NAME "YPP:10:01"
 #endif
 /* vendor */
 #ifndef YP_VENDOR_NAME
@@ -147,8 +150,6 @@ int encode(unsigned char* src, int len, unsigned char* dst, int buf_max);
 int extended_command_analyze(char* data);
 int command_analyze(unsigned char* data, int len);
 
-inline int data_analyze_(unsigned char* receive_buf,
-                         volatile int* w_receive_buf, volatile int* r_receive_buf, int fromto);
 int data_fetch_(unsigned char* receive_buf,
                 volatile int* w_receive_buf, volatile int* r_receive_buf,
                 unsigned char* data, int len);

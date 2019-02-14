@@ -47,13 +47,6 @@ int pwm_num[2] = { 0, 0 };
 extern int watchdog;
 extern int velcontrol;
 
-static const Pin pinsLeds[] = { PINS_LEDS };
-
-static const unsigned int numLeds = PIO_LISTSIZE(pinsLeds);
-
-// / PWM Enable pin instance.
-static const Pin pinPWMEnable = PIN_PWM_ENABLE;
-
 Filter1st accelf[2];
 Filter1st accelf0;
 
@@ -363,6 +356,7 @@ void controlVelocity_init()
   Filter1st_CreateLPF(&accelf0, ACCEL_FILTER_TIME);
   accelf[0] = accelf[1] = accelf0;
 
+  driver_param.protocol_version = 0;
   driver_param.cnt_updated = 0;
   driver_param.watchdog_limit = 600;
   driver_param.admask = 0;
@@ -379,8 +373,11 @@ void controlVelocity_init()
     motor[i].control_init = 0;
     motor[i].servo_level = SERVO_LEVEL_STOP;
     motor_param[i].motor_type = MOTOR_TYPE_AC3;
+    motor_param[i].rotation_dir = 1;
     motor_param[i].enc_rev = 0;
+    motor_param[i].enc_rev_raw = 0;
     motor_param[i].enc_div = 0;
+    motor_param[i].enc_denominator = 1;
     motor_param[i].phase_offset = 0;
     motor_param[i].enc_type = 2;
   }

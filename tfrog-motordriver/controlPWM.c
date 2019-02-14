@@ -36,11 +36,6 @@
 #include "power.h"
 #include "eeprom.h"
 
-static const Pin pinsLeds[] = { PINS_LEDS };
-
-static const unsigned int numLeds = PIO_LISTSIZE(pinsLeds);
-
-static const Pin pinPWMCycle = PIN_PWM_CYCLE;
 static const Pin pinPWMCycle2 = PIN_PWM_CYCLE2;
 
 // / PWM Enable pin instance.
@@ -83,6 +78,17 @@ inline void normalize(int* val, int min, int max, int resolution)
     *val -= resolution;
 }
 
+inline void normalize_mod(int* val, int min, int max, int resolution)
+{
+  if (resolution <= 0)
+    return;
+  *val = (*val) % resolution;
+  if (*val < min)
+    *val += resolution;
+  else if (*val >= max)
+    *val -= resolution;
+}
+
 inline int _abs(int x)
 {
   if (x < 0)
@@ -92,12 +98,6 @@ inline int _abs(int x)
 
 void controlPWM_config(int i)
 {
-  motor[i].pos = 0;
-  motor[i].vel = 0;
-  motor[i].error_integ = 0;
-  motor_param[i].enc0 = 0;
-  motor_param[i].enc0tran = 0;
-
   switch (motor_param[i].motor_type)
   {
     case MOTOR_TYPE_DC:
@@ -120,6 +120,8 @@ void controlPWM_config(int i)
 
   motor[i].ref.rate = 0;
 
+  motor_param[i].enc_rev = (int)motor_param[i].enc_rev_raw / (int)motor_param[i].enc_denominator;
+
   motor_param[i].enc_drev[0] = motor_param[i].enc_rev * 1 / 6;
   motor_param[i].enc_drev[1] = motor_param[i].enc_rev * 2 / 6;
   motor_param[i].enc_drev[2] = motor_param[i].enc_rev * 3 / 6;
@@ -132,7 +134,9 @@ void controlPWM_config(int i)
   if (motor_param[i].enc_rev_1p == 0)
     motor_param[i].enc_rev_1p = 1;
 
-  motor_param[i].enc_mul = (unsigned int)((uint64_t)SinTB_2PI * 0x40000 / motor_param[i].enc_rev);
+  motor_param[i].enc_mul =
+      (unsigned int)((uint64_t)SinTB_2PI * 0x40000 * motor_param[i].enc_denominator /
+                     motor_param[i].enc_rev_raw);
   motor_param[i].enc_rev_h = motor_param[i].enc_rev / 2;
 
   // normalize phase offset
@@ -146,6 +150,41 @@ void controlPWM_config(int i)
   motor[i].error_integ = 0;
   motor[i].vel = 0;
   motor[i].dir = 0;
+  motor[i].pos = 0;
+
+  motor_param[i].enc0 = 0;
+  motor_param[i].enc0tran = 0;
+
+  if (motor_param[i].motor_type != MOTOR_TYPE_DC &&
+      motor_param[i].enc_type != 0)
+  {
+    const unsigned short hall = *(unsigned short*)&THEVA.MOTOR[i].ROT_DETECTER;
+
+    if (hall & HALL_U)
+    {
+      if (hall & HALL_V)
+        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 5 / 12;  // 150度
+      else if (hall & HALL_W)
+        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 1 / 12;  // 30度
+      else
+        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 3 / 12;  // 90度
+    }
+    else
+    {
+      if (!(hall & HALL_V))
+        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 11 / 12;  // 330度
+      else if (!(hall & HALL_W))
+        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 7 / 12;  // 210度
+      else
+        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 9 / 12;  // 270度
+    }
+    if (motor_param[i].enc_type == 3)
+    {
+      motor[i].pos = motor[i].pos - motor_param[i].enc0;
+      motor_param[i].enc0 = 0;
+    }
+  }
+  motor_param[i].enc0tran = motor_param[i].enc0;
 }
 
 // ------------------------------------------------------------------------------
@@ -200,7 +239,7 @@ void FIQ_PWMPeriod()
   }
 
   int disabled = 0;
-  if (driver_param.error_state)
+  if (motor[0].error_state || motor[1].error_state)
   {
     // Short-mode brake
     for (i = 0; i < 3 * 2; i++)
@@ -234,7 +273,7 @@ void FIQ_PWMPeriod()
         motor[i].posc -= 0x10000;
       else if (_enc[i] > 0xC000 && enc[i] < 0x4000)
         motor[i].posc += 0x10000;
-      normalize(&motor[i].pos, 0, motor_param[i].enc_rev, motor_param[i].enc_rev);
+      normalize(&motor[i].pos, 0, motor_param[i].enc_rev_raw, motor_param[i].enc_rev_raw);
     }
   }
 
@@ -250,36 +289,6 @@ void FIQ_PWMPeriod()
       PWM_init++;
       if (PWM_init > 2048)
         PWM_init = 2048;
-      for (i = 0; i < 2; i++)
-      {
-        motor[i].pos = 0;
-        motor[i].vel = 0;
-        motor[i].error_integ = 0;
-        if (hall[i] & HALL_U)
-        {
-          if (hall[i] & HALL_V)
-            motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 5 / 12;  // 150度
-          else if (hall[i] & HALL_W)
-            motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 1 / 12;  // 30度
-          else
-            motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 3 / 12;  // 90度
-        }
-        else
-        {
-          if (!(hall[i] & HALL_V))
-            motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 11 / 12;  // 330度
-          else if (!(hall[i] & HALL_W))
-            motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 7 / 12;  // 210度
-          else
-            motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_rev * 9 / 12;  // 270度
-        }
-        if (motor_param[i].enc_type == 3)
-        {
-          motor[i].pos = motor[i].pos - motor_param[i].enc0;
-          motor_param[i].enc0 = 0;
-        }
-        motor_param[i].enc0tran = motor_param[i].enc0;
-      }
     }
     for (j = 0; j < 2; j++)
     {
@@ -343,11 +352,12 @@ void FIQ_PWMPeriod()
           if (pwmt > PWM_abs_max)
             pwmt = PWM_abs_max;
           pwm[j][0] = pwmt;
+          break;
         }
-        break;
         case MOTOR_TYPE_AC3:
+        {
           phase[2] = motor[j].pos - motor_param[j].enc0tran;
-          phase[2] = (uint64_t)(phase[2] + motor_param[j].phase_offset) *
+          phase[2] = (int64_t)(phase[2] + motor_param[j].phase_offset) *
                          motor_param[j].enc_mul / 0x40000 +
                      SinTB_2PI + SinTB_2PI / 4;
           phase[1] = phase[2] - SinTB_2PI / 3;
@@ -357,7 +367,10 @@ void FIQ_PWMPeriod()
           {
             int pwmt;
 
-            pwmt = (int)sin_(phase[i] % SinTB_2PI) * rate / (4096 * 2);
+            int p = phase[i] % SinTB_2PI;
+            if (p < 0)
+              p += SinTB_2PI;
+            pwmt = (int)sin_(p) * rate / (4096 * 2);
             pwmt += PWM_center;
             if (pwmt < PWM_abs_min)
               pwmt = PWM_abs_min;
@@ -365,7 +378,14 @@ void FIQ_PWMPeriod()
               pwmt = PWM_abs_max;
             pwm[j][i] = pwmt;
           }
+          if (motor_param[j].rotation_dir != 1)
+          {
+            const int tmp = pwm[j][0];
+            pwm[j][0] = pwm[j][2];
+            pwm[j][2] = tmp;
+          }
           break;
+        }
       }
     }
     for (j = 0; j < 2; j++)
@@ -430,15 +450,7 @@ void FIQ_PWMPeriod()
         if (driver_param.error.hall[i] > 12)
         {
           // エラー検出後、1周以内に再度エラーがあれば停止
-          switch (i)
-          {
-            case 0:
-              driver_param.error_state |= ERROR_HALL1;
-              break;
-            case 1:
-              driver_param.error_state |= ERROR_HALL2;
-              break;
-          }
+          motor[i].error_state |= ERROR_HALL_SEQ;
         }
         continue;
       }
@@ -551,25 +563,41 @@ void FIQ_PWMPeriod()
         motor[i].spd_cnt = cnt;
         continue;
       }
+
+      int enc0 = 0;
+
+      // ゼロ点計算
+      if (w == -1)
+        enc0 = motor[i].pos - motor_param[i].enc_drev[0] + dir - 1;
+      else if (v == 1)
+        enc0 = motor[i].pos - motor_param[i].enc_drev[1] + dir - 1;
+      else if (u == -1)
+        enc0 = motor[i].pos - motor_param[i].enc_drev[2] + dir - 1;
+      else if (w == 1)
+        enc0 = motor[i].pos - motor_param[i].enc_drev[3] + dir - 1;
+      else if (v == -1)
+        enc0 = motor[i].pos - motor_param[i].enc_drev[4] + dir - 1;
+      else if (u == 1)
+        enc0 = motor[i].pos - motor_param[i].enc_drev[5] + dir - 1;
+
+      // Check hall signal consistency
+      if (motor_param[i].enc_type == 2 && motor[i].servo_level > SERVO_LEVEL_STOP)
+      {
+        int err = motor_param[i].enc0 - enc0;
+        normalize_mod(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev);
+        // In worst case, initial encoder origin can have offset of motor_param[i].enc_rev/12.
+        if (_abs(err) > motor_param[i].enc_rev / 6)
+        {
+          motor[i].error_state |= ERROR_HALL_ENC;
+        }
+      }
+
       // ホール素子は高速域では信頼できない
       if (_abs(motor[i].vel) > motor_param[i].enc_10hz &&
           !saved_param.rely_hall)
         continue;
 
-      // ゼロ点計算
-
-      if (w == -1)
-        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[0] + dir - 1;
-      else if (v == 1)
-        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[1] + dir - 1;
-      else if (u == -1)
-        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[2] + dir - 1;
-      else if (w == 1)
-        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[3] + dir - 1;
-      else if (v == -1)
-        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[4] + dir - 1;
-      else if (u == 1)
-        motor_param[i].enc0 = motor[i].pos - motor_param[i].enc_drev[5] + dir - 1;
+      motor_param[i].enc0 = enc0;
     }
   }
 
