@@ -14,7 +14,7 @@
  * limitations under the License.
  * ----------------------------------------------------------------------------
  *
- * Libraries and base code of this software are licensed under the following statements:
+ * Libraries and some part of main.c are licensed under the following statements:
  *
  * ----------------------------------------------------------------------------
  *         ATMEL Microcontroller Software Support
