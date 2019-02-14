@@ -660,6 +660,8 @@ int main()
   // Driver loop
   while (1)
   {
+    if (!HEARTBEAT)
+      AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 
     if (err_chk++ % 20 == 0)
     {
