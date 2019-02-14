@@ -587,11 +587,6 @@ int main()
   // Enable watchdog
   printf("Watchdog init\n\r");
   AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDRSTEN | 0x7d007d0;  // 2s
-  /*
-  AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDRSTEN | 
-    ((period << 16) & AT91C_WDTC_WDD) |
-    (period & AT91C_WDTC_WDV);
-  */
   AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 
   LED_off(0);
