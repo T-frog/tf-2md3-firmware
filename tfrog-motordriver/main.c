@@ -336,6 +336,9 @@ void tic_init()
 
   AT91C_BASE_TC1->TC_CCR = AT91C_TC_SWTRG;
   
+  if (!HEARTBEAT)
+    return;
+
   //timer2
   AT91C_BASE_PMC->PMC_PCER = 1 << AT91C_ID_TC2;
 
@@ -655,7 +658,11 @@ int main()
   r_rs485buf_pos = 0;
   printf("RS485 init\n\r");
   AT91C_BASE_PMC->PMC_PCER = 1 << AT91C_ID_US0;
-  USART_Configure(AT91C_BASE_US0, AT91C_US_USMODE_RS485 | AT91C_US_CHRL_8_BITS, 115200, BOARD_MCK);
+
+  if (HEARTBEAT)
+    USART_Configure(AT91C_BASE_US0, AT91C_US_USMODE_RS485 | AT91C_US_CHRL_8_BITS, 115200, BOARD_MCK);
+  else
+    USART_Configure(AT91C_BASE_US0, AT91C_US_USMODE_RS485 | AT91C_US_CHRL_8_BITS, 3000000, BOARD_MCK);
 
   USART_SetTransmitterEnabled(AT91C_BASE_US0, 1);
   USART_SetReceiverEnabled(AT91C_BASE_US0, 1);

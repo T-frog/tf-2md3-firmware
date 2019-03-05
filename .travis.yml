@@ -13,6 +13,9 @@ env:
     - TOOLCHAIN_ARCHIVE=gcc-arm-none-eabi.tar.bz2
     - RELEASE_FILENAME_R4=tf-2md3-r4-${TRAVIS_TAG}.bin
     - RELEASE_FILENAME_R6=tf-2md3-r6-${TRAVIS_TAG}.bin
+  matrix:
+    - CI_HEARTBEAT=0
+    - CI_HEARTBEAT=1
 
 before_install:
   - sudo apt-get update -qq
@@ -22,8 +25,8 @@ before_install:
 
 install:
   - cd tfrog-motordriver/
-  - make BOARD=tfrog-rev4 FIRMINFO="-DYP_FIRMWARE_NAME=\\\"tf-2md3-r4-$TRAVIS_TAG-`git rev-parse --short HEAD`\\\""
-  - make BOARD=tfrog-rev5 FIRMINFO="-DYP_FIRMWARE_NAME=\\\"tf-2md3-r6-$TRAVIS_TAG-`git rev-parse --short HEAD`\\\""
+  - make BOARD=tfrog-rev4 HEARTBEAT=$CI_HEARTBEAT FIRMINFO="-DYP_FIRMWARE_NAME=\\\"tf-2md3-r4-$TRAVIS_TAG-`git rev-parse --short HEAD`\\\""
+  - make BOARD=tfrog-rev5 HEARTBEAT=$CI_HEARTBEAT FIRMINFO="-DYP_FIRMWARE_NAME=\\\"tf-2md3-r6-$TRAVIS_TAG-`git rev-parse --short HEAD`\\\""
   - mv bin/tfrog-motordriver-tfrog-rev4-at91sam7se512-flash.bin bin/${RELEASE_FILENAME_R4}
   - mv bin/tfrog-motordriver-tfrog-rev5-at91sam7se256-flash.bin bin/${RELEASE_FILENAME_R6}
 

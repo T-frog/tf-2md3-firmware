@@ -43,7 +43,6 @@ chip = case "$(BOARD)" in \
 esac
 CHIP := $(shell $(chip))
 
-
 # Trace level used for compilation
 # (can be overriden by adding TRACE_LEVEL=#number to the command-line)
 # TRACE_LEVEL_DEBUG      5
@@ -53,6 +52,9 @@ CHIP := $(shell $(chip))
 # TRACE_LEVEL_FATAL      1
 # TRACE_LEVEL_NO_TRACE   0
 TRACE_LEVEL = 2
+
+# 1: Enabling heartbeat feature, otherwise set 0
+HEARTBEAT = 1
 
 # Optimization level, put in comment for debugging
 CPUSPEC = -mcpu=arm7tdmi -marm
@@ -94,9 +96,9 @@ INCLUDES += -I$(AT91LIB)/memories
 FIRMINFO ?= 
 
 CFLAGS = -Wall -mlong-calls $(FIRMINFO) #-ffunction-sections
-CFLAGS += $(CPUSPEC) $(OPTIMIZATION) $(INCLUDES) -D$(CHIP) -DTRACE_LEVEL=$(TRACE_LEVEL)
+CFLAGS += $(CPUSPEC) $(OPTIMIZATION) $(INCLUDES) -D$(CHIP) -DTRACE_LEVEL=$(TRACE_LEVEL) -DHEARTBEAT=$(HEARTBEAT)
 CFLAGS2 = -Wall -mlong-calls $(FIRMINFO) #-ffunction-sections
-CFLAGS2 += $(CPUSPEC) -O0 $(INCLUDES) -D$(CHIP) -DTRACE_LEVEL=$(TRACE_LEVEL)
+CFLAGS2 += $(CPUSPEC) -O0 $(INCLUDES) -D$(CHIP) -DTRACE_LEVEL=$(TRACE_LEVEL) -DHEARTBEAT=$(HEARTBEAT)
 ASFLAGS = $(CPUSPEC) -O0 $(INCLUDES) -D$(CHIP) -D__ASSEMBLY__
 LDFLAGS = $(CPUSPEC) -O0 -nostartfiles -Wl,--gc-sections -L$(COMPILER_PREFIX)/lib
 
