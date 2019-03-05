@@ -43,7 +43,6 @@ chip = case "$(BOARD)" in \
 esac
 CHIP := $(shell $(chip))
 
-
 # Trace level used for compilation
 # (can be overriden by adding TRACE_LEVEL=#number to the command-line)
 # TRACE_LEVEL_DEBUG      5

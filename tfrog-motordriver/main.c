@@ -295,18 +295,18 @@ void timer2_cb()
   dummy2 = dummy2;
 
 #if defined(tfrog_rev5)
-  if (heartbeat_timeout >= 0)
+  if (heartbeat_timeout < 0)
+    return;
+
+  if (heartbeat_timeout < 5)
   {
-    if (heartbeat_timeout < 5)
-    {
-      heartbeat_timeout++;
-    }
-    else
-    {
-      PIO_Clear(&pinMotor);
-      printf("heartbeat timeout\n\r");
-      heartbeat_timeout = -1;
-    }
+    heartbeat_timeout++;
+  }
+  else
+  {
+    PIO_Clear(&pinMotor);
+    printf("heartbeat timeout\n\r");
+    heartbeat_timeout = -1;
   }
 #endif
 }
