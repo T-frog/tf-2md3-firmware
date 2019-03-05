@@ -37,7 +37,8 @@ volatile int w_receive_buf485 = 0;
 volatile int r_receive_buf485 = 0;
 extern const Pin pinPWMEnable;
 extern Tfrog_EEPROM_data saved_param;
-extern volatile char rs485_timeout;
+extern volatile unsigned char rs485_timeout;
+extern volatile short heartbeat_timeout;
 extern volatile short tic;
 extern volatile unsigned char usb_read_pause;
 
@@ -818,11 +819,11 @@ static inline int data_analyze_(
     {
       static unsigned char rawdata[16];
       int data_len;
-
       if (to == id)
       {
         if (line[0] == PARAM_heartbeat)
         {
+          heartbeat_timeout = 0;
           clear_buffer = 1;
         }
         else
@@ -898,6 +899,7 @@ static inline int data_analyze_(
       {
         // Forward packet from RS485 to USB
         data_len = decord(line, len - 1, rawdata, 16);
+
         if (mode == ISOCHRONOUS)
         {
           Integer2 tmp;
