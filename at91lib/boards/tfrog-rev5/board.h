@@ -166,7 +166,6 @@
 /// List of all LEDs pin definitions.
 #define PINS_LEDS  PIN_LED_0, PIN_LED_1, PIN_LED_2
 
-
 /// ADC_AD0 pin definition.
 #define PIN_ADC_ADC0 {1 << 17, AT91C_BASE_PIOA, AT91C_ID_PIOA, PIO_INPUT, PIO_PULLUP}
 /// ADC_AD1 pin definition.
