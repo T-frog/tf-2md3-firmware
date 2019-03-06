@@ -821,75 +821,67 @@ static inline int data_analyze_(
       int data_len;
       if (to == id)
       {
-        if (line[0] == PARAM_heartbeat)
+        data_len = decord(line, len - 1, rawdata, 16);
+        if (data_len < 6)
         {
-          heartbeat_timeout = 0;
-          clear_buffer = 1;
+          line[len - 1] = 0;
+          printf("Decode failed: \"%s\" (%d)\n\r", (char*)line, data_len);
         }
         else
         {
-          data_len = decord(line, len - 1, rawdata, 16);
-          if (data_len < 6)
+          unsigned char imotor = rawdata[1];
+          if (id * 2 <= imotor && imotor <= id * 2 + 1)
           {
-            line[len - 1] = 0;
-            printf("Decode failed: \"%s\" (%d)\n\r", (char*)line, data_len);
+            rawdata[1] = rawdata[1] & 1;
+
+            command_analyze(rawdata, data_len);
+            driver_param.ifmode = fromto;
+            //printf("for me\n\r");
           }
-          else
+          else if (from == -1)
           {
-            unsigned char imotor = rawdata[1];
-            if (id * 2 <= imotor && imotor <= id * 2 + 1)
+            if (rawdata[0] == PARAM_servo)
+              com_en[imotor] = 1;
+            // Forward from USB(id: 0) to RS485(id: imotor/2)
+            if (send_buf_pos485 == 0)
             {
-              rawdata[1] = rawdata[1] & 1;
-
-              command_analyze(rawdata, data_len);
-              driver_param.ifmode = fromto;
-              //printf("for me\n\r");
+              send_buf485[send_buf_pos485] = 0xAA;
+              send_buf_pos485++;
             }
-            else if (from == -1)
+            unsigned char* buf;
+            int buf_len;
+            buf = &send_buf485[send_buf_pos485];
+            buf_len = 0;
+            buf[0] = COMMUNICATION_START_BYTE;
+            buf[1] = 0 + 0x40;
+            buf[2] = imotor / 2 + 0x40;
+            int i;
+            for (i = 0; i < len; i++)
             {
-              if (rawdata[0] == PARAM_servo)
-                com_en[imotor] = 1;
-              // Forward from USB(id: 0) to RS485(id: imotor/2)
-              if (send_buf_pos485 == 0)
-              {
-                send_buf485[send_buf_pos485] = 0xAA;
-                send_buf_pos485++;
-              }
-              unsigned char* buf;
-              int buf_len;
-              buf = &send_buf485[send_buf_pos485];
-              buf_len = 0;
-              buf[0] = COMMUNICATION_START_BYTE;
-              buf[1] = 0 + 0x40;
-              buf[2] = imotor / 2 + 0x40;
-              int i;
-              for (i = 0; i < len; i++)
-              {
-                buf[3 + i] = line[i];
-              }
-              buf_len = len + 3;
-              buf_len = add_crc_485(buf, buf_len);
-              send_buf_pos485 += buf_len;
+              buf[3 + i] = line[i];
+            }
+            buf_len = len + 3;
+            buf_len = add_crc_485(buf, buf_len);
+            send_buf_pos485 += buf_len;
 
-              if (send_buf_pos485 > SEND_BUF_LEN - 16)
+            if (send_buf_pos485 > SEND_BUF_LEN - 16)
+            {
+              if (rs485_timeout_wait(4, 32))
               {
-                if (rs485_timeout_wait(4, 32))
-                {
-                  flush485();
-                }
-                else
-                {
-                  send_buf_pos485 = 0;
-                  rs485_timeout = 0;
-                  printf("rs485 skipped\n\r");
-                }
-                //printf("proxy sent\n\r");
+                flush485();
               }
               else
               {
-                send_buf_pos485--;
-                //printf("proxy\n\r");
+                send_buf_pos485 = 0;
+                rs485_timeout = 0;
+                printf("rs485 skipped\n\r");
               }
+              //printf("proxy sent\n\r");
+            }
+            else
+            {
+              send_buf_pos485--;
+              //printf("proxy\n\r");
             }
           }
         }
@@ -1704,6 +1696,9 @@ int command_analyze(unsigned char* data, int len)
         break;
       case PARAM_watch_dog_limit:
         driver_param.watchdog_limit = i.integer;
+        break;
+      case PARAM_heartbeat:
+        heartbeat_timeout = 0;
         break;
       case PARAM_phase_offset:
         motor_param[imotor].phase_offset = i.integer;
