@@ -300,6 +300,9 @@ void timer2_cb()
 
   if (heartbeat_timeout < 5)
   {
+    if (!PIO_Get(&pinMotor))
+      PIO_Set(&pinMotor);
+
     heartbeat_timeout++;
   }
   else
