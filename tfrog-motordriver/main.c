@@ -119,14 +119,14 @@ static const Pin pins[] = {
 #if defined(tfrog_rev5)
   PIN_VERSION,
   PIN_BUZ,
-  PIN_MOTOR_POWER,
+  PIN_EXTERNAL_POWER_SWITCH,
 #endif
   PIN_LED_0, PIN_LED_1, PIN_LED_2
 };
 #if defined(tfrog_rev5)
 static const Pin pinBuz[] = { PIN_BUZ };
 static const Pin pinVer[] = { PIN_VERSION };
-static const Pin pinMotor = PIN_MOTOR_POWER;
+static const Pin pinMotor = PIN_EXTERNAL_POWER_SWITCH;
 #endif
 
 // / VBus pin instance.
@@ -290,9 +290,9 @@ void timer1_tic()
 
 void timer2_cb()
 {
-  volatile unsigned int dummy2;
-  dummy2 = AT91C_BASE_TC2->TC_SR;
-  dummy2 = dummy2;
+  volatile unsigned int dummy;
+  dummy = AT91C_BASE_TC2->TC_SR;
+  dummy = dummy;
 
 #if defined(tfrog_rev5)
   if (heartbeat_timeout < 0)
@@ -304,8 +304,10 @@ void timer2_cb()
   }
   else
   {
+    motor[0].error_state |= ERROR_HEARTBEAT;
+    motor[1].error_state |= ERROR_HEARTBEAT;
+    TRACE_ERROR("Heartbeat timeout\n\r");
     PIO_Clear(&pinMotor);
-    printf("heartbeat timeout\n\r");
     heartbeat_timeout = -1;
   }
 #endif
@@ -315,7 +317,6 @@ void timer2_cb()
 void tic_init()
 {
   volatile unsigned int dummy;
-  volatile unsigned int dummy2;
   
   //timer1
   AT91C_BASE_PMC->PMC_PCER = 1 << AT91C_ID_TC1;
@@ -344,8 +345,8 @@ void tic_init()
 
   AT91C_BASE_TC2->TC_CCR = AT91C_TC_CLKDIS;
   AT91C_BASE_TC2->TC_IDR = 0xFFFFFFFF;
-  dummy2 = AT91C_BASE_TC2->TC_SR;
-  dummy2 = dummy2;
+  dummy = AT91C_BASE_TC2->TC_SR;
+  dummy = dummy;
 
   // MCK/1024 * 46875 -> 1000ms
   AT91C_BASE_TC2->TC_CMR = AT91C_TC_CLKS_TIMER_DIV5_CLOCK | AT91C_TC_WAVE | AT91C_TC_WAVESEL_UP_AUTO;
