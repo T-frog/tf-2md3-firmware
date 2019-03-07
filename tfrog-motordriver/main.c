@@ -295,14 +295,14 @@ void timer2_cb()
   dummy = dummy;
 
 #if defined(tfrog_rev5)
-  if (heartbeat_timeout < 0)
+  if (heartbeat_timeout < 0 ||
+      motor[0].servo_level == SERVO_LEVEL_STOP ||
+      motor[1].servo_level == SERVO_LEVEL_STOP)
     return;
 
   if (heartbeat_timeout < 5)
   {
-    if (!PIO_Get(&pinMotor))
-      PIO_Set(&pinMotor);
-
+    PIO_Set(&pinMotor);
     heartbeat_timeout++;
   }
   else
