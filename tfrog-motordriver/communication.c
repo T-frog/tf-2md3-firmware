@@ -1287,9 +1287,9 @@ int extended_command_analyze(char* data)
     send(data);
     send("\n00P\n\n");
   }
-  else if (strstr(data, "$SETBAUDRATE") == data)
+  else if (strstr(data, "$SET485BAUDRATE") == data)
   {
-    saved_param.rs485_baudrate = atoi(data + 12);
+    saved_param.rs485_baudrate = atoi(data + 15);
     send(data);
     send("\n00P\n\n");
   }

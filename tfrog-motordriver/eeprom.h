@@ -19,7 +19,6 @@ typedef struct _Tfrog_EEPROM_data
   unsigned char high_frequency_encoder;
   unsigned char rely_hall;
   unsigned int rs485_baudrate;
-  
 } Tfrog_EEPROM_data;
 
 #define TFROG_EEPROM_ROBOTPARAM_ADDR 0x100
