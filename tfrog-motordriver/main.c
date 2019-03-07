@@ -663,7 +663,7 @@ int main()
   printf("RS485 init\n\r");
   AT91C_BASE_PMC->PMC_PCER = 1 << AT91C_ID_US0;
 
-  USART_Configure(AT91C_BASE_US0, AT91C_US_USMODE_RS485 | AT91C_US_CHRL_8_BITS, driver_param.rs485_baudrate, BOARD_MCK);
+  USART_Configure(AT91C_BASE_US0, AT91C_US_USMODE_RS485 | AT91C_US_CHRL_8_BITS, saved_param.rs485_baudrate, BOARD_MCK);
 
   USART_SetTransmitterEnabled(AT91C_BASE_US0, 1);
   USART_SetReceiverEnabled(AT91C_BASE_US0, 1);

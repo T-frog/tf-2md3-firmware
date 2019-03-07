@@ -124,7 +124,6 @@ typedef struct _DriverParam
     BOARD_R6B
   } board_version;
   unsigned char protocol_version;
-  unsigned int rs485_baudrate;
 } DriverParam;
 
 extern MotorState motor[2];
