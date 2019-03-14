@@ -835,7 +835,11 @@ static inline int data_analyze_(
             rawdata[1] = rawdata[1] & 1;
 
             command_analyze(rawdata, data_len);
-            driver_param.ifmode = fromto;
+            if (from == 0 && fromto == 1)
+              driver_param.ifmode = 1;
+            else if (from == -1)
+              driver_param.ifmode = 0;
+
             //printf("for me\n\r");
           }
           else if (from == -1)
