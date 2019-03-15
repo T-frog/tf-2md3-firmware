@@ -766,8 +766,6 @@ int main()
       driver_param.error.hall[1] = 0;
       motor[0].error_state |= ERROR_WATCHDOG;
       motor[1].error_state |= ERROR_WATCHDOG;
-      motor[0].error_state &= ~ERROR_HEARTBEAT;
-      motor[1].error_state &= ~ERROR_HEARTBEAT;
       TRACE_ERROR("Watchdog - parameter init\n\r");
       {
         int i;
