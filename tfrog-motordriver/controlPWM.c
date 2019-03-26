@@ -589,6 +589,7 @@ void FIQ_PWMPeriod()
         if (_abs(err) > motor_param[i].enc_rev / 6)
         {
           motor[i].error_state |= ERROR_HALL_ENC;
+          TRACE_WARNING("Encoder-hall inconsistency (err: %d)\n\r", err);
         }
       }
 
