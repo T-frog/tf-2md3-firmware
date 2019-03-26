@@ -362,6 +362,7 @@ void controlVelocity_init()
   driver_param.admask = 0;
   driver_param.io_mask[0] = 0;
   driver_param.io_mask[1] = 0;
+  driver_param.control_cycle = 1;
 
   for (i = 0; i < 2; i++)
   {
