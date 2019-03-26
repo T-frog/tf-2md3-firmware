@@ -20,6 +20,7 @@
 
 #include <board.h>
 #include <stdint.h>
+#include <assert.h>
 #include "communication.h"
 
 #ifdef __cplusplus
@@ -141,6 +142,9 @@ typedef struct _DriverParam
   } board_version;
   unsigned char protocol_version;
 } DriverParam;
+
+static_assert(sizeof(DriverParam) < 0x100, "DriverParam overflows reserved EEPROM capacity");
+static_assert(sizeof(MotorParam) < 0x100, "MotorParam overflows reserved EEPROM capacity");
 
 extern MotorState motor[2];
 extern MotorParam motor_param[2];

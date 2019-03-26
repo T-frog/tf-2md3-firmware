@@ -594,8 +594,9 @@ int main()
   {
     EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR, &driver_param, sizeof(DriverParam));
     msleep(1);
-    EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x100,
-                motor_param, sizeof(MotorParam) * 2);
+    EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x100, &motor_param[0], sizeof(MotorParam));
+    msleep(1);
+    EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x200, &motor_param[1], sizeof(MotorParam));
     motor[0].servo_level = SERVO_LEVEL_STOP;
     motor[1].servo_level = SERVO_LEVEL_STOP;
     controlVelocity_config();
@@ -702,11 +703,11 @@ int main()
       if (saved_param.stored_data == TFROG_EEPROM_DATA_BIN_SAVING)
       {
         LED_on(0);
-        EEPROM_Write(TFROG_EEPROM_ROBOTPARAM_ADDR,
-                     &driver_param, sizeof(DriverParam));
+        EEPROM_Write(TFROG_EEPROM_ROBOTPARAM_ADDR, &driver_param, sizeof(DriverParam));
         msleep(5);
-        EEPROM_Write(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x100,
-                     motor_param, sizeof(MotorParam) * 2);
+        EEPROM_Write(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x100, &motor_param[0], sizeof(MotorParam));
+        msleep(5);
+        EEPROM_Write(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x200, &motor_param[1], sizeof(MotorParam));
         saved_param.stored_data = TFROG_EEPROM_DATA_BIN;
         EEPROM_Write(0, &saved_param, sizeof(saved_param));
         LED_off(0);
