@@ -597,6 +597,17 @@ int main()
     printf("Loading saved MotorParam[1]\n\r");
     EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x200, &motor_param[1], sizeof(MotorParam));
 
+    if (motor_param[0].enc_rev_raw / motor_param[0].enc_denominator != motor_param[0].enc_rev ||
+        motor_param[1].enc_rev_raw / motor_param[1].enc_denominator != motor_param[1].enc_rev)
+    {
+      TRACE_ERROR("Embedded parameter has inconsistency\n\r");
+      printf("enc_rev: %d, %d\n\r", motor_param[0].enc_rev, motor_param[1].enc_rev);
+      printf("enc_denominator: %d, %d\n\r", motor_param[0].enc_denominator, motor_param[1].enc_denominator);
+      printf("enc_rev_raw: %d, %d\n\r", motor_param[0].enc_rev_raw, motor_param[1].enc_rev_raw);
+      AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST | AT91C_RSTC_PROCRST | AT91C_RSTC_PERRST;
+      while (1)
+        ;
+    }
     motor[0].servo_level = SERVO_LEVEL_STOP;
     motor[1].servo_level = SERVO_LEVEL_STOP;
     controlVelocity_config();
