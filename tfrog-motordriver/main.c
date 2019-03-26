@@ -585,21 +585,27 @@ int main()
   // Configure velocity control loop
   controlVelocity_init();
 
-  printf("PWM control init\n\r");
-  // Configure PWM control
-  controlPWM_init();
-
   if (saved_param.stored_data == TFROG_EEPROM_DATA_BIN ||
       saved_param.stored_data == TFROG_EEPROM_DATA_BIN_LOCKED)
   {
+    printf("Loading saved DriverParam\n\r");
     EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR, &driver_param, sizeof(DriverParam));
     msleep(1);
+    printf("Loading saved MotorParam[0]\n\r");
     EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x100, &motor_param[0], sizeof(MotorParam));
     msleep(1);
+    printf("Loading saved MotorParam[1]\n\r");
     EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x200, &motor_param[1], sizeof(MotorParam));
+
     motor[0].servo_level = SERVO_LEVEL_STOP;
     motor[1].servo_level = SERVO_LEVEL_STOP;
     controlVelocity_config();
+    controlPWM_init();
+  }
+  else
+  {
+    printf("PWM control init\n\r");
+    // Configure PWM control
     controlPWM_init();
   }
 
