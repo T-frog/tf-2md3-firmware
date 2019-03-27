@@ -78,17 +78,6 @@ inline void normalize(int* val, int min, int max, int resolution)
     *val -= resolution;
 }
 
-inline void normalize_mod(int* val, int min, int max, int resolution)
-{
-  if (resolution <= 0)
-    return;
-  *val = (*val) % resolution;
-  if (*val < min)
-    *val += resolution;
-  else if (*val >= max)
-    *val -= resolution;
-}
-
 inline int _abs(int x)
 {
   if (x < 0)
@@ -130,7 +119,7 @@ void controlPWM_config(int i)
   motor_param[i].enc_drev[5] = motor_param[i].enc_rev * 6 / 6;
 
   motor_param[i].enc_10hz = motor_param[i].enc_rev * 10 * 16 / 1000;
-  motor_param[i].enc_rev_1p = motor_param[i].enc_rev / 100;
+  motor_param[i].enc_rev_1p = motor_param[i].enc_rev / 15;
   if (motor_param[i].enc_rev_1p == 0)
     motor_param[i].enc_rev_1p = 1;
 
@@ -309,30 +298,6 @@ void FIQ_PWMPeriod()
         else if (rate <= -PWM_resolution)
           rate = -PWM_resolution + 1;
         motor[j].ref.rate2 = rate;
-      }
-
-      if (cnt % 64 == 2 + j)
-      {
-        int diff;
-        diff = motor_param[j].enc0tran - motor_param[j].enc0;
-        normalize(&diff, -motor_param[j].enc_rev_h, motor_param[j].enc_rev_h, motor_param[j].enc_rev);
-
-        if (_abs(diff) <= motor_param[j].enc_rev_1p)
-        {
-          motor_param[j].enc0tran = motor_param[j].enc0;
-        }
-        else if (diff > 0)
-        {
-          motor_param[j].enc0tran -= motor_param[j].enc_rev_1p;
-          if (motor_param[j].enc0tran <= -motor_param[j].enc_rev)
-            motor_param[j].enc0tran += motor_param[j].enc_rev;
-        }
-        else
-        {
-          motor_param[j].enc0tran += motor_param[j].enc_rev_1p;
-          if (motor_param[j].enc0tran >= motor_param[j].enc_rev)
-            motor_param[j].enc0tran -= motor_param[j].enc_rev;
-        }
       }
 
       switch (motor_param[j].motor_type)
@@ -584,7 +549,7 @@ void FIQ_PWMPeriod()
       if (motor_param[i].enc_type == 2 && motor[i].servo_level > SERVO_LEVEL_STOP)
       {
         int err = motor_param[i].enc0 - enc0;
-        normalize_mod(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev);
+        normalize(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev);
         // In worst case, initial encoder origin can have offset of motor_param[i].enc_rev/12.
         if (_abs(err) > motor_param[i].enc_rev / 6)
         {

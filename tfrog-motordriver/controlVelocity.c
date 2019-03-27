@@ -266,6 +266,7 @@ void timer0_vel_calc()
     motor[i].spd = 0;
   }
 
+  // calculate motor velocities
   for (i = 0; i < 2; i++)
   {
     int __vel;
@@ -337,6 +338,33 @@ void timer0_vel_calc()
         pwm_sum[i] = 0;
         pwm_num[i] = 0;
       }
+    }
+  }
+
+  // encoder absolute angle LPF
+  int j;
+  for (j = 0; j < 2; j++)
+  {
+    const int enc0 = motor_param[j].enc0;
+    int diff;
+    diff = motor_param[j].enc0tran - enc0;
+    normalize(&diff, -motor_param[j].enc_rev_h, motor_param[j].enc_rev_h, motor_param[j].enc_rev);
+
+    if (_abs(diff) <= motor_param[j].enc_rev_1p)
+    {
+      motor_param[j].enc0tran = enc0;
+    }
+    else if (diff > 0)
+    {
+      motor_param[j].enc0tran -= motor_param[j].enc_rev_1p;
+      if (motor_param[j].enc0tran <= -motor_param[j].enc_rev)
+        motor_param[j].enc0tran += motor_param[j].enc_rev;
+    }
+    else
+    {
+      motor_param[j].enc0tran += motor_param[j].enc_rev_1p;
+      if (motor_param[j].enc0tran >= motor_param[j].enc_rev)
+        motor_param[j].enc0tran -= motor_param[j].enc_rev;
     }
   }
 

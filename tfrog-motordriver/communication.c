@@ -233,7 +233,7 @@ void flush(void)
     }
     else if (ret != USBD_STATUS_SUCCESS)
     {
-      TRACE_ERROR("Send failed\n\r  buf: %s\n\r", send_buf);
+      printf("USB:w err \"%s\"\n\r", send_buf);
       send_buf_pos = 0;
       return;
     }
@@ -245,7 +245,7 @@ void flush(void)
   }
   if (!timeout)
   {
-    TRACE_ERROR("USB send timeout\n\r");
+    printf("USB:w timeout\n\r");
     send_buf_pos = 0;
   }
 }
@@ -269,7 +269,7 @@ void flush485(void)
       return;
     }
   }
-  printf("RS485 send timeout\n\r");
+  printf("485:w timeout\n\r");
   send_buf_pos485 = 0;
   rs485_timeout = 0;
 }
@@ -430,7 +430,7 @@ int data_send485(short* cnt, short* pwm, char* en, short* analog, unsigned short
   {
     send_buf_pos485 = 0;
     rs485_timeout = 0;
-    printf("rs485 skipped\n\r");
+    printf("485:skip\n\r");
     return -1;
   }
 }
@@ -511,7 +511,7 @@ int int_send485(const char param, const char id, const int value)
   {
     send_buf_pos485 = 0;
     rs485_timeout = 0;
-    printf("rs485 skipped\n\r");
+    printf("485:skip\n\r");
     return -1;
   }
 }
@@ -644,19 +644,9 @@ static inline int data_analyze_(
     line[len] = *data;
     len++;
 
-    char clear_buffer = 0;
     if (len > 63)
     {
-      clear_buffer = 1;
-      printf("recv buf overflow\n\r");
-    }
-    if (!fromto && usb_read_pause == 1 && len > COMMAND_LEN * 2)
-    {
-      clear_buffer = 1;
-      printf("clearing recv buf (USB buffer overflow (%d))\n\r", len);
-    }
-    if (clear_buffer)
-    {
+      printf("COM:rbuf ovf %d\n\r", len);
       len = 0;
       receive_period = 1;
       state = STATE_IDLE;
@@ -757,7 +747,7 @@ static inline int data_analyze_(
           state = STATE_IDLE;
           receive_period = 1;
           line[len - 3] = 0;
-          printf("CRC16 X\"%s\"\n\r", (char*)line);
+          printf("COM:CRC err \"%s\"\n\r", (char*)line);
         }
         break;
     }
@@ -772,7 +762,7 @@ static inline int data_analyze_(
         if (data_len < 6)
         {
           line[len - 1] = 0;
-          printf("Decode failed: \"%s\" (%d)\n\r", (char*)line, data_len);
+          printf("COM:decode err \"%s\" (%d)\n\r", (char*)line, data_len);
         }
         else
         {
@@ -821,14 +811,12 @@ static inline int data_analyze_(
               {
                 send_buf_pos485 = 0;
                 rs485_timeout = 0;
-                printf("rs485 skipped\n\r");
+                printf("485:skip\n\r");
               }
-              //printf("proxy sent\n\r");
             }
             else
             {
               send_buf_pos485--;
-              //printf("proxy\n\r");
             }
           }
         }
@@ -889,9 +877,8 @@ static inline int data_analyze_(
     {
       send_buf_pos485 = 0;
       rs485_timeout = 0;
-      printf("rs485 skipped\n\r");
+      printf("485:skip\n\r");
     }
-    //printf("proxy sent\n\r");
   }
   return 0;
 }

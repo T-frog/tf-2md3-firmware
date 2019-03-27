@@ -214,14 +214,8 @@ static void ISR_Vbus( const Pin * pPin )
 // ------------------------------------------------------------------------------
 static void VBus_Configure(void)
 {
-  //	TRACE_INFO( "VBus configuration\n\r" );
-
   // Configure PIO
   PIO_Configure(&pinVbus, 1);
-  //	PIO_ConfigureIt( &pinVbus, ISR_Vbus );
-  //	PIO_EnableIt( &pinVbus );
-
-  //	ISR_Vbus( &pinVbus );
 }
 
 volatile unsigned char usb_read_pause = 0;
@@ -238,7 +232,7 @@ static void UsbDataReceived(unsigned int unused, unsigned char status, unsigned 
     // Check if bytes have been discarded
     if ((received == DATABUFFERSIZE) && (remaining > 0))
     {
-      TRACE_WARNING("UsbDataReceived: %u bytes discarded\n\r", remaining);
+      printf("USB:discard %uB\n\r", remaining);
     }
 
     LED_on(2);
@@ -246,12 +240,12 @@ static void UsbDataReceived(unsigned int unused, unsigned char status, unsigned 
 
     if (remain > 0)
     {
-      printf("%d bytes discarded\n\r", remain);
+      printf("USB:remain %dB\n\r", remain);
     }
 
     if (buf_left() < COMMAND_LEN * 2)
     {
-      printf("Buffer nealy full\n\rPause USB read\n\r");
+      printf("USB:pause\n\r");
       usb_read_pause = 1;
     }
     else
@@ -261,7 +255,7 @@ static void UsbDataReceived(unsigned int unused, unsigned char status, unsigned 
   }
   else
   {
-    TRACE_WARNING("UsbDataReceived: Transfer error\n\r");
+    printf("USB:transfer err\n\r");
   }
 }
 
@@ -659,6 +653,7 @@ int main()
   driver_param.board_version = BOARD_R4;
   printf("Board version: R4\n\r");
 #endif
+  printf("Entering main control loop\n\r------\n\r");
 
   err_cnt = 0;
   driver_param.error.low_voltage = 0;
@@ -781,13 +776,13 @@ int main()
     {
       if (vbus == 1)
       {
-        TRACE_INFO("VBUS conn\n\r");
+        printf("USB:vbus connect\n\r");
         USBD_Connect();
         connecting = 1;
       }
       else
       {
-        TRACE_INFO("VBUS discon\n\r");
+        printf("USB:vbus disconnect\n\r");
         USBD_Disconnect();
       }
     }
@@ -803,7 +798,7 @@ int main()
       len = RS485BUF_SIZE - r_rs485buf_pos;
       if (data_fetch485(rs485buf + r_rs485buf_pos, len))
       {
-        TRACE_WARNING("RS485DataReceived: buffer overrun\n\r");
+        printf("485:buf overrun\n\r");
       }
 
       if (rs485buf == &rs485buf_[0][0])
@@ -831,7 +826,7 @@ int main()
 
         if (data_fetch485(rs485buf + r_rs485buf_pos, len))
         {
-          TRACE_WARNING("RS485DataReceived: buffer overrun\n\r");
+          printf("485:buf overrun\n\r");
         }
         r_rs485buf_pos += len;
       }
@@ -922,15 +917,15 @@ int main()
 
     if (usb_read_pause)
     {
-      printf("Flushing commands\n\r");
+      printf("USB:flush\n\r");
     }
     data_analyze();
 
     if (usb_read_pause)
     {
       usb_read_pause = 0;
+      printf("USB:resume\n\r");
       CDCDSerialDriver_Read(usbBuffer, DATABUFFERSIZE, (TransferCallback)UsbDataReceived, 0);
-      printf("Resume USB read\n\r");
     }
 
     data_analyze485();
@@ -939,7 +934,7 @@ int main()
     {
       if (USBD_GetState() >= USBD_STATE_CONFIGURED)
       {
-        printf("Start USB read\n\r");
+        printf("USB:start\n\r");
         // Start receiving data on the USB
         CDCDSerialDriver_Read(usbBuffer, DATABUFFERSIZE, (TransferCallback)UsbDataReceived, 0);
         connecting = 0;
@@ -950,7 +945,7 @@ int main()
     {
       if (USBD_GetState() < USBD_STATE_DEFAULT)
       {
-        TRACE_ERROR("USB disconnected\n\r");
+        printf("USB:disconnect\n\r");
         AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST;
         while (1)
           ;
