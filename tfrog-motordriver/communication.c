@@ -33,13 +33,7 @@
 #include "eeprom.h"
 #include "io.h"
 
-#define CRC 16
-
-#if (CRC == 16)
 #include "crc16.h"
-#elif(CRC == 8)
-#include "crc8.h"
-#endif
 
 unsigned char send_buf[SEND_BUF_LEN];
 volatile unsigned long send_buf_pos = 0;
@@ -76,7 +70,6 @@ int data_fetch_(unsigned char* receive_buf,
                 unsigned char* data, int len) RAMFUNC;
 int command_analyze(unsigned char* data, int len) RAMFUNC;
 
-#if (CRC == 16)
 unsigned short crc16(unsigned char* buf, int len)
 {
   unsigned short ret = 0;
@@ -89,35 +82,14 @@ unsigned short crc16(unsigned char* buf, int len)
   }
   return ret;
 }
-#elif(CRC == 8)
-unsigned char crc8(unsigned char* buf, int len)
-{
-  unsigned char ret = 0;
-  unsigned char* pos;
-
-  for (pos = buf; len; len--)
-  {
-    ret = crc8_tb[ret ^ (*pos)];
-    pos++;
-  }
-  return ret;
-}
-#endif
 
 int add_crc_485(unsigned char* buf, int len)
 {
-#if (CRC == 16)
   unsigned short crc = crc16(buf, len);
   buf[len] = crc & 0xFF;
   len++;
   buf[len] = crc >> 8;
   len++;
-#elif(CRC == 8)
-  buf[len] = crc8(buf, len);
-  len++;
-  buf[len] = 0xAA;
-  len++;
-#endif
   buf[len] = 0xAA;
   len++;
   return len;
@@ -125,13 +97,8 @@ int add_crc_485(unsigned char* buf, int len)
 
 char verify_crc_485(unsigned char* buf, int len)
 {
-#if (CRC == 16)
   if (crc16(buf, len - 2) == (buf[len - 2] | buf[len - 1] << 8))
     return 1;
-#elif(CRC == 8)
-  if (crc8(buf, len - 1) == buf[len - 1])
-    return 1;
-#endif
   return 0;
 }
 
@@ -650,12 +617,8 @@ static inline int data_analyze_(
     STATE_TO,
     STATE_RECIEVING,
     STATE_RECIEVED,
-#if (CRC == 8)
-    STATE_CRC8,
-#elif(CRC == 16)
     STATE_CRC16_1,
     STATE_CRC16_2,
-#endif
   } state = STATE_IDLE;
   enum
   {
@@ -772,40 +735,13 @@ static inline int data_analyze_(
         if (*data == COMMUNICATION_END_BYTE)
         {
           if (fromto)
-#if (CRC == 8)
-            state = STATE_CRC8;
-#elif(CRC == 16)
             state = STATE_CRC16_1;
-#else
-            state = STATE_RECIEVED;
-#endif
           else
             state = STATE_RECIEVED;
         }
         break;
       case STATE_RECIEVED:
         break;
-#if (CRC == 8)
-      case STATE_CRC8:
-        if (!(to == id || (id == 0 && to == -1)))
-        {
-          state = STATE_IDLE;
-          receive_period = 1;
-        }
-        else if (verify_crc_485(line_full, len + 3))
-        {
-          state = STATE_RECIEVED;
-          len--;
-        }
-        else
-        {
-          state = STATE_IDLE;
-          receive_period = 1;
-          line[len - 2] = 0;
-          printf("CRC8 X\"%s\"\n\r", (char*)line);
-        }
-        break;
-#elif(CRC == 16)
       case STATE_CRC16_1:
         state = STATE_CRC16_2;
         break;
@@ -829,7 +765,6 @@ static inline int data_analyze_(
           printf("CRC16 X\"%s\"\n\r", (char*)line);
         }
         break;
-#endif
     }
     if (state == STATE_RECIEVED)
     {
