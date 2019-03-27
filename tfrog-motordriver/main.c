@@ -84,6 +84,7 @@
 int velcontrol = 0;
 volatile unsigned char rs485_timeout = 0;
 volatile unsigned short tic = 0;
+volatile unsigned short tic_wall = 0;
 
 Tfrog_EEPROM_data saved_param = TFROG_EEPROM_DEFAULT;
 
@@ -279,6 +280,7 @@ void timer1_tic()
   dummy = dummy;
 
   tic++;
+  tic_wall++;
   if (rs485_timeout < 255)
     rs485_timeout++;
   AIC_EnableIT(AT91C_ID_US0);
@@ -288,7 +290,7 @@ void timer1_tic()
   {
     if (buz_on)
     {
-      if ((tic & 0x7) < saved_param.buz_lvl)
+      if ((tic_wall & 0x7) < saved_param.buz_lvl)
         pinBuz->pio->PIO_SODR = pinBuz->mask;
       else
         pinBuz->pio->PIO_CODR = pinBuz->mask;
@@ -317,7 +319,7 @@ void tic_init()
   AT91C_BASE_TC1->TC_RC = 1500 / 23;
   AT91C_BASE_TC1->TC_IER = AT91C_TC_CPCS;
 
-  AIC_ConfigureIT(AT91C_ID_TC1, 3 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, (void (*)(void))timer1_tic);
+  AIC_ConfigureIT(AT91C_ID_TC1, 5 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, (void (*)(void))timer1_tic);
   AIC_EnableIT(AT91C_ID_TC1);
 
   AT91C_BASE_TC1->TC_CCR = AT91C_TC_SWTRG;
