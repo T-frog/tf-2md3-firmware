@@ -645,11 +645,6 @@ static inline int data_analyze_(
     len++;
 
     char clear_buffer = 0;
-    if (fromto && len > COMMAND_LEN485 + 1)
-    {
-      clear_buffer = 1;
-      printf("ignoring broken 485 data\n\r");
-    }
     if (len > 63)
     {
       clear_buffer = 1;
@@ -859,7 +854,6 @@ static inline int data_analyze_(
             tmp.byte[0] = rawdata[i++];
             com_pwms[from * 2 + j] = tmp.integer;
           }
-          //printf("enc\n\r");
         }
         else
         {
