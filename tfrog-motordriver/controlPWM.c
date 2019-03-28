@@ -451,6 +451,7 @@ void FIQ_PWMPeriod()
         {
           // エラー検出後、1周以内に再度エラーがあれば停止
           motor[i].error_state |= ERROR_HALL_SEQ;
+          printf("PWM:hall err (%x-%x)\n\r", _hall[i], hall[i]);
         }
         continue;
       }
@@ -589,7 +590,7 @@ void FIQ_PWMPeriod()
         if (_abs(err) > motor_param[i].enc_rev / 6)
         {
           motor[i].error_state |= ERROR_HALL_ENC;
-          TRACE_WARNING("Encoder-hall inconsistency (err: %d)\n\r", err);
+          printf("PWM:enc-hall err (%d)\n\r", err);
         }
       }
 
