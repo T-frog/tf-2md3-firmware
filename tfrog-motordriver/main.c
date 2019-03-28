@@ -621,7 +621,7 @@ int main()
   AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 
   // Enable ticker
-  printf("Watchdog ticker\n\r");
+  printf("Start ticker\n\r");
   tic_init();
 
 #define RS485BUF_SIZE 128
