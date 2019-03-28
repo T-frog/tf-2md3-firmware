@@ -61,7 +61,6 @@ void timer0_vel_calc() RAMFUNC;
 // ------------------------------------------------------------------------------
 void ISR_VelocityControl()
 {
-  // volatile unsigned int status;
   int i;
   int64_t toq[2];
   int64_t out_pwm[2];
@@ -252,7 +251,8 @@ void timer0_vel_calc()
       motor[1].servo_level > SERVO_LEVEL_STOP)
   {
     driver_param.watchdog++;
-    driver_param.cnt_updated++;
+    if (driver_param.cnt_updated < 9)
+      driver_param.cnt_updated++;
   }
 
   dummy = AT91C_BASE_TC0->TC_SR;
@@ -367,10 +367,10 @@ void timer0_vel_calc()
         motor_param[j].enc0tran -= motor_param[j].enc_rev;
     }
   }
-
+  ISR_VelocityControl();
   LED_off(1);
 
-  velcontrol = 1;
+  velcontrol++;
 }
 
 // ------------------------------------------------------------------------------
