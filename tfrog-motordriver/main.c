@@ -343,8 +343,6 @@ int main()
   unsigned char errnum = 0;
   unsigned char blink = 0;
 
-  tic_init();
-
   // Configure IO
   PIO_Configure(pins, PIO_LISTSIZE(pins));
 
@@ -581,19 +579,15 @@ int main()
   driver_param.vsrc = 0;
   Filter1st_CreateLPF(&voltf, 10);  // 50ms
 
-  printf("Velocity Control init\n\r");
-  // Configure velocity control loop
-  controlVelocity_init();
-
   if (saved_param.stored_data == TFROG_EEPROM_DATA_BIN ||
       saved_param.stored_data == TFROG_EEPROM_DATA_BIN_LOCKED)
   {
     printf("Loading saved DriverParam\n\r");
     EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR, &driver_param, sizeof(DriverParam));
-    msleep(1);
+    msleep(5);
     printf("Loading saved MotorParam[0]\n\r");
     EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x100, &motor_param[0], sizeof(MotorParam));
-    msleep(1);
+    msleep(5);
     printf("Loading saved MotorParam[1]\n\r");
     EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x200, &motor_param[1], sizeof(MotorParam));
 
@@ -610,23 +604,23 @@ int main()
     }
     motor[0].servo_level = SERVO_LEVEL_STOP;
     motor[1].servo_level = SERVO_LEVEL_STOP;
-    controlVelocity_config();
-    controlPWM_init();
   }
-  else
-  {
-    printf("PWM control init\n\r");
-    // Configure PWM control
-    controlPWM_init();
-  }
+
+  printf("Velocity Control init\n\r");
+  // Configure velocity control loop
+  controlVelocity_init();
+  printf("PWM control init\n\r");
+  // Configure PWM control
+  controlPWM_init();
 
   // Enable watchdog
   printf("Watchdog init\n\r");
   AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDRSTEN | 0xFF00FF;  // 1s
   AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 
-  LED_off(0);
-  ADC_Start();
+  // Enable ticker
+  printf("Watchdog ticker\n\r");
+  tic_init();
 
 #define RS485BUF_SIZE 128
   unsigned char rs485buf_[2][RS485BUF_SIZE];
@@ -677,6 +671,9 @@ int main()
   driver_param.board_version = BOARD_R4;
   printf("Board version: R4\n\r");
 #endif
+
+  ADC_Start();
+  LED_off(0);
 
   err_cnt = 0;
   driver_param.error.low_voltage = 0;
