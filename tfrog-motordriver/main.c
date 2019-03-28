@@ -608,8 +608,8 @@ int main()
     }
     motor[0].servo_level = SERVO_LEVEL_STOP;
     motor[1].servo_level = SERVO_LEVEL_STOP;
-    controlVelocity_config();
   }
+  controlVelocity_config();
 
   printf("PWM control init\n\r");
   // Configure PWM control
