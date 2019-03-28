@@ -573,11 +573,15 @@ int main()
     }
   }
 
-  // connect if needed
+  // Configure USB vbus pin
   VBus_Configure();
 
   driver_param.vsrc = 0;
   Filter1st_CreateLPF(&voltf, 10);  // 50ms
+
+  printf("Velocity Control init\n\r");
+  // Configure velocity control loop
+  controlVelocity_init();
 
   if (saved_param.stored_data == TFROG_EEPROM_DATA_BIN ||
       saved_param.stored_data == TFROG_EEPROM_DATA_BIN_LOCKED)
@@ -604,11 +608,9 @@ int main()
     }
     motor[0].servo_level = SERVO_LEVEL_STOP;
     motor[1].servo_level = SERVO_LEVEL_STOP;
+    controlVelocity_config();
   }
 
-  printf("Velocity Control init\n\r");
-  // Configure velocity control loop
-  controlVelocity_init();
   printf("PWM control init\n\r");
   // Configure PWM control
   controlPWM_init();

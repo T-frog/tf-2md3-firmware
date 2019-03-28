@@ -381,8 +381,6 @@ void controlVelocity_init()
     motor_param[i].phase_offset = 0;
     motor_param[i].enc_type = 2;
   }
-
-  controlVelocity_config();
 }
 void controlVelocity_config()
 {
