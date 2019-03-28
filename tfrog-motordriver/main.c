@@ -579,11 +579,11 @@ int main()
   VBus_Configure();
 
   driver_param.vsrc = 0;
-  Filter1st_CreateLPF(&voltf, 10);  // 50ms
 
   printf("Velocity Control init\n\r");
   // Configure velocity control loop
   controlVelocity_init();
+  Filter1st_CreateLPF(&voltf, 10);
 
   printf("PWM control init\n\r");
   // Configure PWM control
@@ -715,6 +715,7 @@ int main()
             saved_param.stored_data == TFROG_EEPROM_DATA_BIN_LOCKED))
       {
         controlVelocity_init();
+        Filter1st_CreateLPF(&voltf, 10);
         controlPWM_init();
       }
       driver_param.error.hall[0] = 0;
