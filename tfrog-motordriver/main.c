@@ -993,22 +993,15 @@ int main()
 
       com_pwms[0] = motor[0].ref.rate_buf;
       com_pwms[1] = motor[1].ref.rate_buf;
+      com_cnts[0] = motor[0].enc_buf2;
+      com_cnts[1] = motor[1].enc_buf2;
       if (driver_param.ifmode == 0)
-      {
-        com_cnts[0] = motor[0].enc_buf2;
-        com_cnts[1] = motor[1].enc_buf2;
         data_send(com_cnts, com_pwms, com_en, analog, mask);
-      }
       else
-      {
-        com_cnts[0] = (short)motor[0].enc_buf2;
-        com_cnts[1] = (short)motor[1].enc_buf2;
         data_send485(com_cnts, com_pwms, com_en, analog, mask);
-      }
+
       for (i = 2; i < COM_MOTORS; i++)
-      {
         com_pwms[i] = 0;
-      }
 
       for (i = 0; i < 2; i++)
       {
