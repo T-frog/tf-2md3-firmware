@@ -84,7 +84,6 @@
 int velcontrol = 0;
 volatile unsigned char rs485_timeout = 0;
 volatile unsigned short tic = 0;
-volatile unsigned short tic_wall = 0;
 
 Tfrog_EEPROM_data saved_param = TFROG_EEPROM_DEFAULT;
 
@@ -280,7 +279,6 @@ void timer1_tic()
   dummy = dummy;
 
   tic++;
-  tic_wall++;
   if (rs485_timeout < 255)
     rs485_timeout++;
   AIC_EnableIT(AT91C_ID_US0);
@@ -290,7 +288,7 @@ void timer1_tic()
   {
     if (buz_on)
     {
-      if ((tic_wall & 0x7) < saved_param.buz_lvl)
+      if ((tic & 0x7) < saved_param.buz_lvl)
         pinBuz->pio->PIO_SODR = pinBuz->mask;
       else
         pinBuz->pio->PIO_CODR = pinBuz->mask;
