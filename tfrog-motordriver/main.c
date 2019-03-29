@@ -534,9 +534,8 @@ int main()
       case -3:
         // Read Error
         TRACE_ERROR("EEPROM Read Error!\n\r");
-        AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST | AT91C_RSTC_PROCRST | AT91C_RSTC_PERRST;
-        while (1)
-          ;
+        motor[0].error_state |= ERROR_EEPROM;
+        motor[1].error_state |= ERROR_EEPROM;
         break;
       default:
         if (saved_param.key != TFROG_EEPROM_KEY)
@@ -557,6 +556,23 @@ int main()
           AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST | AT91C_RSTC_PROCRST | AT91C_RSTC_PERRST;
           while (1)
             ;
+        }
+        else if (saved_param.size < sizeof(Tfrog_EEPROM_data))
+        {
+          printf("Migrating EEPROM data\n\r");
+          memcpy(
+              ((char*)&saved_param) + saved_param.size,
+              ((char*)&data_default) + saved_param.size,
+              sizeof(Tfrog_EEPROM_data) - saved_param.size);
+          EEPROM_Write(0, &saved_param, sizeof(saved_param));
+
+          LED_on(0);
+          LED_on(1);
+          LED_on(2);
+          msleep(50);
+          LED_off(0);
+          LED_off(1);
+          LED_off(2);
         }
         break;
     }
@@ -589,28 +605,34 @@ int main()
   if (saved_param.stored_data == TFROG_EEPROM_DATA_BIN ||
       saved_param.stored_data == TFROG_EEPROM_DATA_BIN_LOCKED)
   {
-    printf("Loading saved DriverParam\n\r");
-    EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR, &driver_param, sizeof(DriverParam));
-    msleep(5);
-    printf("Loading saved MotorParam[0]\n\r");
-    EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x100, &motor_param[0], sizeof(MotorParam));
-    msleep(5);
-    printf("Loading saved MotorParam[1]\n\r");
-    EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x200, &motor_param[1], sizeof(MotorParam));
-
-    if (motor_param[0].enc_rev_raw / motor_param[0].enc_denominator != motor_param[0].enc_rev ||
-        motor_param[1].enc_rev_raw / motor_param[1].enc_denominator != motor_param[1].enc_rev)
+    if (saved_param.stored_param_version != TFROG_EEPROM_PARAM_VERSION)
     {
-      TRACE_ERROR("Embedded parameter has inconsistency\n\r");
-      printf("enc_rev: %d, %d\n\r", motor_param[0].enc_rev, motor_param[1].enc_rev);
-      printf("enc_denominator: %d, %d\n\r", motor_param[0].enc_denominator, motor_param[1].enc_denominator);
-      printf("enc_rev_raw: %d, %d\n\r", motor_param[0].enc_rev_raw, motor_param[1].enc_rev_raw);
-      AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST | AT91C_RSTC_PROCRST | AT91C_RSTC_PERRST;
-      while (1)
-        ;
+      printf("EEPROM has incompatible version of the parameter\n\r");
+      motor[0].error_state |= ERROR_EEPROM;
+      motor[1].error_state |= ERROR_EEPROM;
     }
-    motor[0].servo_level = SERVO_LEVEL_STOP;
-    motor[1].servo_level = SERVO_LEVEL_STOP;
+    else
+    {
+      printf("Loading saved DriverParam\n\r");
+      EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR, &driver_param, sizeof(DriverParam));
+      msleep(5);
+      printf("Loading saved MotorParam[0]\n\r");
+      EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x100, &motor_param[0], sizeof(MotorParam));
+      msleep(5);
+      printf("Loading saved MotorParam[1]\n\r");
+      EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x200, &motor_param[1], sizeof(MotorParam));
+
+      if (motor_param[0].enc_rev_raw / motor_param[0].enc_denominator != motor_param[0].enc_rev ||
+          motor_param[1].enc_rev_raw / motor_param[1].enc_denominator != motor_param[1].enc_rev)
+      {
+        TRACE_ERROR("Embedded parameter has inconsistency\n\r");
+        printf("enc_rev: %d, %d\n\r", motor_param[0].enc_rev, motor_param[1].enc_rev);
+        printf("enc_denominator: %d, %d\n\r", motor_param[0].enc_denominator, motor_param[1].enc_denominator);
+        printf("enc_rev_raw: %d, %d\n\r", motor_param[0].enc_rev_raw, motor_param[1].enc_rev_raw);
+        motor[0].error_state |= ERROR_EEPROM;
+        motor[1].error_state |= ERROR_EEPROM;
+      }
+    }
   }
   controlVelocity_config();
 
@@ -1109,7 +1131,8 @@ int main()
         {
           const int motor_id = errnum / ERROR_NUM;
           const int error_id = errnum % ERROR_NUM;
-          if (motor[motor_id].error_state & (1 << (error_id)))
+          if ((motor[motor_id].error_state & (1 << (error_id))) &&
+              error_pat[motor_id][error_id] != 0)
           {
             if (error_pat[motor_id][error_id] & (1 << blink))
             {

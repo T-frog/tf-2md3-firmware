@@ -34,8 +34,10 @@ typedef enum _ErrorID
   ERROR_HALL_SEQ = 0x0002,
   ERROR_HALL_ENC = 0x0004,
   ERROR_WATCHDOG = 0x0008,
+  ERROR_EEPROM = 0x0010,
+  ERROR_INTERNAL = 0x0020,
 } ErrorID;
-#define ERROR_NUM 4
+#define ERROR_NUM 6
 
 typedef struct _MotorState
 {
