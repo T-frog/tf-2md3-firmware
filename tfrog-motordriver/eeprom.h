@@ -37,7 +37,10 @@ typedef struct _Tfrog_EEPROM_data
   unsigned char buz_lvl;
   unsigned char high_frequency_encoder;
   unsigned char rely_hall;
+  char __endbyte;  // must be at the end of the struct to detect actual struct size
 } Tfrog_EEPROM_data;
+
+#define TFROG_EEPROM_DATA_SIZE ((int)(&(((Tfrog_EEPROM_data*)NULL)->__endbyte)))
 
 #define TFROG_EEPROM_ROBOTPARAM_ADDR 0x100
 
@@ -50,7 +53,7 @@ typedef struct _Tfrog_EEPROM_data
 #define TFROG_EEPROM_DEFAULT        \
   {                                 \
     TFROG_EEPROM_KEY,               \
-        sizeof(Tfrog_EEPROM_data),  \
+        TFROG_EEPROM_DATA_SIZE,     \
         TFROG_EEPROM_PARAM_VERSION, \
         0x01300000,                 \
         { "unknown" },              \

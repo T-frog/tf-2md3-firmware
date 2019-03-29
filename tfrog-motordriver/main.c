@@ -557,13 +557,14 @@ int main()
           while (1)
             ;
         }
-        else if (saved_param.size < sizeof(Tfrog_EEPROM_data))
+        else if (saved_param.size < TFROG_EEPROM_DATA_SIZE)
         {
           printf("Migrating EEPROM data\n\r");
           memcpy(
               ((char*)&saved_param) + saved_param.size,
               ((char*)&data_default) + saved_param.size,
-              sizeof(Tfrog_EEPROM_data) - saved_param.size);
+              TFROG_EEPROM_DATA_SIZE - saved_param.size);
+          saved_param.size = TFROG_EEPROM_DATA_SIZE;
           EEPROM_Write(0, &saved_param, sizeof(saved_param));
 
           LED_on(0);
