@@ -240,9 +240,9 @@ void ISR_VelocityControl()
 
 void timer0_vel_calc()
 {
-  static unsigned int __enc[2];
-  unsigned int enc[2];
+  static unsigned int enc[2];
   static char _spd_cnt[2];
+  unsigned int __enc[2];
   int spd[2];
   int i;
   volatile unsigned int dummy;
@@ -259,6 +259,8 @@ void timer0_vel_calc()
   dummy = dummy;
 
   LED_on(1);
+  __enc[0] = enc[0];
+  __enc[1] = enc[1];
   for (i = 0; i < 2; i++)
   {
     enc[i] = motor[i].posc;
@@ -324,7 +326,6 @@ void timer0_vel_calc()
     {
       motor[i].vel = vel;
     }
-    __enc[i] = enc[i];
     motor[i].enc_buf = enc[i] >> motor_param[i].enc_div;
   }
   for (i = 0; i < 2; i++)
@@ -345,27 +346,19 @@ void timer0_vel_calc()
   int j;
   for (j = 0; j < 2; j++)
   {
-    const int enc0 = motor_param[j].enc0;
+    int enc0 = motor_param[j].enc0;
     int diff;
     diff = motor_param[j].enc0tran - enc0;
     normalize(&diff, -motor_param[j].enc_rev_h, motor_param[j].enc_rev_h, motor_param[j].enc_rev);
 
     if (_abs(diff) <= motor_param[j].enc_rev_1p)
-    {
       motor_param[j].enc0tran = enc0;
-    }
     else if (diff > 0)
-    {
       motor_param[j].enc0tran -= motor_param[j].enc_rev_1p;
-      if (motor_param[j].enc0tran <= -motor_param[j].enc_rev)
-        motor_param[j].enc0tran += motor_param[j].enc_rev;
-    }
     else
-    {
       motor_param[j].enc0tran += motor_param[j].enc_rev_1p;
-      if (motor_param[j].enc0tran >= motor_param[j].enc_rev)
-        motor_param[j].enc0tran -= motor_param[j].enc_rev;
-    }
+
+    normalize(&motor_param[j].enc0tran, 0, motor_param[j].enc_rev_raw, motor_param[j].enc_rev_raw);
   }
   ISR_VelocityControl();
   LED_off(1);

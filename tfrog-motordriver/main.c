@@ -332,7 +332,7 @@ int main()
   int vbuslv = 0;
   int vbus = 0;
   int _vbus = 0;
-  int err_chk = 0;
+  unsigned int err_chk = 0;
   short mscnt = 0;
   unsigned char errnum = 0;
   unsigned char blink = 0;

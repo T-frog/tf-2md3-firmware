@@ -38,14 +38,14 @@ typedef enum _ErrorID
 
 typedef struct _MotorState
 {
-  int vel;            // count/ms
-  int vel1;           // count/ms
-  int pos;            // count
-  unsigned int posc;  // count
-  int enc_buf;        // count
-  int enc_buf2;       // count
+  int vel;                // count/ms
+  int vel1;               // count/ms
+  int pos;                // count
+  unsigned int posc;      // count
+  unsigned int enc_buf;   // count
+  unsigned int enc_buf2;  // count
   int spd;
-  int spd_cnt;
+  unsigned int spd_cnt;
   unsigned short enc;
   short dir;
 

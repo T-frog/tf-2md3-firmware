@@ -119,7 +119,7 @@ void controlPWM_config(int i)
   motor_param[i].enc_drev[5] = motor_param[i].enc_rev * 6 / 6;
 
   motor_param[i].enc_10hz = motor_param[i].enc_rev * 10 * 16 / 1000;
-  motor_param[i].enc_rev_1p = motor_param[i].enc_rev / 15;
+  motor_param[i].enc_rev_1p = motor_param[i].enc_rev / 300;
   if (motor_param[i].enc_rev_1p == 0)
     motor_param[i].enc_rev_1p = 1;
 
@@ -182,14 +182,14 @@ void controlPWM_config(int i)
 void FIQ_PWMPeriod()
 {
   int i;
-  unsigned short enc[2];
-  unsigned short hall[2];
-  static unsigned short _enc[2];
-  static unsigned short _hall[2];
+  static unsigned short enc[2];
+  static unsigned short hall[2];
   static int init = 0;
-  static int cnt = 0;
-  cnt++;
+  static unsigned int cnt = 0;
+  unsigned short _enc[2];
+  unsigned short _hall[2];
 
+  cnt++;
   {
     // PWM周波数が高い場合は処理を間引く
     // PWM_resolution 2000以下で一回間引き
@@ -200,6 +200,11 @@ void FIQ_PWMPeriod()
       return;
     thin = 0;
   }
+
+  _enc[0] = enc[0];
+  _enc[1] = enc[1];
+  _hall[0] = hall[0];
+  _hall[1] = hall[1];
 
   for (i = 0; i < 2; i++)
   {
@@ -243,11 +248,6 @@ void FIQ_PWMPeriod()
   else if (!init)
   {
     init = 1;
-    _hall[0] = hall[0];
-    _hall[1] = hall[1];
-    _enc[0] = enc[0];
-    _enc[1] = enc[1];
-
     return;
   }
 
@@ -256,12 +256,9 @@ void FIQ_PWMPeriod()
     if (motor_param[i].enc_type == 2 ||
         motor_param[i].enc_type == 0)
     {
-      motor[i].pos += (short)(enc[i] - _enc[i]);
-      motor[i].posc = (motor[i].posc & 0xFFFF0000) | enc[i];
-      if (_enc[i] < 0x4000 && enc[i] > 0xC000)
-        motor[i].posc -= 0x10000;
-      else if (_enc[i] > 0xC000 && enc[i] < 0x4000)
-        motor[i].posc += 0x10000;
+      const short diff = (short)(enc[i] - _enc[i]);
+      motor[i].pos += diff;
+      motor[i].posc += diff;
       normalize(&motor[i].pos, 0, motor_param[i].enc_rev_raw, motor_param[i].enc_rev_raw);
     }
   }
@@ -522,9 +519,9 @@ void FIQ_PWMPeriod()
         motor[i].enc += diff;
 
         if (diff > 0)
-          motor[i].spd = PWM_cpms / (cnt - motor[i].spd_cnt);
+          motor[i].spd = PWM_cpms / (int)(cnt - motor[i].spd_cnt);
         else
-          motor[i].spd = -PWM_cpms / (cnt - motor[i].spd_cnt);
+          motor[i].spd = -PWM_cpms / (int)(cnt - motor[i].spd_cnt);
         motor[i].spd_cnt = cnt;
         continue;
       }
@@ -565,12 +562,6 @@ void FIQ_PWMPeriod()
       motor_param[i].enc0 = enc0;
     }
   }
-
-  _hall[0] = hall[0];
-  _hall[1] = hall[1];
-
-  _enc[0] = enc[0];
-  _enc[1] = enc[1];
 
   return;
 }
