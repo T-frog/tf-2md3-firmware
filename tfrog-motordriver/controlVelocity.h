@@ -73,8 +73,8 @@ typedef struct _MotorParam
 {
   unsigned int enc_rev;  // count/rev
   unsigned int phase_offset;
-  unsigned int enc_rev_h;  // count/rev
-  unsigned int enc_rev_1p;
+  int enc_rev_h;  // count/rev
+  int enc_rev_1p;
   unsigned char enc_type;
   unsigned int enc_10hz;
   unsigned int enc_drev[6];
