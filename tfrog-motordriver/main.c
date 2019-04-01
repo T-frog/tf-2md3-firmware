@@ -624,7 +624,7 @@ int main()
 
   AT91C_BASE_US0->US_IDR = 0xFFFFFFFF;
   AT91C_BASE_US0->US_IER = AT91C_US_RXRDY;
-  AIC_ConfigureIT(AT91C_ID_US0, 4 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, (void (*)(void))us0_received);
+  AIC_ConfigureIT(AT91C_ID_US0, 3 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, (void (*)(void))us0_received);
   AIC_EnableIT(AT91C_ID_US0);
 
   {

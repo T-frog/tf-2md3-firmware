@@ -576,7 +576,7 @@ void controlPWM_init()
   }
 
   PIO_Configure(&pinPWMCycle2, 1);
-  AIC_ConfigureIT(AT91C_ID_IRQ0, 5 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, (void (*)(void))FIQ_PWMPeriod);
+  AIC_ConfigureIT(AT91C_ID_IRQ0, 6 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, (void (*)(void))FIQ_PWMPeriod);
   AIC_EnableIT(AT91C_ID_IRQ0);
 
   // PWM Generator init
