@@ -334,7 +334,7 @@ void timer0_vel_calc()
     if (motor[i].servo_level == SERVO_LEVEL_STOP)
       continue;
 
-    if (driver_state.cnt_updated == 5)
+    if (driver_param.cnt_updated == 5)
     {
       motor[i].ref.rate_buf = pwm_sum[i] * 5 / pwm_num[i];
       motor[i].enc_buf2 = motor[i].enc_buf;
