@@ -597,6 +597,9 @@ int main()
   VBus_Configure();
 
   driver_state.vsrc = 0;
+  driver_state.error.low_voltage = 0;
+  driver_state.error.hall[0] = 0;
+  driver_state.error.hall[1] = 0;
   Filter1st_CreateLPF(&voltf, 10);  // 50ms
 
   printf("Velocity Control init\n\r");
