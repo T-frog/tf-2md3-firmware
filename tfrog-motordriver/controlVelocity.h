@@ -71,14 +71,14 @@ typedef struct _MotorState
 
 typedef struct _MotorParam
 {
-  unsigned int enc_rev;  // count/rev
-  unsigned int phase_offset;
+  int enc_rev;  // count/rev
+  int phase_offset;
   int enc_rev_h;  // count/rev
   int enc_rev_1p;
   unsigned char enc_type;
-  unsigned int enc_10hz;
-  unsigned int enc_drev[6];
-  unsigned int enc_mul;
+  int enc_10hz;
+  int enc_drev[6];
+  int enc_mul;
   int enc0;      // count
   int enc0tran;  // count
   int vel_max;   // count/ms
@@ -103,9 +103,9 @@ typedef struct _MotorParam
     MOTOR_TYPE_DC,
     MOTOR_TYPE_AC3
   } motor_type;
-  unsigned short enc_div;
-  unsigned short enc_denominator;
-  unsigned int enc_rev_raw;  // count/rev
+  short enc_div;
+  short enc_denominator;
+  int enc_rev_raw;  // count/rev
   char rotation_dir;
 } MotorParam;
 

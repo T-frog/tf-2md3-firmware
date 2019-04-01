@@ -93,7 +93,7 @@ void controlPWM_config(int i)
 
   motor[i].ref.rate = 0;
 
-  motor_param[i].enc_rev = (int)motor_param[i].enc_rev_raw / (int)motor_param[i].enc_denominator;
+  motor_param[i].enc_rev = motor_param[i].enc_rev_raw / motor_param[i].enc_denominator;
 
   motor_param[i].enc_drev[0] = motor_param[i].enc_rev * 1 / 6;
   motor_param[i].enc_drev[1] = motor_param[i].enc_rev * 2 / 6;
@@ -108,8 +108,8 @@ void controlPWM_config(int i)
     motor_param[i].enc_rev_1p = 1;
 
   motor_param[i].enc_mul =
-      (unsigned int)((uint64_t)SinTB_2PI * 0x40000 * motor_param[i].enc_denominator /
-                     motor_param[i].enc_rev_raw);
+      (int)((int64_t)SinTB_2PI * 0x40000 * motor_param[i].enc_denominator /
+            motor_param[i].enc_rev_raw);
   motor_param[i].enc_rev_h = motor_param[i].enc_rev / 2;
 
   // normalize phase offset
@@ -237,6 +237,9 @@ void FIQ_PWMPeriod()
 
   for (i = 0; i < 2; i++)
   {
+    if (motor[i].servo_level == SERVO_LEVEL_STOP)
+      continue;
+
     if (motor_param[i].enc_type == 2 ||
         motor_param[i].enc_type == 0)
     {
@@ -367,11 +370,13 @@ void FIQ_PWMPeriod()
   // ゼロ点計算
   for (i = 0; i < 2; i++)
   {
-    int u, v, w;
+    if (motor[i].servo_level == SERVO_LEVEL_STOP)
+      continue;
 
     if (motor_param[i].motor_type != MOTOR_TYPE_DC &&
         motor_param[i].enc_type != 0)
     {
+      int u, v, w;
       char dir;
       unsigned short halldiff;
 
@@ -527,7 +532,7 @@ void FIQ_PWMPeriod()
         enc0 = motor[i].pos - motor_param[i].enc_drev[5] + dir - 1;
 
       // Check hall signal consistency
-      if (motor_param[i].enc_type == 2 && motor[i].servo_level > SERVO_LEVEL_STOP)
+      if (motor_param[i].enc_type == 2)
       {
         int err = motor_param[i].enc0 - enc0;
         normalize(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev);

@@ -248,6 +248,9 @@ void timer0_vel_calc()
   int i;
   volatile unsigned int dummy;
 
+  dummy = AT91C_BASE_TC0->TC_SR;
+  dummy = dummy;
+
   if (motor[0].servo_level > SERVO_LEVEL_STOP ||
       motor[1].servo_level > SERVO_LEVEL_STOP)
   {
@@ -255,9 +258,6 @@ void timer0_vel_calc()
     if (driver_param.cnt_updated < 9)
       driver_param.cnt_updated++;
   }
-
-  dummy = AT91C_BASE_TC0->TC_SR;
-  dummy = dummy;
 
   LED_on(1);
   __enc[0] = enc[0];
@@ -331,35 +331,37 @@ void timer0_vel_calc()
   }
   for (i = 0; i < 2; i++)
   {
-    if (motor[i].servo_level >= SERVO_LEVEL_TORQUE)
+    if (motor[i].servo_level == SERVO_LEVEL_STOP)
+      continue;
+
+    if (driver_state.cnt_updated == 5)
     {
-      if (driver_param.cnt_updated == 5)
-      {
-        motor[i].ref.rate_buf = pwm_sum[i] * 5 / pwm_num[i];
-        motor[i].enc_buf2 = motor[i].enc_buf;
-        pwm_sum[i] = 0;
-        pwm_num[i] = 0;
-      }
+      motor[i].ref.rate_buf = pwm_sum[i] * 5 / pwm_num[i];
+      motor[i].enc_buf2 = motor[i].enc_buf;
+      pwm_sum[i] = 0;
+      pwm_num[i] = 0;
     }
   }
 
   // encoder absolute angle LPF
-  int j;
-  for (j = 0; j < 2; j++)
+  for (i = 0; i < 2; i++)
   {
-    int enc0 = motor_param[j].enc0;
+    if (motor[i].servo_level == SERVO_LEVEL_STOP)
+      continue;
+
+    int enc0 = motor_param[i].enc0;
     int diff;
-    diff = motor_param[j].enc0tran - enc0;
-    normalize(&diff, -motor_param[j].enc_rev_h, motor_param[j].enc_rev_h, motor_param[j].enc_rev);
+    diff = motor_param[i].enc0tran - enc0;
+    normalize(&diff, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev);
 
-    if (_abs(diff) <= motor_param[j].enc_rev_1p)
-      motor_param[j].enc0tran = enc0;
+    if (_abs(diff) <= motor_param[i].enc_rev_1p)
+      motor_param[i].enc0tran = enc0;
     else if (diff > 0)
-      motor_param[j].enc0tran -= motor_param[j].enc_rev_1p;
+      motor_param[i].enc0tran -= motor_param[i].enc_rev_1p;
     else
-      motor_param[j].enc0tran += motor_param[j].enc_rev_1p;
+      motor_param[i].enc0tran += motor_param[i].enc_rev_1p;
 
-    normalize(&motor_param[j].enc0tran, 0, motor_param[j].enc_rev_raw, motor_param[j].enc_rev_raw);
+    normalize(&motor_param[i].enc0tran, 0, motor_param[i].enc_rev_raw, motor_param[i].enc_rev_raw);
   }
   ISR_VelocityControl();
   LED_off(1);
