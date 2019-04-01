@@ -42,6 +42,7 @@ static const Pin pinPWMCycle2 = PIN_PWM_CYCLE2;
 // / PWM Enable pin instance.
 static const Pin pinPWMEnable = PIN_PWM_ENABLE;
 
+static char init = 0;
 short SinTB[1024];
 int PWM_abs_max = 0;
 int PWM_abs_min = 0;
@@ -124,6 +125,7 @@ void controlPWM_config(int i)
   motor[i].vel = 0;
   motor[i].dir = 0;
   motor[i].pos = 0;
+  motor[i].posc = 0;
 
   motor_param[i].enc0 = 0;
   motor_param[i].enc0tran = 0;
@@ -158,6 +160,7 @@ void controlPWM_config(int i)
     }
   }
   motor_param[i].enc0tran = motor_param[i].enc0;
+  init = 0;
 }
 
 // ------------------------------------------------------------------------------
@@ -168,7 +171,6 @@ void FIQ_PWMPeriod()
   int i;
   static unsigned short enc[2];
   static unsigned short hall[2];
-  static int init = 0;
   static unsigned int cnt = 0;
   unsigned short _enc[2];
   unsigned short _hall[2];
