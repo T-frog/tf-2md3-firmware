@@ -44,6 +44,7 @@ short com_pwms[COM_MOTORS];
 char com_en[COM_MOTORS];
 int pwm_sum[2] = { 0, 0 };
 int pwm_num[2] = { 0, 0 };
+short soft_start[2] = { 0, 0 };
 
 extern int watchdog;
 extern int velcontrol;
@@ -69,6 +70,12 @@ void ISR_VelocityControl()
 
   for (i = 0; i < 2; i++)
   {
+    if (motor[i].servo_level == SERVO_LEVEL_STOP ||
+        motor[0].error_state || motor[1].error_state)
+      soft_start[i] = 0;
+    else if (soft_start[i] < 128)
+      soft_start[i]++;
+
     if (motor[i].servo_level >= SERVO_LEVEL_TORQUE)
     {
       // servo_level 2(toque enable)
@@ -222,7 +229,7 @@ void ISR_VelocityControl()
 
       motor[i].ref.torque = toq[i] * motor_param[i].Kcurrent;
       out_pwm[i] += motor[i].ref.torque;
-      out_pwm[i] /= 65536;
+      out_pwm[i] = out_pwm[i] * soft_start[i] / (65536 * 128);
 
       // PWMでクリッピング
       if (out_pwm[i] > driver_param.PWM_max - 1)
@@ -386,6 +393,7 @@ void controlVelocity_init()
   driver_param.admask = 0;
   driver_param.io_mask[0] = 0;
   driver_param.io_mask[1] = 0;
+  driver_param.control_cycle = 1;
 
   for (i = 0; i < 2; i++)
   {

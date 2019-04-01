@@ -47,7 +47,6 @@ short SinTB[1024];
 int PWM_abs_max = 0;
 int PWM_abs_min = 0;
 int PWM_center = 0;
-int PWM_init = 0;
 int PWM_resolution = 0;
 int PWM_thinning = 0;
 int PWM_deadtime;
@@ -227,7 +226,6 @@ void FIQ_PWMPeriod()
       THEVA.MOTOR[i % 2].PWM[i / 2].H = PWM_resolution;
       THEVA.MOTOR[i % 2].PWM[i / 2].L = PWM_resolution;
     }
-    PWM_init = 0;
     init = 0;
     disabled = 1;
   }
@@ -259,12 +257,6 @@ void FIQ_PWMPeriod()
     int phase[3];
     int j;
 
-    if (PWM_init < 2048)
-    {
-      PWM_init++;
-      if (PWM_init > 2048)
-        PWM_init = 2048;
-    }
     for (j = 0; j < 2; j++)
     {
       int64_t rate;
@@ -274,7 +266,7 @@ void FIQ_PWMPeriod()
       {
         continue;
       }
-      rate = motor[j].ref.rate * PWM_init / 2048;
+      rate = motor[j].ref.rate;
 
       if (driver_param.vsrc_rated != 0)
       {
@@ -613,6 +605,4 @@ void controlPWM_init()
   THEVA.GENERAL.PWM.COUNT_ENABLE = 1;
   THEVA.GENERAL.OUTPUT_ENABLE = 1;
   PIO_Clear(&pinPWMEnable);
-
-  PWM_init = 0;
 }
