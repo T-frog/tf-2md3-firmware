@@ -19,7 +19,7 @@
 #define __CONTROL_PWM_H__
 
 void controlPWM_init();
-void controlPWM_config();
+void controlPWM_config(int i);
 void FIQ_PWMPeriod();
 
 #endif

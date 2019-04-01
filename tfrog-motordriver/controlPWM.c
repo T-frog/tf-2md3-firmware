@@ -42,7 +42,7 @@ static const Pin pinPWMCycle2 = PIN_PWM_CYCLE2;
 // / PWM Enable pin instance.
 static const Pin pinPWMEnable = PIN_PWM_ENABLE;
 
-static char init = 0;
+static char init = 1;
 short SinTB[1024];
 int PWM_abs_max = 0;
 int PWM_abs_min = 0;
@@ -159,7 +159,7 @@ void controlPWM_config(int i)
     }
   }
   motor_param[i].enc0tran = motor_param[i].enc0;
-  init = 0;
+  init = 1;
 }
 
 // ------------------------------------------------------------------------------
@@ -226,12 +226,12 @@ void FIQ_PWMPeriod()
       THEVA.MOTOR[i % 2].PWM[i / 2].H = PWM_resolution;
       THEVA.MOTOR[i % 2].PWM[i / 2].L = PWM_resolution;
     }
-    init = 0;
+    init = 1;
     disabled = 1;
   }
-  else if (!init)
+  else if (init)
   {
-    init = 1;
+    init = 0;
     return;
   }
 

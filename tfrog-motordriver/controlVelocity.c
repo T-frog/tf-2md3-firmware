@@ -316,6 +316,12 @@ void timer0_vel_calc()
       motor[i].dir = 0;
     }
 
+    if (motor[i].control_init)
+    {
+      vel = 0;
+      motor[i].dir = 0;
+    }
+
     if (motor_param[i].enc_type == 0)
     {
       motor[i].vel = motor[i].ref.vel;
@@ -402,7 +408,7 @@ void controlVelocity_init()
     motor[i].ref.vel_buf_prev = 0;
     motor[i].ref.vel_diff = 0;
     motor[i].error_integ = 0;
-    motor[i].control_init = 0;
+    motor[i].control_init = 1;
     motor[i].servo_level = SERVO_LEVEL_STOP;
     motor_param[i].motor_type = MOTOR_TYPE_AC3;
     motor_param[i].rotation_dir = 1;
