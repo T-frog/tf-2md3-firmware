@@ -35,6 +35,7 @@
 #include "controlVelocity.h"
 #include "power.h"
 #include "eeprom.h"
+#include "utils.h"
 
 static const Pin pinPWMCycle2 = PIN_PWM_CYCLE2;
 
@@ -67,23 +68,6 @@ inline short sin_(int x)
 
 extern Tfrog_EEPROM_data saved_param;
 extern volatile char rs485_timeout;
-
-inline void normalize(int* val, int min, int max, int resolution)
-{
-  if (resolution <= 0)
-    return;
-  while (*val < min)
-    *val += resolution;
-  while (*val >= max)
-    *val -= resolution;
-}
-
-inline int _abs(int x)
-{
-  if (x < 0)
-    return -x;
-  return x;
-}
 
 void controlPWM_config(int i)
 {

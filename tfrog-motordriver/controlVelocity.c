@@ -34,6 +34,7 @@
 #include "controlVelocity.h"
 #include "registerFPGA.h"
 #include "filter.h"
+#include "utils.h"
 
 MotorState motor[2];
 MotorParam motor_param[2];
