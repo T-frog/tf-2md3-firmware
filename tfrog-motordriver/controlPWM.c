@@ -124,7 +124,6 @@ void controlPWM_config(int i)
   motor[i].vel = 0;
   motor[i].dir = 0;
   motor[i].pos = 0;
-  motor[i].posc = 0;
 
   motor_param[i].enc0 = 0;
   motor_param[i].enc0tran = 0;
@@ -245,8 +244,13 @@ void FIQ_PWMPeriod()
     {
       const short diff = (short)(enc[i] - _enc[i]);
       motor[i].pos += diff;
-      motor[i].posc += diff;
       normalize(&motor[i].pos, 0, motor_param[i].enc_rev_raw, motor_param[i].enc_rev_raw);
+
+      motor[i].posc = (motor[i].posc & 0xFFFF0000) | enc[i];
+      if (_enc[i] < 0x4000 && enc[i] > 0xC000)
+        motor[i].posc -= 0x10000;
+      else if (_enc[i] > 0xC000 && enc[i] < 0x4000)
+        motor[i].posc += 0x10000;
     }
   }
 
