@@ -83,6 +83,7 @@
 
 int velcontrol = 0;
 volatile unsigned char rs485_timeout = 0;
+volatile short heartbeat_timeout = -1;
 volatile unsigned short tic = 0;
 
 Tfrog_EEPROM_data saved_param = TFROG_EEPROM_DEFAULT;
@@ -110,6 +111,7 @@ static void UsbDataReceived(
     unsigned int unused, unsigned char status, unsigned int received, unsigned int remaining) RAMFUNC;
 void us0_received() RAMFUNC;
 void timer1_tic() RAMFUNC;
+void timer2_cb() RAMFUNC;
 
 // ------------------------------------------------------------------------------
 // Definitions
@@ -135,12 +137,14 @@ static const Pin pins[] = {
 #if defined(tfrog_rev5)
   PIN_VERSION,
   PIN_BUZ,
+  PIN_EXTERNAL_POWER_SWITCH,
 #endif
   PIN_LED_0, PIN_LED_1, PIN_LED_2
 };
 #if defined(tfrog_rev5)
 static const Pin pinBuz[] = { PIN_BUZ };
 static const Pin pinVer[] = { PIN_VERSION };
+static const Pin pinMotor = PIN_EXTERNAL_POWER_SWITCH;
 #endif
 
 // / VBus pin instance.
@@ -281,6 +285,7 @@ void timer1_tic()
   tic++;
   if (rs485_timeout < 255)
     rs485_timeout++;
+
   AIC_EnableIT(AT91C_ID_US0);
 
 #if defined(tfrog_rev5)
@@ -300,10 +305,41 @@ void timer1_tic()
   }
 #endif
 }
+
+void timer2_cb()
+{
+  volatile unsigned int dummy;
+  dummy = AT91C_BASE_TC2->TC_SR;
+  dummy = dummy;
+
+#if defined(tfrog_rev5)
+  if (heartbeat_timeout < 0 ||
+      motor[0].servo_level == SERVO_LEVEL_STOP ||
+      motor[1].servo_level == SERVO_LEVEL_STOP)
+    return;
+
+  if (heartbeat_timeout < 5)
+  {
+    PIO_Set(&pinMotor);
+    heartbeat_timeout++;
+  }
+  else
+  {
+    motor[0].error_state |= ERROR_HEARTBEAT;
+    motor[1].error_state |= ERROR_HEARTBEAT;
+    TRACE_ERROR("Heartbeat timeout\n\r");
+    PIO_Clear(&pinMotor);
+    heartbeat_timeout = -1;
+  }
+#endif
+}
+
+
 void tic_init()
 {
   volatile unsigned int dummy;
-
+  
+  //timer1
   AT91C_BASE_PMC->PMC_PCER = 1 << AT91C_ID_TC1;
 
   AT91C_BASE_TC1->TC_CCR = AT91C_TC_CLKDIS;
@@ -321,6 +357,28 @@ void tic_init()
   AIC_EnableIT(AT91C_ID_TC1);
 
   AT91C_BASE_TC1->TC_CCR = AT91C_TC_SWTRG;
+  
+#if defined(HEARTBEAT)
+  //timer2
+  AT91C_BASE_PMC->PMC_PCER = 1 << AT91C_ID_TC2;
+
+  AT91C_BASE_TC2->TC_CCR = AT91C_TC_CLKDIS;
+  AT91C_BASE_TC2->TC_IDR = 0xFFFFFFFF;
+  dummy = AT91C_BASE_TC2->TC_SR;
+  dummy = dummy;
+
+  // MCK/1024 * 46875 -> 1000ms
+  AT91C_BASE_TC2->TC_CMR = AT91C_TC_CLKS_TIMER_DIV5_CLOCK | AT91C_TC_WAVE | AT91C_TC_WAVESEL_UP_AUTO;
+  AT91C_BASE_TC2->TC_CCR = AT91C_TC_CLKEN;
+  
+  AT91C_BASE_TC2->TC_RC = 46875;
+  AT91C_BASE_TC2->TC_IER = AT91C_TC_CPCS;
+
+  AIC_ConfigureIT(AT91C_ID_TC2, 7 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, (void (*)(void))timer2_cb);
+  AIC_EnableIT(AT91C_ID_TC2);
+
+  AT91C_BASE_TC2->TC_CCR = AT91C_TC_SWTRG;
+#endif
 }
 
 // ------------------------------------------------------------------------------
@@ -624,7 +682,12 @@ int main()
   r_rs485buf_pos = 0;
   printf("RS485 init\n\r");
   AT91C_BASE_PMC->PMC_PCER = 1 << AT91C_ID_US0;
+
+#if defined(HEARTBEAT)
+  USART_Configure(AT91C_BASE_US0, AT91C_US_USMODE_RS485 | AT91C_US_CHRL_8_BITS, saved_param.rs485_baudrate, BOARD_MCK);
+#else
   USART_Configure(AT91C_BASE_US0, AT91C_US_USMODE_RS485 | AT91C_US_CHRL_8_BITS, 3000000, BOARD_MCK);
+#endif
 
   USART_SetTransmitterEnabled(AT91C_BASE_US0, 1);
   USART_SetReceiverEnabled(AT91C_BASE_US0, 1);
@@ -871,6 +934,7 @@ int main()
               len = RS485BUF_SIZE - AT91C_BASE_US0->US_RCR;
               rs485buf[len] = 0;
               printf("RS-485: received '%s' (%d)\n\r", rs485buf, len);
+
               AT91C_BASE_US0->US_RCR = 0;
               USART_ReadBuffer(AT91C_BASE_US0, rs485buf, RS485BUF_SIZE);
             }

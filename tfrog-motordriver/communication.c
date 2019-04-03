@@ -48,7 +48,8 @@ volatile int w_receive_buf485 = 0;
 volatile int r_receive_buf485 = 0;
 extern const Pin pinPWMEnable;
 extern Tfrog_EEPROM_data saved_param;
-extern volatile char rs485_timeout;
+extern volatile unsigned char rs485_timeout;
+extern volatile short heartbeat_timeout;
 extern volatile short tic;
 extern volatile unsigned char usb_read_pause;
 
@@ -765,7 +766,6 @@ static inline int data_analyze_(
     {
       static unsigned char rawdata[16];
       int data_len;
-
       if (to == id)
       {
         data_len = decord(line, len - 1, rawdata, 16);
@@ -782,7 +782,11 @@ static inline int data_analyze_(
             rawdata[1] = rawdata[1] & 1;
 
             command_analyze(rawdata, data_len);
-            driver_param.ifmode = fromto;
+            if (from == 0 && fromto == 1)
+              driver_param.ifmode = 1;
+            else if (from == -1)
+              driver_param.ifmode = 0;
+
             //printf("for me\n\r");
           }
           else if (from == -1)
@@ -838,6 +842,7 @@ static inline int data_analyze_(
       {
         // Forward packet from RS485 to USB
         data_len = decord(line, len - 1, rawdata, 16);
+
         if (mode == ISOCHRONOUS)
         {
           Integer2 tmp;
@@ -1232,6 +1237,13 @@ int extended_command_analyze(char* data)
     send(data);
     send("\n00P\n\n");
   }
+  else if (strstr(data, "$SET485BAUDRATE") == data)
+  {
+    saved_param.rs485_baudrate = atoi(data + 15);
+    send(data);
+    send("\n00P\n\n");
+  }
+
   else if (strstr(data, "$EEPROMSAVE") == data)
   {
     if (EEPROM_Write(0, &saved_param, sizeof(saved_param)) < 0)
@@ -1641,6 +1653,9 @@ int command_analyze(unsigned char* data, int len)
         break;
       case PARAM_watch_dog_limit:
         driver_param.watchdog_limit = i.integer;
+        break;
+      case PARAM_heartbeat:
+        heartbeat_timeout = 0;
         break;
       case PARAM_phase_offset:
         motor_param[imotor].phase_offset = i.integer;
