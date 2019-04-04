@@ -22,6 +22,7 @@ typedef struct
 {
   int k[4];
   int x;
+  char init;
 } Filter1st;
 
 int Filter1st_Filter(Filter1st* filter, int input);
