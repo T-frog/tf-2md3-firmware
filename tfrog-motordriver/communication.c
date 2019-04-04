@@ -400,7 +400,7 @@ int data_send485(short* cnt, short* pwm, char* en, short* analog, unsigned short
 
   buf[0] = COMMUNICATION_START_BYTE;
   buf[1] = saved_param.id485 + 0x40;
-  if (driver_param.ifmode == 0)
+  if (driver_state.ifmode == 0)
     buf[1] = 0x40;
   buf[2] = 0x40 - 1;
   buf_len = 3;
@@ -481,7 +481,7 @@ int int_send485(const char param, const char id, const int value)
 
   buf[0] = COMMUNICATION_INT_BYTE;
   buf[1] = saved_param.id485 + 0x40;
-  if (driver_param.ifmode == 0)
+  if (driver_state.ifmode == 0)
     buf[1] = 0x40;
   buf[2] = 0x40 - 1;
   buf_len = 3;
@@ -767,7 +767,7 @@ static inline int data_analyze_(
             rawdata[1] = rawdata[1] & 1;
 
             command_analyze(rawdata, data_len);
-            driver_param.ifmode = fromto;
+            driver_state.ifmode = fromto;
             //printf("for me\n\r");
           }
           else if (from == -1)
@@ -1352,7 +1352,7 @@ int extended_command_analyze(char* data)
       if (data[i] == '1')
         tmp |= 1;
     }
-    driver_param.admask = tmp;
+    driver_state.admask = tmp;
     send(data);
     send("\n00P\n\n");
   }
@@ -1368,7 +1368,7 @@ int extended_command_analyze(char* data)
         tmp |= 1;
     }
     set_io_dir(tmp);
-    driver_param.io_dir = tmp;
+    driver_state.io_dir = tmp;
     send(data);
     send("\n00P\n\n");
   }
@@ -1404,20 +1404,20 @@ int extended_command_analyze(char* data)
     switch (data[5])
     {
       case '1':
-        driver_param.io_mask[0] = 0xFF;
-        driver_param.io_mask[1] = 0;
+        driver_state.io_mask[0] = 0xFF;
+        driver_state.io_mask[1] = 0;
         break;
       case '2':
-        driver_param.io_mask[1] = 0xFF;
-        driver_param.io_mask[0] = 0;
+        driver_state.io_mask[1] = 0xFF;
+        driver_state.io_mask[0] = 0;
         break;
       case '3':
-        driver_param.io_mask[0] = 0xFF;
-        driver_param.io_mask[1] = 0xFF;
+        driver_state.io_mask[0] = 0xFF;
+        driver_state.io_mask[1] = 0xFF;
         break;
       default:
-        driver_param.io_mask[0] = 0;
-        driver_param.io_mask[1] = 0;
+        driver_state.io_mask[0] = 0;
+        driver_state.io_mask[1] = 0;
         break;
     }
     send(data);
@@ -1523,17 +1523,17 @@ int command_analyze(unsigned char* data, int len)
       motor[imotor].servo_level = i.integer;
       break;
     case PARAM_io_dir:
-      driver_param.io_dir = i.integer;
-      set_io_dir(driver_param.io_dir);
+      driver_state.io_dir = i.integer;
+      set_io_dir(driver_state.io_dir);
       break;
     case PARAM_io_data:
       set_io_data(i.integer);
       break;
     case PARAM_ad_mask:
-      driver_param.admask = i.integer;
+      driver_state.admask = i.integer;
       break;
     case PARAM_protocol_version:
-      driver_param.protocol_version = i.integer;
+      driver_state.protocol_version = i.integer;
       break;
     default:
       param_set = 1;
@@ -1659,6 +1659,6 @@ int command_analyze(unsigned char* data, int len)
         return 0;
     }
   }
-  driver_param.watchdog = 0;
+  driver_state.watchdog = 0;
   return 0;
 }

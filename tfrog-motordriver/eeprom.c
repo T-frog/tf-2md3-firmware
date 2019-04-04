@@ -59,20 +59,34 @@ void EEPROM_Init()
 
   PIO_Configure(pinsEEPROM_reset, PIO_LISTSIZE(pinsEEPROM_reset));
   PIO_Set(&pinsEEPROM_reset[0]);
-  PIO_Set(&pinsEEPROM_reset[1]);
-
-  for (i = 0; i < 10; i++)
-  {
-    PIO_Set(&pinsEEPROM_reset[0]);
-    msleep(1);
-    PIO_Clear(&pinsEEPROM_reset[0]);
-    msleep(1);
-  }
-
-  PIO_Set(&pinsEEPROM_reset[0]);
+  PIO_Clear(&pinsEEPROM_reset[1]);
+  msleep(1);
   PIO_Set(&pinsEEPROM_reset[1]);
   msleep(1);
   PIO_Clear(&pinsEEPROM_reset[0]);
+  msleep(1);
+  PIO_Clear(&pinsEEPROM_reset[1]);
+  msleep(1);
+  PIO_Set(&pinsEEPROM_reset[0]);
+  msleep(1);
+
+  for (i = 0; i < 9; i++)
+  {
+    PIO_Set(&pinsEEPROM_reset[1]);
+    msleep(1);
+    PIO_Clear(&pinsEEPROM_reset[1]);
+    msleep(1);
+  }
+
+  PIO_Set(&pinsEEPROM_reset[1]);
+  msleep(1);
+  PIO_Clear(&pinsEEPROM_reset[0]);
+  msleep(1);
+  PIO_Clear(&pinsEEPROM_reset[1]);
+  msleep(1);
+  PIO_Set(&pinsEEPROM_reset[1]);
+  msleep(1);
+  PIO_Set(&pinsEEPROM_reset[0]);
   msleep(1);
   PIO_Clear(&pinsEEPROM_reset[1]);
   msleep(1);

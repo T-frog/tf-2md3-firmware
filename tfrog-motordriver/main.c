@@ -81,7 +81,6 @@
 #warning "T-frog driver rev.4"
 #endif
 
-int velcontrol = 0;
 volatile unsigned char rs485_timeout = 0;
 volatile unsigned short tic = 0;
 
@@ -278,7 +277,7 @@ void timer1_tic()
   AIC_EnableIT(AT91C_ID_US0);
 
 #if defined(tfrog_rev5)
-  if (driver_param.board_version == BOARD_R6B)
+  if (driver_state.board_version == BOARD_R6B)
   {
     if (buz_on)
     {
@@ -311,7 +310,7 @@ void tic_init()
   AT91C_BASE_TC1->TC_RC = 1500 / 23;
   AT91C_BASE_TC1->TC_IER = AT91C_TC_CPCS;
 
-  AIC_ConfigureIT(AT91C_ID_TC1, 3 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, (void (*)(void))timer1_tic);
+  AIC_ConfigureIT(AT91C_ID_TC1, 5 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, (void (*)(void))timer1_tic);
   AIC_EnableIT(AT91C_ID_TC1);
 
   AT91C_BASE_TC1->TC_CCR = AT91C_TC_SWTRG;
@@ -337,7 +336,8 @@ int main()
   unsigned char errnum = 0;
   unsigned char blink = 0;
 
-  tic_init();
+  motor[0].error_state = 0;
+  motor[1].error_state = 0;
 
   // Configure IO
   PIO_Configure(pins, PIO_LISTSIZE(pins));
@@ -450,18 +450,18 @@ int main()
   // Checking FPGA-version
   if (((volatile TVREG)(THEVA.GENERAL.ID) & 0xFF00) == 0x0000)
   {
-    driver_param.zero_torque = 5 * 65536;
-    driver_param.fpga_version = 0;
+    driver_state.zero_torque = 5 * 65536;
+    driver_state.fpga_version = 0;
   }
   else if (((volatile TVREG)(THEVA.GENERAL.ID) & 0xFF00) == 0x0100)
   {
-    driver_param.zero_torque = 0 * 65536;
-    driver_param.fpga_version = 1;
+    driver_state.zero_torque = 0 * 65536;
+    driver_state.fpga_version = 1;
   }
   else if (((volatile TVREG)(THEVA.GENERAL.ID) & 0xFF00) == 0x0200)
   {
-    driver_param.zero_torque = 0 * 65536;
-    driver_param.fpga_version = 2;
+    driver_state.zero_torque = 0 * 65536;
+    driver_state.fpga_version = 2;
   }
 
   // FPGA test
@@ -527,9 +527,8 @@ int main()
       case -3:
         // Read Error
         printf("EEPROM Read Error!\n\r");
-        AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST | AT91C_RSTC_PROCRST | AT91C_RSTC_PERRST;
-        while (1)
-          ;
+        motor[0].error_state |= ERROR_EEPROM;
+        motor[1].error_state |= ERROR_EEPROM;
         break;
       default:
         if (saved_param.key != TFROG_EEPROM_KEY)
@@ -551,6 +550,24 @@ int main()
           while (1)
             ;
         }
+        else if (saved_param.size < TFROG_EEPROM_DATA_SIZE)
+        {
+          printf("Migrating EEPROM data\n\r");
+          memcpy(
+              ((char*)&saved_param) + saved_param.size,
+              ((char*)&data_default) + saved_param.size,
+              TFROG_EEPROM_DATA_SIZE - saved_param.size);
+          saved_param.size = TFROG_EEPROM_DATA_SIZE;
+          EEPROM_Write(0, &saved_param, sizeof(saved_param));
+
+          LED_on(0);
+          LED_on(1);
+          LED_on(2);
+          msleep(50);
+          LED_off(0);
+          LED_off(1);
+          LED_off(2);
+        }
         break;
     }
     if (saved_param.buz_lvl > 4)
@@ -569,43 +586,65 @@ int main()
     }
   }
 
-  // connect if needed
+  // Configure USB vbus pin
   VBus_Configure();
 
-  driver_param.vsrc = 0;
-  driver_param.error.low_voltage = 0;
-  driver_param.error.hall[0] = 0;
-  driver_param.error.hall[1] = 0;
-  Filter1st_CreateLPF(&voltf, 10);  // 50ms
+  driver_state.vsrc = 0;
+  driver_state.error.low_voltage = 0;
+  driver_state.error.hall[0] = 0;
+  driver_state.error.hall[1] = 0;
 
   printf("Velocity Control init\n\r");
   // Configure velocity control loop
   controlVelocity_init();
-
-  printf("PWM control init\n\r");
-  // Configure PWM control
-  controlPWM_init();
+  Filter1st_CreateLPF(&voltf, 10);
 
   if (saved_param.stored_data == TFROG_EEPROM_DATA_BIN ||
       saved_param.stored_data == TFROG_EEPROM_DATA_BIN_LOCKED)
   {
-    EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR, &driver_param, sizeof(DriverParam));
-    msleep(1);
-    EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x100,
-                motor_param, sizeof(MotorParam) * 2);
-    motor[0].servo_level = SERVO_LEVEL_STOP;
-    motor[1].servo_level = SERVO_LEVEL_STOP;
-    controlVelocity_config();
-    controlPWM_init();
+    if (saved_param.stored_param_version != TFROG_EEPROM_PARAM_VERSION)
+    {
+      printf("EEPROM has incompatible version of the parameter\n\r");
+      motor[0].error_state |= ERROR_EEPROM;
+      motor[1].error_state |= ERROR_EEPROM;
+    }
+    else
+    {
+      printf("Loading saved DriverParam\n\r");
+      EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR, &driver_param, sizeof(DriverParam));
+      msleep(5);
+      printf("Loading saved MotorParam[0]\n\r");
+      EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x100, &motor_param[0], sizeof(MotorParam));
+      msleep(5);
+      printf("Loading saved MotorParam[1]\n\r");
+      EEPROM_Read(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x200, &motor_param[1], sizeof(MotorParam));
+
+      if (motor_param[0].enc_rev_raw / motor_param[0].enc_denominator != motor_param[0].enc_rev ||
+          motor_param[1].enc_rev_raw / motor_param[1].enc_denominator != motor_param[1].enc_rev)
+      {
+        TRACE_ERROR("Embedded parameter has inconsistency\n\r");
+        printf("enc_rev: %d, %d\n\r", motor_param[0].enc_rev, motor_param[1].enc_rev);
+        printf("enc_denominator: %d, %d\n\r", motor_param[0].enc_denominator, motor_param[1].enc_denominator);
+        printf("enc_rev_raw: %d, %d\n\r", motor_param[0].enc_rev_raw, motor_param[1].enc_rev_raw);
+        motor[0].error_state |= ERROR_EEPROM;
+        motor[1].error_state |= ERROR_EEPROM;
+      }
+    }
   }
+  controlVelocity_config();
+
+  printf("PWM control init\n\r");
+  // Configure PWM control
+  controlPWM_init();
 
   // Enable watchdog
   printf("Watchdog init\n\r");
   AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDRSTEN | 0xFF00FF;  // 1s
   AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 
-  LED_off(0);
-  ADC_Start();
+  // Enable ticker
+  printf("Start ticker\n\r");
+  tic_init();
 
 #define RS485BUF_SIZE 128
   unsigned char rs485buf_[2][RS485BUF_SIZE];
@@ -644,30 +683,29 @@ int main()
 #if defined(tfrog_rev5)
   if (!(AT91C_BASE_PIOA->PIO_PDSR & pinVer->mask))
   {
-    driver_param.board_version = BOARD_R6B;
+    driver_state.board_version = BOARD_R6B;
     printf("Board version: R6B\n\r");
   }
   else
   {
-    driver_param.board_version = BOARD_R6A;
+    driver_state.board_version = BOARD_R6A;
     printf("Board version: R6, R6A\n\r");
   }
 #else
-  driver_param.board_version = BOARD_R4;
+  driver_state.board_version = BOARD_R4;
   printf("Board version: R4\n\r");
 #endif
   printf("Entering main control loop\n\r------\n\r");
 
+  ADC_Start();
+  LED_off(0);
+
   err_cnt = 0;
-  driver_param.error.low_voltage = 0;
-  driver_param.error.hall[0] = 0;
-  driver_param.error.hall[1] = 0;
-  motor[0].error_state = 0;
-  motor[1].error_state = 0;
-  driver_param.ifmode = 0;
-  driver_param.watchdog = 0;
-  motor[0].servo_level = SERVO_LEVEL_STOP;
-  motor[1].servo_level = SERVO_LEVEL_STOP;
+  driver_state.error.low_voltage = 0;
+  driver_state.error.hall[0] = 0;
+  driver_state.error.hall[1] = 0;
+  driver_state.ifmode = 0;
+  driver_state.watchdog = 0;
   // Driver loop
   while (1)
   {
@@ -695,7 +733,7 @@ int main()
       }
     }
 
-    if (driver_param.watchdog >= driver_param.watchdog_limit)
+    if (driver_state.watchdog >= driver_param.watchdog_limit)
     {
       motor[0].servo_level = SERVO_LEVEL_STOP;
       motor[1].servo_level = SERVO_LEVEL_STOP;
@@ -703,11 +741,11 @@ int main()
       if (saved_param.stored_data == TFROG_EEPROM_DATA_BIN_SAVING)
       {
         LED_on(0);
-        EEPROM_Write(TFROG_EEPROM_ROBOTPARAM_ADDR,
-                     &driver_param, sizeof(DriverParam));
+        EEPROM_Write(TFROG_EEPROM_ROBOTPARAM_ADDR, &driver_param, sizeof(DriverParam));
         msleep(5);
-        EEPROM_Write(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x100,
-                     motor_param, sizeof(MotorParam) * 2);
+        EEPROM_Write(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x100, &motor_param[0], sizeof(MotorParam));
+        msleep(5);
+        EEPROM_Write(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x200, &motor_param[1], sizeof(MotorParam));
         saved_param.stored_data = TFROG_EEPROM_DATA_BIN;
         EEPROM_Write(0, &saved_param, sizeof(saved_param));
         LED_off(0);
@@ -716,10 +754,11 @@ int main()
             saved_param.stored_data == TFROG_EEPROM_DATA_BIN_LOCKED))
       {
         controlVelocity_init();
+        Filter1st_CreateLPF(&voltf, 10);
         controlPWM_init();
       }
-      driver_param.error.hall[0] = 0;
-      driver_param.error.hall[1] = 0;
+      driver_state.error.hall[0] = 0;
+      driver_state.error.hall[1] = 0;
       motor[0].error_state |= ERROR_WATCHDOG;
       motor[1].error_state |= ERROR_WATCHDOG;
       printf("Watchdog - init parameters\n\r");
@@ -739,11 +778,11 @@ int main()
         printf("\n\r");
         com_en[0] = com_en[1] = 1;
       }
-      driver_param.watchdog = 0;
+      driver_state.watchdog = 0;
       if (!(saved_param.stored_data == TFROG_EEPROM_DATA_BIN ||
             saved_param.stored_data == TFROG_EEPROM_DATA_BIN_LOCKED))
       {
-        driver_param.ifmode = 0;
+        driver_state.ifmode = 0;
       }
     }
     else
@@ -791,7 +830,7 @@ int main()
     {
       short len;
 
-      if (driver_param.ifmode == 1)
+      if (driver_state.ifmode == 1)
         LED_on(2);
 
       len = RS485BUF_SIZE - r_rs485buf_pos;
@@ -820,7 +859,7 @@ int main()
 
       if (len > 0)
       {
-        if (driver_param.ifmode == 1)
+        if (driver_state.ifmode == 1)
           LED_on(2);
 
         if (data_fetch485(rs485buf + r_rs485buf_pos, len))
@@ -908,9 +947,9 @@ int main()
         printf("error:%d\n\r", motor[mn].error);
         printf("error_integ:%d\n\r", (int)motor[mn].error_integ);
         //printf( "control_init:%d\n\r",	motor[mn].control_init );
-        printf("vsrc:%d\n\r", driver_param.vsrc);
+        printf("vsrc:%d\n\r", driver_state.vsrc);
         printf("vsrc0:%d\n\r", driver_param.vsrc_rated);
-        printf("vsrc_f:%d\n\r", driver_param.vsrc_factor);
+        printf("vsrc_f:%d\n\r", driver_state.vsrc_factor);
       }
     }
 
@@ -951,17 +990,17 @@ int main()
       }
     }
 
-    if (driver_param.cnt_updated >= 5)
+    if (driver_state.cnt_updated >= 5)
     {
       unsigned short mask;
       int i;
       /* 約5msおき */
-      driver_param.cnt_updated -= 5;
+      driver_state.cnt_updated -= 5;
 
-      mask = driver_param.admask;  // analog_mask;
-      if (driver_param.io_mask[0])
+      mask = driver_state.admask;  // analog_mask;
+      if (driver_state.io_mask[0])
         mask |= 0x100;
-      if (driver_param.io_mask[1])
+      if (driver_state.io_mask[1])
         mask |= 0x200;
       for (i = 0; i < 8; i++)
       {
@@ -970,7 +1009,7 @@ int main()
       analog[8] = (15 << 12) | get_io_data();
       analog[9] = (14 << 12) | THEVA.PORT[0];
 
-      switch (driver_param.board_version)
+      switch (driver_state.board_version)
       {
         case BOARD_R6A:
         case BOARD_R4:
@@ -986,7 +1025,7 @@ int main()
       com_pwms[1] = motor[1].ref.rate_buf;
       com_cnts[0] = motor[0].enc_buf2;
       com_cnts[1] = motor[1].enc_buf2;
-      if (driver_param.ifmode == 0)
+      if (driver_state.ifmode == 0)
         data_send(com_cnts, com_pwms, com_en, analog, mask);
       else
         data_send485(com_cnts, com_pwms, com_en, analog, mask);
@@ -1002,7 +1041,7 @@ int main()
         if (index_r != com_index[i][0])
         {
           // New rising edge
-          if (driver_param.ifmode == 0)
+          if (driver_state.ifmode == 0)
             int_send(INT_enc_index_rise, i, index_r);
           else
             int_send485(INT_enc_index_rise, i, index_r);
@@ -1010,7 +1049,7 @@ int main()
         else if (index_f != com_index[i][1])
         {
           // New falling edge
-          if (driver_param.ifmode == 0)
+          if (driver_state.ifmode == 0)
             int_send(INT_enc_index_fall, i, index_f);
           else
             int_send485(INT_enc_index_fall, i, index_f);
@@ -1019,26 +1058,26 @@ int main()
         com_index[i][1] = index_f;
       }
 
-      driver_param.vsrc = Filter1st_Filter(&voltf, (int)(analog[7] & 0x0FFF));
+      driver_state.vsrc = Filter1st_Filter(&voltf, (int)(analog[7] & 0x0FFF));
       ADC_Start();
 
-      if (driver_param.vsrc < driver_param.vsrc_rated / 4)
+      if (driver_state.vsrc < driver_param.vsrc_rated / 4)
       {
-        driver_param.vsrc_factor = 0;
+        driver_state.vsrc_factor = 0;
       }
       else if (driver_param.vsrc_rated >= 0x03FF)
       {
-        driver_param.vsrc_factor = 32768;
+        driver_state.vsrc_factor = 32768;
       }
       else
       {
-        driver_param.vsrc_factor = driver_param.vsrc_rated * 32768 / driver_param.vsrc;
+        driver_state.vsrc_factor = driver_param.vsrc_rated * 32768 / driver_state.vsrc;
       }
-      if (driver_param.vsrc > 310 * 8 * VSRC_DIV)
+      if (driver_state.vsrc > 310 * 8 * VSRC_DIV)
       {
-        if (driver_param.error.low_voltage < 100)
+        if (driver_state.error.low_voltage < 100)
         {
-          driver_param.error.low_voltage++;
+          driver_state.error.low_voltage++;
         }
         else
         {
@@ -1048,16 +1087,16 @@ int main()
       }
       else
       {
-        driver_param.error.low_voltage = 0;
+        driver_state.error.low_voltage = 0;
         motor[0].error_state |= ERROR_LOW_VOLTAGE;
         motor[1].error_state |= ERROR_LOW_VOLTAGE;
       }
     }
 
-    if (velcontrol > 0)
+    if (driver_state.velcontrol > 0)
     {
 #define ERROR_BLINK_MS 200
-      velcontrol = 0;
+      driver_state.velcontrol = 0;
 
       if (++mscnt >= ERROR_BLINK_MS)
       {
@@ -1067,11 +1106,11 @@ int main()
           usb_timeout_cnt = 0;
         }
         if (mscnt == ERROR_BLINK_MS &&
-            driver_param.protocol_version >= 10 &&
+            driver_state.protocol_version >= 10 &&
             (motor[0].servo_level >= SERVO_LEVEL_TORQUE ||
              motor[1].servo_level >= SERVO_LEVEL_TORQUE))
         {
-          if (driver_param.ifmode == 0)
+          if (driver_state.ifmode == 0)
           {
             int_send(INT_error_state, 0, motor[0].error_state);
             int_send(INT_error_state, 1, motor[1].error_state);
@@ -1088,7 +1127,8 @@ int main()
         {
           const int motor_id = errnum / ERROR_NUM;
           const int error_id = errnum % ERROR_NUM;
-          if (motor[motor_id].error_state & (1 << (error_id)))
+          if ((motor[motor_id].error_state & (1 << (error_id))) &&
+              error_pat[motor_id][error_id] != 0)
           {
             if (error_pat[motor_id][error_id] & (1 << blink))
             {

@@ -20,6 +20,7 @@
 
 #include <board.h>
 #include <stdint.h>
+#include <assert.h>
 #include "communication.h"
 
 #ifdef __cplusplus
@@ -33,8 +34,10 @@ typedef enum _ErrorID
   ERROR_HALL_SEQ = 0x0002,
   ERROR_HALL_ENC = 0x0004,
   ERROR_WATCHDOG = 0x0008,
+  ERROR_EEPROM = 0x0010,
+  ERROR_INTERNAL = 0x0020,
 } ErrorID;
-#define ERROR_NUM 4
+#define ERROR_NUM 6
 
 typedef struct _MotorState
 {
@@ -111,16 +114,20 @@ typedef struct _MotorParam
 
 typedef struct _DriverParam
 {
-  int PWM_max;         // clock
-  int PWM_min;         // clock
-  int PWM_resolution;  // clock
+  int PWM_max;
+  int PWM_min;
   int control_cycle;
   int control_s;
   int vsrc_rated;
+  unsigned short watchdog_limit;
+} DriverParam;
+
+typedef struct _DriverState
+{
+  int PWM_resolution;
   int vsrc_factor;
   int vsrc;
   int zero_torque;
-  unsigned short watchdog_limit;
   unsigned short watchdog;
   unsigned char cnt_updated;
   unsigned short admask;
@@ -140,11 +147,16 @@ typedef struct _DriverParam
     BOARD_R6B
   } board_version;
   unsigned char protocol_version;
-} DriverParam;
+  int velcontrol;
+} DriverState;
+
+static_assert(sizeof(DriverParam) < 0x100, "DriverParam overflows reserved EEPROM capacity");
+static_assert(sizeof(MotorParam) < 0x100, "MotorParam overflows reserved EEPROM capacity");
 
 extern MotorState motor[2];
 extern MotorParam motor_param[2];
 extern DriverParam driver_param;
+extern DriverState driver_state;
 
 #define COM_MOTORS 16
 extern short com_cnts[COM_MOTORS];

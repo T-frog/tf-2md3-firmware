@@ -274,7 +274,7 @@ void FIQ_PWMPeriod()
 
       if (driver_param.vsrc_rated != 0)
       {
-        rate = rate * driver_param.vsrc_factor / 32768;
+        rate = rate * driver_state.vsrc_factor / 32768;
         if (rate >= PWM_resolution)
           rate = PWM_resolution - 1;
         else if (rate <= -PWM_resolution)
@@ -345,7 +345,7 @@ void FIQ_PWMPeriod()
           THEVA.MOTOR[j].PWM[i].L = PWM_resolution;
         }
       }
-      else if (_abs(motor[j].ref.torque) < driver_param.zero_torque ||
+      else if (_abs(motor[j].ref.torque) < driver_state.zero_torque ||
                motor[j].servo_level == SERVO_LEVEL_OPENFREE)
       {
         for (i = 0; i < 3; i++)
@@ -394,19 +394,20 @@ void FIQ_PWMPeriod()
         //if( halldiff == 3 || halldiff >= 5 ) printf( "ENC error: %x->%x\n\r", _hall[i], hall[i] );
         // ホール素子信号が全相1、全相0のとき
         // ホース素子信号が2ビット以上変化したときはエラー
-        if (driver_param.error.hall[i] < 128)
-          driver_param.error.hall[i] += 12;
-        if (driver_param.error.hall[i] > 12)
+        if (driver_state.error.hall[i] < 128)
+          driver_state.error.hall[i] += 12;
+        if (driver_state.error.hall[i] > 12)
         {
           // エラー検出後、1周以内に再度エラーがあれば停止
           motor[i].error_state |= ERROR_HALL_SEQ;
+          printf("PWM:hall err (%x-%x)\n\r", _hall[i], hall[i]);
         }
         continue;
       }
       else
       {
-        if (driver_param.error.hall[i] > 0)
-          driver_param.error.hall[i]--;
+        if (driver_state.error.hall[i] > 0)
+          driver_state.error.hall[i]--;
       }
 
       switch (halldiff)
@@ -538,6 +539,7 @@ void FIQ_PWMPeriod()
         if (_abs(err) > motor_param[i].enc_rev / 6)
         {
           motor[i].error_state |= ERROR_HALL_ENC;
+          printf("PWM:enc-hall err (%d)\n\r", err);
         }
       }
 
@@ -597,7 +599,7 @@ void controlPWM_init()
     THEVA.MOTOR[j % 2].PWM[j / 2].L = PWM_resolution;
   }
 
-  driver_param.PWM_resolution = PWM_resolution;
+  driver_state.PWM_resolution = PWM_resolution;
 
   PWM_cpms = 256 * 16 * driver_param.control_cycle * 48000 / (PWM_resolution * 2);
   driver_param.control_s = 1000 / driver_param.control_cycle;

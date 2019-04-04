@@ -39,15 +39,13 @@
 MotorState motor[2];
 MotorParam motor_param[2];
 DriverParam driver_param;
+DriverState driver_state;
 short com_cnts[COM_MOTORS];
 short com_pwms[COM_MOTORS];
 char com_en[COM_MOTORS];
 int pwm_sum[2] = { 0, 0 };
 int pwm_num[2] = { 0, 0 };
 short soft_start[2] = { 0, 0 };
-
-extern int watchdog;
-extern int velcontrol;
 
 Filter1st accelf[2];
 Filter1st accelf0;
@@ -261,9 +259,9 @@ void timer0_vel_calc()
   if (motor[0].servo_level > SERVO_LEVEL_STOP ||
       motor[1].servo_level > SERVO_LEVEL_STOP)
   {
-    driver_param.watchdog++;
-    if (driver_param.cnt_updated < 9)
-      driver_param.cnt_updated++;
+    driver_state.watchdog++;
+    if (driver_state.cnt_updated < 9)
+      driver_state.cnt_updated++;
   }
 
   LED_on(1);
@@ -285,7 +283,7 @@ void timer0_vel_calc()
     __vel = (int)(enc[i] - __enc[i]);
     motor[i].vel1 = __vel;
 
-    if (_abs(__vel) > 6 || driver_param.fpga_version == 0)
+    if (_abs(__vel) > 6 || driver_state.fpga_version == 0)
     {
       vel = __vel * 16;
       _spd_cnt[i] = 0;
@@ -347,7 +345,7 @@ void timer0_vel_calc()
     if (motor[i].servo_level == SERVO_LEVEL_STOP)
       continue;
 
-    if (driver_param.cnt_updated == 5)
+    if (driver_state.cnt_updated == 5)
     {
       motor[i].ref.rate_buf = pwm_sum[i] * 5 / pwm_num[i];
       motor[i].enc_buf2 = motor[i].enc_buf;
@@ -379,7 +377,7 @@ void timer0_vel_calc()
   ISR_VelocityControl();
   LED_off(1);
 
-  velcontrol++;
+  driver_state.velcontrol++;
 }
 
 // ------------------------------------------------------------------------------
@@ -393,13 +391,13 @@ void controlVelocity_init()
   Filter1st_CreateLPF(&accelf0, ACCEL_FILTER_TIME);
   accelf[0] = accelf[1] = accelf0;
 
-  driver_param.protocol_version = 0;
-  driver_param.cnt_updated = 0;
   driver_param.watchdog_limit = 600;
-  driver_param.admask = 0;
-  driver_param.io_mask[0] = 0;
-  driver_param.io_mask[1] = 0;
   driver_param.control_cycle = 1;
+  driver_state.protocol_version = 0;
+  driver_state.cnt_updated = 0;
+  driver_state.admask = 0;
+  driver_state.io_mask[0] = 0;
+  driver_state.io_mask[1] = 0;
 
   for (i = 0; i < 2; i++)
   {
@@ -419,8 +417,6 @@ void controlVelocity_init()
     motor_param[i].phase_offset = 0;
     motor_param[i].enc_type = 2;
   }
-
-  controlVelocity_config();
 }
 void controlVelocity_config()
 {
