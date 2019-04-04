@@ -102,6 +102,10 @@ void USBD_InterruptHandler(void) RAMFUNC;
 /// \page "UDP_CSR register access"
 ///
 /// This page lists the macroes to access UDP CSR register.
+/// UDP_CSR register requires 3 UDPCK clocks and 5 peripheral clocks of wait
+/// after setting value. Assuming that `if((CSR & flags) == flags)` consumes 3 clocks.
+/// The timeout of register value check means that we had another high priority
+/// interrupts between register writing and reading; we can keep going without problems.
 ///
 /// !Macros
 /// - CLEAR_CSR
@@ -125,11 +129,7 @@ void USBD_InterruptHandler(void) RAMFUNC;
 		if( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) == (flags) ) break; \
 		if( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) == (flags) ) break; \
 		if( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) == (flags) ) break; \
-		if( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) == (flags) ) break; \
-		if( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) == (flags) ) break; \
-		TRACE_ERROR("SET_CSR Timeout (%x)\n\r", flags); \
 	} while (0);
-        //while ( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) != (flags)); 
 
 /// Sets the specified bit(s) in the UDP_CSR register.
 /// \param endpoint The endpoint number of the CSR to process.
@@ -144,11 +144,7 @@ void USBD_InterruptHandler(void) RAMFUNC;
 		if( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) != (flags) ) break; \
 		if( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) != (flags) ) break; \
 		if( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) != (flags) ) break; \
-		if( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) != (flags) ) break; \
-		if( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) != (flags) ) break; \
-		TRACE_ERROR("CLEAR_CSR Timedout (%x)\n\r", flags); \
 	} while (0);
-        //while ( (AT91C_BASE_UDP->UDP_CSR[endpoint] & (flags)) == (flags)); 
 //------------------------------------------------------------------------------
 
 //------------------------------------------------------------------------------
