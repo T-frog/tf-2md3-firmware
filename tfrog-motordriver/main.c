@@ -750,6 +750,7 @@ int main()
         msleep(5);
         EEPROM_Write(TFROG_EEPROM_ROBOTPARAM_ADDR + 0x200, &motor_param[1], sizeof(MotorParam));
         saved_param.stored_data = TFROG_EEPROM_DATA_BIN;
+        saved_param.stored_param_version = TFROG_EEPROM_PARAM_VERSION;
         EEPROM_Write(0, &saved_param, sizeof(saved_param));
         LED_off(0);
       }
