@@ -58,11 +58,12 @@ typedef struct _MotorState
     int vel_buf;       // count/ms
     int vel_buf_prev;  // count/ms
     int vel_interval;
-    int vel_diff;  // count/ms
-    int torque;    // 1/100000 Nm
-    int rate;      // -PWM_max < rate < PWM_max
-    int rate2;     //
-    int rate_buf;  //
+    int vel_diff;       // count/ms
+    int torque;         // 1/100000 Nm
+    int torque_offset;  // 1/100000 Nm
+    int rate;           // -PWM_max < rate < PWM_max
+    int rate2;          //
+    int rate_buf;       //
     char vel_changed;
   } ref;
   int error;
@@ -92,7 +93,6 @@ typedef struct _MotorParam
   int torque_max;
   int torque_min;
   int torque_limit;
-  int torque_offset;
   int fr_plus;
   int fr_wplus;
   int fr_minus;
