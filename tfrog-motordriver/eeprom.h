@@ -48,7 +48,7 @@ typedef struct _Tfrog_EEPROM_data
 // Basically, don't change it destructively, but add new field at the end.
 #define TFROG_EEPROM_KEY 0x00AA7701
 // Increment if MotorParam, DriverParam struct is changed.
-#define TFROG_EEPROM_PARAM_VERSION 0x0001
+#define TFROG_EEPROM_PARAM_VERSION 0x0002
 
 #define TFROG_EEPROM_DEFAULT        \
   {                                 \

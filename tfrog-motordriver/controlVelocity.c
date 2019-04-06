@@ -198,7 +198,7 @@ void ISR_VelocityControl()
         toq[i] -= (motor_param[i].fr_wminus * (-motor[i].vel) / 16 + motor_param[i].fr_minus);
       }
       // トルク補償
-      toq[i] += motor_param[i].torque_offset;
+      toq[i] += motor[i].ref.torque_offset;
 
       // トルクでクリッピング
       if (toq[i] >= motor_param[i].torque_limit)

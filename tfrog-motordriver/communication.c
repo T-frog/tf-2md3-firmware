@@ -1519,6 +1519,9 @@ int command_analyze(unsigned char* data, int len)
         motor[imotor].ref.vel_changed = 1;
       motor[imotor].ref.vel = i.integer;
       break;
+    case PARAM_p_toq_offset:
+      motor[imotor].ref.torque_offset = i.integer;
+      break;
     case PARAM_servo:
       if (motor[imotor].servo_level < SERVO_LEVEL_TORQUE &&
           i.integer >= SERVO_LEVEL_TORQUE)
@@ -1613,9 +1616,6 @@ int command_analyze(unsigned char* data, int len)
         break;
       case PARAM_toq_limit:
         motor_param[imotor].torque_limit = i.integer;
-        break;
-      case PARAM_p_toq_offset:
-        motor_param[imotor].torque_offset = i.integer;
         break;
       case PARAM_int_max:
         motor_param[imotor].integ_max = i.integer * 16;
