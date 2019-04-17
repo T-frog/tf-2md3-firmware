@@ -15,11 +15,24 @@
  * ----------------------------------------------------------------------------
  */
 
-#ifndef __CONTROL_PWM_H__
-#define __CONTROL_PWM_H__
+#ifndef __UTILS_H__
+#define __UTILS_H__
 
-void controlPWM_init();
-void controlPWM_config(int i);
-void FIQ_PWMPeriod();
+inline void normalize(int* val, int min, int max, int resolution)
+{
+  if (resolution <= 0)
+    return;
+  while (*val < min)
+    *val += resolution;
+  while (*val >= max)
+    *val -= resolution;
+}
+
+inline int _abs(int x)
+{
+  if (x < 0)
+    return -x;
+  return x;
+}
 
 #endif

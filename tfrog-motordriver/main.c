@@ -81,7 +81,6 @@
 #warning "T-frog driver rev.4"
 #endif
 
-int velcontrol = 0;
 volatile unsigned char rs485_timeout = 0;
 volatile unsigned short tic = 0;
 
@@ -214,14 +213,8 @@ static void ISR_Vbus( const Pin * pPin )
 // ------------------------------------------------------------------------------
 static void VBus_Configure(void)
 {
-  //	TRACE_INFO( "VBus configuration\n\r" );
-
   // Configure PIO
   PIO_Configure(&pinVbus, 1);
-  //	PIO_ConfigureIt( &pinVbus, ISR_Vbus );
-  //	PIO_EnableIt( &pinVbus );
-
-  //	ISR_Vbus( &pinVbus );
 }
 
 volatile unsigned char usb_read_pause = 0;
@@ -238,7 +231,7 @@ static void UsbDataReceived(unsigned int unused, unsigned char status, unsigned 
     // Check if bytes have been discarded
     if ((received == DATABUFFERSIZE) && (remaining > 0))
     {
-      TRACE_WARNING("UsbDataReceived: %u bytes discarded\n\r", remaining);
+      printf("USB:discard %uB\n\r", remaining);
     }
 
     LED_on(2);
@@ -246,12 +239,12 @@ static void UsbDataReceived(unsigned int unused, unsigned char status, unsigned 
 
     if (remain > 0)
     {
-      printf("%d bytes discarded\n\r", remain);
+      printf("USB:remain %dB\n\r", remain);
     }
 
     if (buf_left() < COMMAND_LEN * 2)
     {
-      printf("Buffer nealy full\n\rPause USB read\n\r");
+      printf("USB:pause\n\r");
       usb_read_pause = 1;
     }
     else
@@ -261,7 +254,7 @@ static void UsbDataReceived(unsigned int unused, unsigned char status, unsigned 
   }
   else
   {
-    TRACE_WARNING("UsbDataReceived: Transfer error\n\r");
+    printf("USB:transfer err\n\r");
   }
 }
 
@@ -317,7 +310,7 @@ void tic_init()
   AT91C_BASE_TC1->TC_RC = 1500 / 23;
   AT91C_BASE_TC1->TC_IER = AT91C_TC_CPCS;
 
-  AIC_ConfigureIT(AT91C_ID_TC1, 3 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, (void (*)(void))timer1_tic);
+  AIC_ConfigureIT(AT91C_ID_TC1, 5 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, (void (*)(void))timer1_tic);
   AIC_EnableIT(AT91C_ID_TC1);
 
   AT91C_BASE_TC1->TC_CCR = AT91C_TC_SWTRG;
@@ -338,7 +331,7 @@ int main()
   int vbuslv = 0;
   int vbus = 0;
   int _vbus = 0;
-  int err_chk = 0;
+  unsigned int err_chk = 0;
   short mscnt = 0;
   unsigned char errnum = 0;
   unsigned char blink = 0;
@@ -441,7 +434,7 @@ int main()
     PIO_Configure(pinsSet, PIO_LISTSIZE(pinsSet));
 #endif
 
-    TRACE_ERROR("Invalid FPGA %u !\n\r", THEVA.GENERAL.ID);
+    printf("Invalid FPGA %u !\n\r", THEVA.GENERAL.ID);
     for (i = 0; i < 30000; i++)
       ;
     err_cnt++;
@@ -533,7 +526,7 @@ int main()
       case -2:
       case -3:
         // Read Error
-        TRACE_ERROR("EEPROM Read Error!\n\r");
+        printf("EEPROM Read Error!\n\r");
         motor[0].error_state |= ERROR_EEPROM;
         motor[1].error_state |= ERROR_EEPROM;
         break;
@@ -673,7 +666,7 @@ int main()
 
   AT91C_BASE_US0->US_IDR = 0xFFFFFFFF;
   AT91C_BASE_US0->US_IER = AT91C_US_RXRDY;
-  AIC_ConfigureIT(AT91C_ID_US0, 4 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, (void (*)(void))us0_received);
+  AIC_ConfigureIT(AT91C_ID_US0, 3 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, (void (*)(void))us0_received);
   AIC_EnableIT(AT91C_ID_US0);
 
   {
@@ -702,6 +695,7 @@ int main()
   driver_state.board_version = BOARD_R4;
   printf("Board version: R4\n\r");
 #endif
+  printf("Entering main control loop\n\r------\n\r");
 
   ADC_Start();
   LED_off(0);
@@ -731,7 +725,7 @@ int main()
       }
       if (err_cnt > 3)
       {
-        TRACE_ERROR("FPGA-Value Error!\n\r");
+        printf("FPGA-Value Error!\n\r");
         msleep(50);
         AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST | AT91C_RSTC_PROCRST | AT91C_RSTC_PERRST;
         while (1)
@@ -741,6 +735,9 @@ int main()
 
     if (driver_state.watchdog >= driver_param.watchdog_limit)
     {
+      motor[0].servo_level = SERVO_LEVEL_STOP;
+      motor[1].servo_level = SERVO_LEVEL_STOP;
+
       if (saved_param.stored_data == TFROG_EEPROM_DATA_BIN_SAVING)
       {
         LED_on(0);
@@ -766,7 +763,7 @@ int main()
       driver_state.error.hall[1] = 0;
       motor[0].error_state |= ERROR_WATCHDOG;
       motor[1].error_state |= ERROR_WATCHDOG;
-      TRACE_ERROR("Watchdog - parameter init\n\r");
+      printf("Watchdog - init parameters\n\r");
       {
         int i;
         printf("Motors: ");
@@ -783,8 +780,6 @@ int main()
         printf("\n\r");
         com_en[0] = com_en[1] = 1;
       }
-      motor[0].servo_level = SERVO_LEVEL_STOP;
-      motor[1].servo_level = SERVO_LEVEL_STOP;
       driver_state.watchdog = 0;
       if (!(saved_param.stored_data == TFROG_EEPROM_DATA_BIN ||
             saved_param.stored_data == TFROG_EEPROM_DATA_BIN_LOCKED))
@@ -805,34 +800,29 @@ int main()
     // Check current level on VBus
     if (PIO_Get(&pinVbus))
     {
-      if (vbuslv < 0)
-        vbuslv = 0;
-      else if (vbuslv <= 10)
+      if (vbuslv < 10)
         vbuslv++;
+      else if (vbuslv == 10)
+        vbus = 1;
     }
     else
     {
-      if (vbuslv > 0)
-        vbuslv = 0;
-      else if (vbuslv >= -10)
+      if (vbuslv > -10)
         vbuslv--;
+      else if (vbuslv == -10)
+        vbus = 0;
     }
-    if (vbuslv > 10)
-      vbus = 1;
-    else if (vbuslv < -10)
-      vbus = 0;
-
     if (vbus != _vbus)
     {
       if (vbus == 1)
       {
-        TRACE_INFO("VBUS conn\n\r");
+        printf("USB:vbus connect\n\r");
         USBD_Connect();
         connecting = 1;
       }
       else
       {
-        TRACE_INFO("VBUS discon\n\r");
+        printf("USB:vbus disconnect\n\r");
         USBD_Disconnect();
       }
     }
@@ -848,7 +838,7 @@ int main()
       len = RS485BUF_SIZE - r_rs485buf_pos;
       if (data_fetch485(rs485buf + r_rs485buf_pos, len))
       {
-        TRACE_WARNING("RS485DataReceived: buffer overrun\n\r");
+        printf("485:buf ovf\n\r");
       }
 
       if (rs485buf == &rs485buf_[0][0])
@@ -876,7 +866,7 @@ int main()
 
         if (data_fetch485(rs485buf + r_rs485buf_pos, len))
         {
-          TRACE_WARNING("RS485DataReceived: buffer overrun\n\r");
+          printf("485:buf ovf\n\r");
         }
         r_rs485buf_pos += len;
       }
@@ -967,15 +957,15 @@ int main()
 
     if (usb_read_pause)
     {
-      printf("Flushing commands\n\r");
+      printf("USB:flush\n\r");
     }
     data_analyze();
 
     if (usb_read_pause)
     {
       usb_read_pause = 0;
+      printf("USB:resume\n\r");
       CDCDSerialDriver_Read(usbBuffer, DATABUFFERSIZE, (TransferCallback)UsbDataReceived, 0);
-      printf("Resume USB read\n\r");
     }
 
     data_analyze485();
@@ -984,7 +974,7 @@ int main()
     {
       if (USBD_GetState() >= USBD_STATE_CONFIGURED)
       {
-        printf("Start USB read\n\r");
+        printf("USB:start\n\r");
         // Start receiving data on the USB
         CDCDSerialDriver_Read(usbBuffer, DATABUFFERSIZE, (TransferCallback)UsbDataReceived, 0);
         connecting = 0;
@@ -995,7 +985,7 @@ int main()
     {
       if (USBD_GetState() < USBD_STATE_DEFAULT)
       {
-        TRACE_ERROR("USB disconnected\n\r");
+        printf("USB:disconnect\n\r");
         AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST;
         while (1)
           ;
@@ -1006,11 +996,8 @@ int main()
     {
       unsigned short mask;
       int i;
-      // static long cnt = 0;
       /* 約5msおき */
       driver_state.cnt_updated -= 5;
-      if (driver_state.cnt_updated >= 5)
-        driver_state.cnt_updated -= 5;
 
       mask = driver_state.admask;  // analog_mask;
       if (driver_state.io_mask[0])
@@ -1108,14 +1095,18 @@ int main()
       }
     }
 
-    if (driver_state.velcontrol == 1)
+    if (driver_state.velcontrol > 0)
     {
 #define ERROR_BLINK_MS 200
       driver_state.velcontrol = 0;
-      ISR_VelocityControl();
 
       if (++mscnt >= ERROR_BLINK_MS)
       {
+        if (usb_timeout_cnt > 0)
+        {
+          printf("USB:w timeout (%d)\n\r", usb_timeout_cnt);
+          usb_timeout_cnt = 0;
+        }
         if (mscnt == ERROR_BLINK_MS &&
             driver_state.protocol_version >= 10 &&
             (motor[0].servo_level >= SERVO_LEVEL_TORQUE ||

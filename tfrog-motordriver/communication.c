@@ -51,6 +51,7 @@ extern Tfrog_EEPROM_data saved_param;
 extern volatile char rs485_timeout;
 extern volatile short tic;
 extern volatile unsigned char usb_read_pause;
+volatile int usb_timeout_cnt = 0;
 
 unsigned short crc16(unsigned char* buf, int len) RAMFUNC;
 unsigned char crc8(unsigned char* buf, int len) RAMFUNC;
@@ -216,15 +217,14 @@ int nsend(char* buf, int len)
 
 void flush(void)
 {
-  int len;
+  const int len = send_buf_pos;
   char ret;
-  unsigned short timeout;
 
-  len = send_buf_pos;
-  send_buf[len] = 0;
   if (len == 0)
     return;
-  for (timeout = 1024; timeout; timeout--)
+
+  const unsigned short tic_start = tic;
+  while ((unsigned short)(tic - tic_start) < 46)
   {
     ret = CDCDSerialDriver_Write(send_buf, len, 0, 0);
     if (ret == USBD_STATUS_LOCKED)
@@ -233,29 +233,26 @@ void flush(void)
     }
     else if (ret != USBD_STATUS_SUCCESS)
     {
-      TRACE_ERROR("Send failed\n\r  buf: %s\n\r", send_buf);
+      printf("USB:w err (%d)\n\r", ret);
       send_buf_pos = 0;
       return;
     }
     else
     {
       send_buf_pos -= len;
-      break;
+      return;
     }
   }
-  if (!timeout)
-  {
-    TRACE_ERROR("USB send timeout\n\r");
-    send_buf_pos = 0;
-  }
+  usb_timeout_cnt++;
+  send_buf_pos = 0;
 }
 void flush485(void)
 {
   if (send_buf_pos485 == 0)
     return;
 
-  tic = 0;
-  while (tic < 10)
+  const unsigned short tic_start = tic;
+  while ((unsigned short)(tic - tic_start) < 10)
   {
     if (USART_WriteBuffer(AT91C_BASE_US0, send_buf485, send_buf_pos485))
     {
@@ -269,7 +266,7 @@ void flush485(void)
       return;
     }
   }
-  printf("RS485 send timeout\n\r");
+  printf("485:w timeout\n\r");
   send_buf_pos485 = 0;
   rs485_timeout = 0;
 }
@@ -361,10 +358,10 @@ int decord(unsigned char* src, int len, unsigned char* dst, int buf_max)
 
 short rs485_timeout_wait(unsigned char t, unsigned short timeout)
 {
-  tic = 0;
+  const unsigned short tic_start = tic;
   while (rs485_timeout < t)
   {
-    if (tic > timeout)
+    if ((unsigned short)(tic - tic_start) > timeout)
       return 0;
   }
   return 1;
@@ -430,7 +427,7 @@ int data_send485(short* cnt, short* pwm, char* en, short* analog, unsigned short
   {
     send_buf_pos485 = 0;
     rs485_timeout = 0;
-    printf("rs485 skipped\n\r");
+    printf("485:skip\n\r");
     return -1;
   }
 }
@@ -511,7 +508,7 @@ int int_send485(const char param, const char id, const int value)
   {
     send_buf_pos485 = 0;
     rs485_timeout = 0;
-    printf("rs485 skipped\n\r");
+    printf("485:skip\n\r");
     return -1;
   }
 }
@@ -644,19 +641,9 @@ static inline int data_analyze_(
     line[len] = *data;
     len++;
 
-    char clear_buffer = 0;
     if (len > 63)
     {
-      clear_buffer = 1;
-      printf("recv buf overflow\n\r");
-    }
-    if (!fromto && usb_read_pause == 1 && len > COMMAND_LEN * 2)
-    {
-      clear_buffer = 1;
-      printf("clearing recv buf (USB buffer overflow (%d))\n\r", len);
-    }
-    if (clear_buffer)
-    {
+      printf("COM:rbuf ovf %d\n\r", len);
       len = 0;
       receive_period = 1;
       state = STATE_IDLE;
@@ -756,8 +743,7 @@ static inline int data_analyze_(
         {
           state = STATE_IDLE;
           receive_period = 1;
-          line[len - 3] = 0;
-          printf("CRC16 X\"%s\"\n\r", (char*)line);
+          printf("COM:CRC err (%d)\n\r", len);
         }
         break;
     }
@@ -771,8 +757,7 @@ static inline int data_analyze_(
         data_len = decord(line, len - 1, rawdata, 16);
         if (data_len < 6)
         {
-          line[len - 1] = 0;
-          printf("Decode failed: \"%s\" (%d)\n\r", (char*)line, data_len);
+          printf("COM:decode err (%d)\n\r", data_len);
         }
         else
         {
@@ -821,14 +806,12 @@ static inline int data_analyze_(
               {
                 send_buf_pos485 = 0;
                 rs485_timeout = 0;
-                printf("rs485 skipped\n\r");
+                printf("485:skip\n\r");
               }
-              //printf("proxy sent\n\r");
             }
             else
             {
               send_buf_pos485--;
-              //printf("proxy\n\r");
             }
           }
         }
@@ -889,9 +872,8 @@ static inline int data_analyze_(
     {
       send_buf_pos485 = 0;
       rs485_timeout = 0;
-      printf("rs485 skipped\n\r");
+      printf("485:skip\n\r");
     }
-    //printf("proxy sent\n\r");
   }
   return 0;
 }
@@ -1477,9 +1459,16 @@ int extended_command_analyze(char* data)
     }
     else
     {
-      printf("unknown command \"%s\"\n\r", data);
       send(data);
       send("\n0Ee\n\n");
+
+      char* d;
+      for (d = data; *d != 0; ++d)
+      {
+        if (*d < 0x20 || 0x7e < *d)
+          *d = '?';
+      }
+      printf("unknown command \"%s\"\n\r", data);
     }
   }
   flush();

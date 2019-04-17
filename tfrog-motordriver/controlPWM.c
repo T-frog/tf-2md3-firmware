@@ -35,12 +35,14 @@
 #include "controlVelocity.h"
 #include "power.h"
 #include "eeprom.h"
+#include "utils.h"
 
 static const Pin pinPWMCycle2 = PIN_PWM_CYCLE2;
 
 // / PWM Enable pin instance.
 static const Pin pinPWMEnable = PIN_PWM_ENABLE;
 
+static char init = 1;
 short SinTB[1024];
 int PWM_abs_max = 0;
 int PWM_abs_min = 0;
@@ -67,34 +69,6 @@ inline short sin_(int x)
 extern Tfrog_EEPROM_data saved_param;
 extern volatile char rs485_timeout;
 
-inline void normalize(int* val, int min, int max, int resolution)
-{
-  if (resolution <= 0)
-    return;
-  while (*val < min)
-    *val += resolution;
-  while (*val >= max)
-    *val -= resolution;
-}
-
-inline void normalize_mod(int* val, int min, int max, int resolution)
-{
-  if (resolution <= 0)
-    return;
-  *val = (*val) % resolution;
-  if (*val < min)
-    *val += resolution;
-  else if (*val >= max)
-    *val -= resolution;
-}
-
-inline int _abs(int x)
-{
-  if (x < 0)
-    return -x;
-  return x;
-}
-
 void controlPWM_config(int i)
 {
   switch (motor_param[i].motor_type)
@@ -119,7 +93,7 @@ void controlPWM_config(int i)
 
   motor[i].ref.rate = 0;
 
-  motor_param[i].enc_rev = (int)motor_param[i].enc_rev_raw / (int)motor_param[i].enc_denominator;
+  motor_param[i].enc_rev = motor_param[i].enc_rev_raw / motor_param[i].enc_denominator;
 
   motor_param[i].enc_drev[0] = motor_param[i].enc_rev * 1 / 6;
   motor_param[i].enc_drev[1] = motor_param[i].enc_rev * 2 / 6;
@@ -129,13 +103,13 @@ void controlPWM_config(int i)
   motor_param[i].enc_drev[5] = motor_param[i].enc_rev * 6 / 6;
 
   motor_param[i].enc_10hz = motor_param[i].enc_rev * 10 * 16 / 1000;
-  motor_param[i].enc_rev_1p = motor_param[i].enc_rev / 100;
+  motor_param[i].enc_rev_1p = motor_param[i].enc_rev / 300;
   if (motor_param[i].enc_rev_1p == 0)
     motor_param[i].enc_rev_1p = 1;
 
   motor_param[i].enc_mul =
-      (unsigned int)((uint64_t)SinTB_2PI * 0x40000 * motor_param[i].enc_denominator /
-                     motor_param[i].enc_rev_raw);
+      (int)((int64_t)SinTB_2PI * 0x40000 * motor_param[i].enc_denominator /
+            motor_param[i].enc_rev_raw);
   motor_param[i].enc_rev_h = motor_param[i].enc_rev / 2;
 
   // normalize phase offset
@@ -184,6 +158,7 @@ void controlPWM_config(int i)
     }
   }
   motor_param[i].enc0tran = motor_param[i].enc0;
+  init = 1;
 }
 
 // ------------------------------------------------------------------------------
@@ -192,14 +167,13 @@ void controlPWM_config(int i)
 void FIQ_PWMPeriod()
 {
   int i;
-  unsigned short enc[2];
-  unsigned short hall[2];
-  static unsigned short _enc[2];
-  static unsigned short _hall[2];
-  static int init = 0;
-  static int cnt = 0;
-  cnt++;
+  static unsigned short enc[2];
+  static unsigned short hall[2];
+  static unsigned int cnt = 0;
+  unsigned short _enc[2];
+  unsigned short _hall[2];
 
+  cnt++;
   {
     // PWM周波数が高い場合は処理を間引く
     // PWM_resolution 2000以下で一回間引き
@@ -210,6 +184,11 @@ void FIQ_PWMPeriod()
       return;
     thin = 0;
   }
+
+  _enc[0] = enc[0];
+  _enc[1] = enc[1];
+  _hall[0] = hall[0];
+  _hall[1] = hall[1];
 
   for (i = 0; i < 2; i++)
   {
@@ -246,32 +225,32 @@ void FIQ_PWMPeriod()
       THEVA.MOTOR[i % 2].PWM[i / 2].H = PWM_resolution;
       THEVA.MOTOR[i % 2].PWM[i / 2].L = PWM_resolution;
     }
-    init = 0;
+    init = 1;
     disabled = 1;
   }
-  else if (!init)
+  else if (init)
   {
-    init = 1;
-    _hall[0] = hall[0];
-    _hall[1] = hall[1];
-    _enc[0] = enc[0];
-    _enc[1] = enc[1];
-
+    init = 0;
     return;
   }
 
   for (i = 0; i < 2; i++)
   {
+    if (motor[i].servo_level == SERVO_LEVEL_STOP)
+      continue;
+
     if (motor_param[i].enc_type == 2 ||
         motor_param[i].enc_type == 0)
     {
-      motor[i].pos += (short)(enc[i] - _enc[i]);
+      const short diff = (short)(enc[i] - _enc[i]);
+      motor[i].pos += diff;
+      normalize(&motor[i].pos, 0, motor_param[i].enc_rev_raw, motor_param[i].enc_rev_raw);
+
       motor[i].posc = (motor[i].posc & 0xFFFF0000) | enc[i];
       if (_enc[i] < 0x4000 && enc[i] > 0xC000)
         motor[i].posc -= 0x10000;
       else if (_enc[i] > 0xC000 && enc[i] < 0x4000)
         motor[i].posc += 0x10000;
-      normalize(&motor[i].pos, 0, motor_param[i].enc_rev_raw, motor_param[i].enc_rev_raw);
     }
   }
 
@@ -301,30 +280,6 @@ void FIQ_PWMPeriod()
         else if (rate <= -PWM_resolution)
           rate = -PWM_resolution + 1;
         motor[j].ref.rate2 = rate;
-      }
-
-      if (cnt % 64 == 2 + j)
-      {
-        int diff;
-        diff = motor_param[j].enc0tran - motor_param[j].enc0;
-        normalize(&diff, -motor_param[j].enc_rev_h, motor_param[j].enc_rev_h, motor_param[j].enc_rev);
-
-        if (_abs(diff) <= motor_param[j].enc_rev_1p)
-        {
-          motor_param[j].enc0tran = motor_param[j].enc0;
-        }
-        else if (diff > 0)
-        {
-          motor_param[j].enc0tran -= motor_param[j].enc_rev_1p;
-          if (motor_param[j].enc0tran <= -motor_param[j].enc_rev)
-            motor_param[j].enc0tran += motor_param[j].enc_rev;
-        }
-        else
-        {
-          motor_param[j].enc0tran += motor_param[j].enc_rev_1p;
-          if (motor_param[j].enc0tran >= motor_param[j].enc_rev)
-            motor_param[j].enc0tran -= motor_param[j].enc_rev;
-        }
       }
 
       switch (motor_param[j].motor_type)
@@ -413,11 +368,13 @@ void FIQ_PWMPeriod()
   // ゼロ点計算
   for (i = 0; i < 2; i++)
   {
-    int u, v, w;
+    if (motor[i].servo_level == SERVO_LEVEL_STOP)
+      continue;
 
     if (motor_param[i].motor_type != MOTOR_TYPE_DC &&
         motor_param[i].enc_type != 0)
     {
+      int u, v, w;
       char dir;
       unsigned short halldiff;
 
@@ -550,9 +507,9 @@ void FIQ_PWMPeriod()
         motor[i].enc += diff;
 
         if (diff > 0)
-          motor[i].spd = PWM_cpms / (cnt - motor[i].spd_cnt);
+          motor[i].spd = PWM_cpms / (int)(cnt - motor[i].spd_cnt);
         else
-          motor[i].spd = -PWM_cpms / (cnt - motor[i].spd_cnt);
+          motor[i].spd = -PWM_cpms / (int)(cnt - motor[i].spd_cnt);
         motor[i].spd_cnt = cnt;
         continue;
       }
@@ -574,10 +531,10 @@ void FIQ_PWMPeriod()
         enc0 = motor[i].pos - motor_param[i].enc_drev[5] + dir - 1;
 
       // Check hall signal consistency
-      if (motor_param[i].enc_type == 2 && motor[i].servo_level > SERVO_LEVEL_STOP)
+      if (motor_param[i].enc_type == 2)
       {
         int err = motor_param[i].enc0 - enc0;
-        normalize_mod(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev);
+        normalize(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev);
         // In worst case, initial encoder origin can have offset of motor_param[i].enc_rev/12.
         if (_abs(err) > motor_param[i].enc_rev / 6)
         {
@@ -594,12 +551,6 @@ void FIQ_PWMPeriod()
       motor_param[i].enc0 = enc0;
     }
   }
-
-  _hall[0] = hall[0];
-  _hall[1] = hall[1];
-
-  _enc[0] = enc[0];
-  _enc[1] = enc[1];
 
   return;
 }
@@ -630,7 +581,7 @@ void controlPWM_init()
   }
 
   PIO_Configure(&pinPWMCycle2, 1);
-  AIC_ConfigureIT(AT91C_ID_IRQ0, 5 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, (void (*)(void))FIQ_PWMPeriod);
+  AIC_ConfigureIT(AT91C_ID_IRQ0, 6 | AT91C_AIC_SRCTYPE_POSITIVE_EDGE, (void (*)(void))FIQ_PWMPeriod);
   AIC_EnableIT(AT91C_ID_IRQ0);
 
   // PWM Generator init

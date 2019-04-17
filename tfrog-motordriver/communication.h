@@ -165,6 +165,8 @@ void sendclear(void);
 void flush(void);
 void flush485(void);
 
+extern volatile int usb_timeout_cnt;
+
 #ifdef __cplusplus
 }
 #endif

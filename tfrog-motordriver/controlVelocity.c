@@ -34,6 +34,7 @@
 #include "controlVelocity.h"
 #include "registerFPGA.h"
 #include "filter.h"
+#include "utils.h"
 
 MotorState motor[2];
 MotorParam motor_param[2];
@@ -60,7 +61,6 @@ void timer0_vel_calc() RAMFUNC;
 // ------------------------------------------------------------------------------
 void ISR_VelocityControl()
 {
-  // volatile unsigned int status;
   int i;
   int64_t toq[2];
   int64_t out_pwm[2];
@@ -246,24 +246,27 @@ void ISR_VelocityControl()
 
 void timer0_vel_calc()
 {
-  static unsigned int __enc[2];
-  unsigned int enc[2];
+  static unsigned int enc[2];
   static char _spd_cnt[2];
+  unsigned int __enc[2];
   int spd[2];
   int i;
   volatile unsigned int dummy;
+
+  dummy = AT91C_BASE_TC0->TC_SR;
+  dummy = dummy;
 
   if (motor[0].servo_level > SERVO_LEVEL_STOP ||
       motor[1].servo_level > SERVO_LEVEL_STOP)
   {
     driver_state.watchdog++;
-    driver_state.cnt_updated++;
+    if (driver_state.cnt_updated < 9)
+      driver_state.cnt_updated++;
   }
 
-  dummy = AT91C_BASE_TC0->TC_SR;
-  dummy = dummy;
-
   LED_on(1);
+  __enc[0] = enc[0];
+  __enc[1] = enc[1];
   for (i = 0; i < 2; i++)
   {
     enc[i] = motor[i].posc;
@@ -271,6 +274,7 @@ void timer0_vel_calc()
     motor[i].spd = 0;
   }
 
+  // calculate motor velocities
   for (i = 0; i < 2; i++)
   {
     int __vel;
@@ -310,6 +314,12 @@ void timer0_vel_calc()
       motor[i].dir = 0;
     }
 
+    if (motor[i].control_init)
+    {
+      vel = 0;
+      motor[i].dir = 0;
+    }
+
     if (motor_param[i].enc_type == 0)
     {
       motor[i].vel = motor[i].ref.vel;
@@ -328,26 +338,46 @@ void timer0_vel_calc()
     {
       motor[i].vel = vel;
     }
-    __enc[i] = enc[i];
     motor[i].enc_buf = enc[i] >> motor_param[i].enc_div;
   }
   for (i = 0; i < 2; i++)
   {
-    if (motor[i].servo_level >= SERVO_LEVEL_TORQUE)
+    if (motor[i].servo_level == SERVO_LEVEL_STOP)
+      continue;
+
+    if (driver_state.cnt_updated == 5)
     {
-      if (driver_state.cnt_updated == 5)
-      {
-        motor[i].ref.rate_buf = pwm_sum[i] * 5 / pwm_num[i];
-        motor[i].enc_buf2 = motor[i].enc_buf;
-        pwm_sum[i] = 0;
-        pwm_num[i] = 0;
-      }
+      motor[i].ref.rate_buf = pwm_sum[i] * 5 / pwm_num[i];
+      motor[i].enc_buf2 = motor[i].enc_buf;
+      pwm_sum[i] = 0;
+      pwm_num[i] = 0;
     }
   }
 
+  // encoder absolute angle LPF
+  for (i = 0; i < 2; i++)
+  {
+    if (motor[i].servo_level == SERVO_LEVEL_STOP)
+      continue;
+
+    int enc0 = motor_param[i].enc0;
+    int diff;
+    diff = motor_param[i].enc0tran - enc0;
+    normalize(&diff, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev);
+
+    if (_abs(diff) <= motor_param[i].enc_rev_1p)
+      motor_param[i].enc0tran = enc0;
+    else if (diff > 0)
+      motor_param[i].enc0tran -= motor_param[i].enc_rev_1p;
+    else
+      motor_param[i].enc0tran += motor_param[i].enc_rev_1p;
+
+    normalize(&motor_param[i].enc0tran, 0, motor_param[i].enc_rev_raw, motor_param[i].enc_rev_raw);
+  }
+  ISR_VelocityControl();
   LED_off(1);
 
-  driver_state.velcontrol = 1;
+  driver_state.velcontrol++;
 }
 
 // ------------------------------------------------------------------------------
@@ -376,7 +406,7 @@ void controlVelocity_init()
     motor[i].ref.vel_buf_prev = 0;
     motor[i].ref.vel_diff = 0;
     motor[i].error_integ = 0;
-    motor[i].control_init = 0;
+    motor[i].control_init = 1;
     motor[i].servo_level = SERVO_LEVEL_STOP;
     motor_param[i].motor_type = MOTOR_TYPE_AC3;
     motor_param[i].rotation_dir = 1;
