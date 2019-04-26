@@ -405,6 +405,7 @@ void controlVelocity_init()
     motor[i].ref.vel_buf = 0;
     motor[i].ref.vel_buf_prev = 0;
     motor[i].ref.vel_diff = 0;
+    motor[i].ref.torque_offset = 0;
     motor[i].error_integ = 0;
     motor[i].control_init = 1;
     motor[i].servo_level = SERVO_LEVEL_STOP;
