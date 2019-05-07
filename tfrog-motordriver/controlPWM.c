@@ -394,8 +394,11 @@ void FIQ_PWMPeriod()
         //if( halldiff == 3 || halldiff >= 5 ) printf( "ENC error: %x->%x\n\r", _hall[i], hall[i] );
         // ホール素子信号が全相1、全相0のとき
         // ホース素子信号が2ビット以上変化したときはエラー
-        if (driver_state.error.hall[i] < 128)
+
+        // Skip next one error to avoid counting another edge of this error.
+        if (driver_state.error.hall[i] < 12)
           driver_state.error.hall[i] += 12;
+
         if (driver_state.error.hall[i] > 12)
         {
           // エラー検出後、1周以内に再度エラーがあれば停止
@@ -538,8 +541,23 @@ void FIQ_PWMPeriod()
         // In worst case, initial encoder origin can have offset of motor_param[i].enc_rev/12.
         if (_abs(err) > motor_param[i].enc_rev / 6)
         {
-          motor[i].error_state |= ERROR_HALL_ENC;
-          printf("PWM:enc-hall err (%d)\n\r", err);
+          // Skip next one error to avoid counting another edge of this error.
+          if (driver_state.error.hallenc[i] < 12)
+            driver_state.error.hallenc[i] += 12;
+
+          if (driver_state.error.hallenc[i] > 12)
+          {
+            // Enter error stop mode if another error occurs within one revolution
+            motor[i].error_state |= ERROR_HALL_ENC;
+            printf("PWM:enc-hall err (%d)\n\r", err);
+          }
+          // Don't apply erroneous absolute angle
+          continue;
+        }
+        else
+        {
+          if (driver_state.error.hallenc[i] > 0)
+            driver_state.error.hallenc[i]--;
         }
       }
 

@@ -593,6 +593,8 @@ int main()
   driver_state.error.low_voltage = 0;
   driver_state.error.hall[0] = 0;
   driver_state.error.hall[1] = 0;
+  driver_state.error.hallenc[0] = 0;
+  driver_state.error.hallenc[1] = 0;
 
   printf("Velocity Control init\n\r");
   // Configure velocity control loop
@@ -704,6 +706,8 @@ int main()
   driver_state.error.low_voltage = 0;
   driver_state.error.hall[0] = 0;
   driver_state.error.hall[1] = 0;
+  driver_state.error.hallenc[0] = 0;
+  driver_state.error.hallenc[1] = 0;
   driver_state.ifmode = 0;
   driver_state.watchdog = 0;
   // Driver loop
@@ -761,6 +765,8 @@ int main()
       }
       driver_state.error.hall[0] = 0;
       driver_state.error.hall[1] = 0;
+      driver_state.error.hallenc[0] = 0;
+      driver_state.error.hallenc[1] = 0;
       motor[0].error_state |= ERROR_WATCHDOG;
       motor[1].error_state |= ERROR_WATCHDOG;
       printf("Watchdog - init parameters\n\r");

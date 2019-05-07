@@ -139,6 +139,7 @@ typedef struct _DriverState
   {
     unsigned char low_voltage;
     unsigned char hall[2];
+    unsigned char hallenc[2];
   } error;
   enum
   {
