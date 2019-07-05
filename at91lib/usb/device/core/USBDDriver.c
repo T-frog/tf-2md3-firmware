@@ -478,7 +478,11 @@ void USBDDriver_Initialize(
     // Initialize interfaces array if not null
     if (pInterfaces != 0) {
     
-        memset(pInterfaces, 0, sizeof(pInterfaces));
+        // memset(pInterfaces, 0, sizeof(pInterfaces));
+        //
+        // pInterfaces should be initialized outside USBDDriver_Initialize.
+        // note: Original at91lib code looks intended to initialize pInterfaces here,
+        //       but the implementation was incorrect.
     }
 }
 
