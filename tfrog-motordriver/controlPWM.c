@@ -102,7 +102,7 @@ void controlPWM_config(int i)
   motor_param[i].enc_drev[4] = motor_param[i].enc_rev * 5 / 6;
   motor_param[i].enc_drev[5] = motor_param[i].enc_rev * 6 / 6;
 
-  motor_param[i].enc_10hz = motor_param[i].enc_rev * 10 * 16 / 1000;
+  motor_param[i].vel_10hz = motor_param[i].enc_rev * 10 * 16 / 1000;
   motor_param[i].enc_rev_1p = motor_param[i].enc_rev / 300;
   if (motor_param[i].enc_rev_1p == 0)
     motor_param[i].enc_rev_1p = 1;
@@ -562,7 +562,7 @@ void FIQ_PWMPeriod()
       }
 
       // ホール素子は高速域では信頼できない
-      if (_abs(motor[i].vel) > motor_param[i].enc_10hz &&
+      if (_abs(motor[i].vel) > motor_param[i].vel_10hz &&
           !saved_param.rely_hall)
         continue;
 

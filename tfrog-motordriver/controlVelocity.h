@@ -80,7 +80,7 @@ typedef struct _MotorParam
   int enc_rev_h;  // count/rev
   int enc_rev_1p;
   unsigned char enc_type;
-  int enc_10hz;
+  int vel_10hz;
   int enc_drev[6];
   int enc_mul;
   int enc0;      // count
