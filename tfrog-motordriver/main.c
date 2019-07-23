@@ -88,6 +88,8 @@ Tfrog_EEPROM_data saved_param = TFROG_EEPROM_DEFAULT;
 
 extern unsigned char languageIdStringDescriptor[];
 extern USBDDriverDescriptors cdcdSerialDriverDescriptors;
+extern volatile int w_receive_buf;
+extern volatile int r_receive_buf;
 
 unsigned char manufacturerStringDescriptor2[64] = {
   USBStringDescriptor_LENGTH(0),
@@ -963,14 +965,14 @@ int main()
 
     if (usb_read_pause)
     {
-      printf("USB:flush\n\r");
+      printf("USB:flush r:%d,w:%d\n\r", r_receive_buf, w_receive_buf);
     }
     data_analyze();
 
     if (usb_read_pause)
     {
       usb_read_pause = 0;
-      printf("USB:resume\n\r");
+      printf("USB:resume r:%d,w:%d\n\r", r_receive_buf, w_receive_buf);
       CDCDSerialDriver_Read(usbBuffer, DATABUFFERSIZE, (TransferCallback)UsbDataReceived, 0);
     }
 
