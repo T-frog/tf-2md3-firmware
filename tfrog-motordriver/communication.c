@@ -852,6 +852,12 @@ static inline int data_analyze_(
       receive_period = 1;
       state = STATE_IDLE;
     }
+
+    if (len == 0 && !receive_period)
+    {
+      // Line buffer is cleared. Move receive pointer to the current position.
+      *r_receive_buf = r_buf;
+    }
     data++;
     r_buf++;
     if (r_buf >= RECV_BUF_LEN)
@@ -860,7 +866,10 @@ static inline int data_analyze_(
       data = receive_buf;
     }
     if (receive_period)
+    {
+      // Line is end. Move receive pointer to the next position.
       *r_receive_buf = r_buf;
+    }
   }
   if (send_buf_pos485 > 0)
   {
