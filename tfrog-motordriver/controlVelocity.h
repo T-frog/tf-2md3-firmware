@@ -39,6 +39,10 @@ typedef enum _ErrorID
 } ErrorID;
 #define ERROR_NUM 6
 
+#define ENC0_BUF_MAX_DENOMINATOR 16  // up to 16 electric revolution
+#define ENC0_BUF_MAX (ENC0_BUF_MAX_DENOMINATOR * 6)
+#define ENC0_BUF_UNKNOWN 0x7FFFFFF
+
 typedef struct _MotorState
 {
   int vel;                // count/ms
@@ -51,6 +55,8 @@ typedef struct _MotorState
   unsigned int spd_cnt;
   unsigned short enc;
   short dir;
+  int enc0_buf[ENC0_BUF_MAX];
+  unsigned short enc0_buf_len;
 
   struct
   {
