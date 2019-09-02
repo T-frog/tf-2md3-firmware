@@ -599,16 +599,19 @@ void FIQ_PWMPeriod()
 
       motor[i].enc0_buf[abs_pos] = enc0;
       int j;
-      int sum_enc0 = 0, num_enc0 = 0;
+      int sum_enc0_err = 0, num_enc0 = 0;
       for (j = 0; j < motor[i].enc0_buf_len; ++j)
       {
         if (motor[i].enc0_buf[j] != ENC0_BUF_UNKNOWN)
         {
-          sum_enc0 += motor[i].enc0_buf[j];
+          int err = motor[i].enc0_buf[j] - enc0;
+          normalize(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev);
+
+          sum_enc0_err += err;
           num_enc0++;
         }
       }
-      motor_param[i].enc0 = sum_enc0 / num_enc0;
+      motor_param[i].enc0 = enc0 + (sum_enc0_err / num_enc0);
     }
   }
 
