@@ -614,7 +614,7 @@ void FIQ_PWMPeriod()
           num_enc0++;
         }
       }
-      enc0 = (sum_enc0_err / num_enc0);
+      enc0 += (sum_enc0_err / num_enc0);
       normalize(&enc0, 0, motor_param[i].enc_rev);
       motor_param[i].enc0 = enc0;
     }
