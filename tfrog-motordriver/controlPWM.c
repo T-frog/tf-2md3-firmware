@@ -527,10 +527,12 @@ void FIQ_PWMPeriod()
       }
 
       int enc0 = 0;
-      int abs_pos = 0;
-      int k;
-      for (k = motor_param[i].enc_rev; k < motor[i].pos; k += motor_param[i].enc_rev)
-        abs_pos += 6;
+      int hall_pos = 0;
+      for (int k = motor_param[i].enc_rev; k < motor[i].pos; k += motor_param[i].enc_rev)
+      {
+        // Equivalent of: hall_pos = motor[i].pos % motor_param[i].enc_rev
+        hall_pos += 6;
+      }
 
       // ゼロ点計算
       if (w == -1)
@@ -540,27 +542,27 @@ void FIQ_PWMPeriod()
       else if (v == 1)
       {
         enc0 = motor[i].pos - motor_param[i].enc_drev[1] + dir - 1;
-        abs_pos += 1;
+        hall_pos += 1;
       }
       else if (u == -1)
       {
         enc0 = motor[i].pos - motor_param[i].enc_drev[2] + dir - 1;
-        abs_pos += 2;
+        hall_pos += 2;
       }
       else if (w == 1)
       {
         enc0 = motor[i].pos - motor_param[i].enc_drev[3] + dir - 1;
-        abs_pos += 3;
+        hall_pos += 3;
       }
       else if (v == -1)
       {
         enc0 = motor[i].pos - motor_param[i].enc_drev[4] + dir - 1;
-        abs_pos += 4;
+        hall_pos += 4;
       }
       else if (u == 1)
       {
         enc0 = motor[i].pos - motor_param[i].enc_drev[5] + dir - 1;
-        abs_pos += 5;
+        hall_pos += 5;
       }
 
       // Check hall signal consistency
@@ -597,10 +599,10 @@ void FIQ_PWMPeriod()
         continue;
 
       // Fill enc0_buf and calculate average
-      if (abs_pos >= ENC0_BUF_MAX)
-        abs_pos = abs_pos % ENC0_BUF_MAX;
+      if (hall_pos >= ENC0_BUF_MAX)
+        hall_pos = hall_pos % ENC0_BUF_MAX;
 
-      motor[i].enc0_buf[abs_pos] = enc0;
+      motor[i].enc0_buf[hall_pos] = enc0;
       int j;
       int sum_enc0_err = 0, num_enc0 = 0;
       for (j = 0; j < motor[i].enc0_buf_len; ++j)
