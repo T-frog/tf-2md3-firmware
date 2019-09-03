@@ -527,7 +527,10 @@ void FIQ_PWMPeriod()
       }
 
       int enc0 = 0;
-      int abs_pos = (motor[i].pos / 6) * 6;
+      int abs_pos = 0;
+      int k;
+      for (k = motor_param[i].enc_rev; k < motor[i].pos; k += motor_param[i].enc_rev)
+        abs_pos += 6;
 
       // ゼロ点計算
       if (w == -1)
@@ -611,7 +614,9 @@ void FIQ_PWMPeriod()
           num_enc0++;
         }
       }
-      motor_param[i].enc0 = enc0 + (sum_enc0_err / num_enc0);
+      enc0 = (sum_enc0_err / num_enc0);
+      normalize(&enc0, 0, motor_param[i].enc_rev, motor_param[i].enc_rev);
+      motor_param[i].enc0 = enc0;
     }
   }
 
