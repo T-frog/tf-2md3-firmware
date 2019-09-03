@@ -253,7 +253,7 @@ void FIQ_PWMPeriod()
     {
       const short diff = (short)(enc[i] - _enc[i]);
       motor[i].pos += diff;
-      normalize(&motor[i].pos, 0, motor_param[i].enc_rev_raw, motor_param[i].enc_rev_raw);
+      normalize(&motor[i].pos, 0, motor_param[i].enc_rev_raw);
 
       motor[i].posc = (motor[i].posc & 0xFFFF0000) | enc[i];
       if (_enc[i] < 0x4000 && enc[i] > 0xC000)
@@ -509,13 +509,13 @@ void FIQ_PWMPeriod()
         else if (u == 1)
           motor[i].pos = motor_param[i].enc_drev[5];
         motor[i].pos -= dir - 1;
-        normalize(&motor[i].pos, 0, motor_param[i].enc_rev, motor_param[i].enc_rev);
+        normalize(&motor[i].pos, 0, motor_param[i].enc_rev);
         motor_param[i].enc0 = 0;
         motor_param[i].enc0tran = 0;
 
         int diff;
         diff = (int)motor[i].pos - _pos;
-        normalize(&diff, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev);
+        normalize(&diff, -motor_param[i].enc_rev_h, motor_param[i].enc_rev);
         motor[i].enc += diff;
 
         if (diff > 0)
@@ -567,7 +567,7 @@ void FIQ_PWMPeriod()
       if (motor_param[i].enc_type == 2)
       {
         int err = motor_param[i].enc0 - enc0;
-        normalize(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev);
+        normalize(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev);
         // In worst case, initial encoder origin can have offset of motor_param[i].enc_rev/12.
         if (_abs(err) > motor_param[i].enc_rev / 6)
         {
@@ -608,14 +608,14 @@ void FIQ_PWMPeriod()
         if (motor[i].enc0_buf[j] != ENC0_BUF_UNKNOWN)
         {
           int err = motor[i].enc0_buf[j] - enc0;
-          normalize(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev);
+          normalize(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev);
 
           sum_enc0_err += err;
           num_enc0++;
         }
       }
       enc0 = (sum_enc0_err / num_enc0);
-      normalize(&enc0, 0, motor_param[i].enc_rev, motor_param[i].enc_rev);
+      normalize(&enc0, 0, motor_param[i].enc_rev);
       motor_param[i].enc0 = enc0;
     }
   }
