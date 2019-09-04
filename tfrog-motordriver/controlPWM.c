@@ -42,9 +42,12 @@ static const Pin pinPWMCycle2 = PIN_PWM_CYCLE2;
 // / PWM Enable pin instance.
 static const Pin pinPWMEnable = PIN_PWM_ENABLE;
 
+#define SinTB_2PI 4096
+#define AtanTB_LEN 512
+
 static char init = 1;
 short SinTB[1024];
-short AtanTB[512];
+short AtanTB[AtanTB_LEN];
 int PWM_abs_max = 0;
 int PWM_abs_min = 0;
 int PWM_center = 0;
@@ -55,7 +58,6 @@ int PWM_cpms;
 
 void FIQ_PWMPeriod() RAMFUNC;
 
-#define SinTB_2PI 4096
 inline short sin_(int x)
 {
   if (x < 1024)
@@ -69,13 +71,13 @@ inline short sin_(int x)
 
 inline short atan_(const int x)
 {
-  if (x <= -511)
-    return -AtanTB[511];
+  if (x <= -(AtanTB_LEN - 1))
+    return -AtanTB[AtanTB_LEN - 1];
   else if (x < 0)
-    return -AtanTB[x];
-  else if (x < 511)
+    return -AtanTB[-x];
+  else if (x < AtanTB_LEN - 1)
     return AtanTB[x];
-  return AtanTB[511];
+  return AtanTB[AtanTB_LEN - 1];
 }
 
 extern Tfrog_EEPROM_data saved_param;
@@ -151,7 +153,7 @@ void controlPWM_config(int i)
   if (motor_param[i].lr_cutoff_vel == 0)
     motor_param[i].lr_cutoff_vel_inv = 0;
   else
-    motor_param[i].lr_cutoff_vel_inv = 32768 * sizeof(AtanTB) / motor_param[i].lr_cutoff_vel;
+    motor_param[i].lr_cutoff_vel_inv = 32768 * AtanTB_LEN / motor_param[i].lr_cutoff_vel;
 
   if (motor_param[i].motor_type != MOTOR_TYPE_DC &&
       motor_param[i].enc_type != 0)
@@ -332,7 +334,7 @@ void FIQ_PWMPeriod()
           phase[2] = motor[j].pos - motor_param[j].enc0tran;
           phase[2] = (int64_t)(phase[2] + motor_param[j].phase_offset) *
                          motor_param[j].enc_mul / 0x40000 +
-                     SinTB_2PI + SinTB_2PI / 4 + AtanTB[tan];
+                     SinTB_2PI + SinTB_2PI / 4 + atan_(tan);
           phase[1] = phase[2] - SinTB_2PI / 3;
           phase[0] = phase[2] - SinTB_2PI * 2 / 3;
 
@@ -669,9 +671,9 @@ void controlPWM_init()
 
     SinTB[j] = ival;
   }
-  for (j = 0; j < sizeof(AtanTB); j++)
+  for (j = 0; j < AtanTB_LEN; j++)
   {
-    const fixp4 a = fp4atan(DOUBLE2FP4(1.0 * j / sizeof(AtanTB)));
+    const fixp4 a = fp4atan(FP4_ONE * j / AtanTB_LEN);
     AtanTB[j] = a * SinTB_2PI / FP4_PI2;
   }
 
