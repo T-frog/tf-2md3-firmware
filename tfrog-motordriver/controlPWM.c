@@ -95,6 +95,15 @@ void controlPWM_config(int i)
 
   motor_param[i].enc_rev = motor_param[i].enc_rev_raw / motor_param[i].enc_denominator;
 
+  // initialize encoder zero position buffer
+  motor[i].enc0_buf_len =
+      motor_param[i].enc_denominator < ENC0_BUF_MAX_DENOMINATOR ?
+          motor_param[i].enc_denominator * 6 :
+          ENC0_BUF_MAX;
+  int j;
+  for (j = 0; j < motor[i].enc0_buf_len; ++j)
+    motor[i].enc0_buf[j] = ENC0_BUF_UNKNOWN;
+
   motor_param[i].enc_drev[0] = motor_param[i].enc_rev * 1 / 6;
   motor_param[i].enc_drev[1] = motor_param[i].enc_rev * 2 / 6;
   motor_param[i].enc_drev[2] = motor_param[i].enc_rev * 3 / 6;
@@ -244,7 +253,7 @@ void FIQ_PWMPeriod()
     {
       const short diff = (short)(enc[i] - _enc[i]);
       motor[i].pos += diff;
-      normalize(&motor[i].pos, 0, motor_param[i].enc_rev_raw, motor_param[i].enc_rev_raw);
+      normalize(&motor[i].pos, 0, motor_param[i].enc_rev_raw);
 
       motor[i].posc = (motor[i].posc & 0xFFFF0000) | enc[i];
       if (_enc[i] < 0x4000 && enc[i] > 0xC000)
@@ -500,13 +509,13 @@ void FIQ_PWMPeriod()
         else if (u == 1)
           motor[i].pos = motor_param[i].enc_drev[5];
         motor[i].pos -= dir - 1;
-        normalize(&motor[i].pos, 0, motor_param[i].enc_rev, motor_param[i].enc_rev);
+        normalize(&motor[i].pos, 0, motor_param[i].enc_rev);
         motor_param[i].enc0 = 0;
         motor_param[i].enc0tran = 0;
 
         int diff;
         diff = (int)motor[i].pos - _pos;
-        normalize(&diff, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev);
+        normalize(&diff, -motor_param[i].enc_rev_h, motor_param[i].enc_rev);
         motor[i].enc += diff;
 
         if (diff > 0)
@@ -518,26 +527,49 @@ void FIQ_PWMPeriod()
       }
 
       int enc0 = 0;
+      int hall_pos = 0;
+      for (int k = motor_param[i].enc_rev; k < motor[i].pos; k += motor_param[i].enc_rev)
+      {
+        // Equivalent of: hall_pos = motor[i].pos % motor_param[i].enc_rev
+        hall_pos += 6;
+      }
 
       // ゼロ点計算
       if (w == -1)
+      {
         enc0 = motor[i].pos - motor_param[i].enc_drev[0] + dir - 1;
+      }
       else if (v == 1)
+      {
         enc0 = motor[i].pos - motor_param[i].enc_drev[1] + dir - 1;
+        hall_pos += 1;
+      }
       else if (u == -1)
+      {
         enc0 = motor[i].pos - motor_param[i].enc_drev[2] + dir - 1;
+        hall_pos += 2;
+      }
       else if (w == 1)
+      {
         enc0 = motor[i].pos - motor_param[i].enc_drev[3] + dir - 1;
+        hall_pos += 3;
+      }
       else if (v == -1)
+      {
         enc0 = motor[i].pos - motor_param[i].enc_drev[4] + dir - 1;
+        hall_pos += 4;
+      }
       else if (u == 1)
+      {
         enc0 = motor[i].pos - motor_param[i].enc_drev[5] + dir - 1;
+        hall_pos += 5;
+      }
 
       // Check hall signal consistency
       if (motor_param[i].enc_type == 2)
       {
         int err = motor_param[i].enc0 - enc0;
-        normalize(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev);
+        normalize(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev);
         // In worst case, initial encoder origin can have offset of motor_param[i].enc_rev/12.
         if (_abs(err) > motor_param[i].enc_rev / 6)
         {
@@ -566,6 +598,26 @@ void FIQ_PWMPeriod()
           !saved_param.rely_hall)
         continue;
 
+      // Fill enc0_buf and calculate average
+      if (hall_pos >= ENC0_BUF_MAX)
+        hall_pos = hall_pos % ENC0_BUF_MAX;
+
+      motor[i].enc0_buf[hall_pos] = enc0;
+      int j;
+      int sum_enc0_err = 0, num_enc0 = 0;
+      for (j = 0; j < motor[i].enc0_buf_len; ++j)
+      {
+        if (motor[i].enc0_buf[j] != ENC0_BUF_UNKNOWN)
+        {
+          int err = motor[i].enc0_buf[j] - enc0;
+          normalize(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev);
+
+          sum_enc0_err += err;
+          num_enc0++;
+        }
+      }
+      enc0 += (sum_enc0_err / num_enc0);
+      normalize(&enc0, 0, motor_param[i].enc_rev);
       motor_param[i].enc0 = enc0;
     }
   }

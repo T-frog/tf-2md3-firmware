@@ -363,7 +363,7 @@ void timer0_vel_calc()
     int enc0 = motor_param[i].enc0;
     int diff;
     diff = motor_param[i].enc0tran - enc0;
-    normalize(&diff, -motor_param[i].enc_rev_h, motor_param[i].enc_rev_h, motor_param[i].enc_rev);
+    normalize(&diff, -motor_param[i].enc_rev_h, motor_param[i].enc_rev);
 
     if (_abs(diff) <= motor_param[i].enc_rev_1p)
       motor_param[i].enc0tran = enc0;
@@ -372,7 +372,7 @@ void timer0_vel_calc()
     else
       motor_param[i].enc0tran += motor_param[i].enc_rev_1p;
 
-    normalize(&motor_param[i].enc0tran, 0, motor_param[i].enc_rev_raw, motor_param[i].enc_rev_raw);
+    normalize(&motor_param[i].enc0tran, 0, motor_param[i].enc_rev_raw);
   }
   ISR_VelocityControl();
   LED_off(1);

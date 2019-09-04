@@ -18,13 +18,13 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__
 
-inline void normalize(int* val, int min, int max, int resolution)
+inline void normalize(int* val, int min, int resolution)
 {
   if (resolution <= 0)
     return;
   while (*val < min)
     *val += resolution;
-  while (*val >= max)
+  while (*val >= min + resolution)
     *val -= resolution;
 }
 
