@@ -116,6 +116,7 @@ typedef struct _MotorParam
   short enc_denominator;
   int enc_rev_raw;  // count/rev
   char rotation_dir;
+  short hall_delay_factor;  // velocity * hall_delay_factor / 32768 = delay count
 } MotorParam;
 
 typedef struct _DriverParam

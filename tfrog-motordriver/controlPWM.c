@@ -136,6 +136,7 @@ void controlPWM_config(int i)
 
   motor_param[i].enc0 = 0;
   motor_param[i].enc0tran = 0;
+  motor_param[i].hall_delay_factor = 0;
 
   if (motor_param[i].motor_type != MOTOR_TYPE_DC &&
       motor_param[i].enc_type != 0)
@@ -597,6 +598,9 @@ void FIQ_PWMPeriod()
       if (_abs(motor[i].vel) > motor_param[i].enc_10hz &&
           !saved_param.rely_hall)
         continue;
+
+      // Compensate hall signal delay
+      enc0 -= motor[i].vel1 * motor_param[i].hall_delay_factor / 32768;
 
       // Fill enc0_buf and calculate average
       if (hall_pos >= ENC0_BUF_MAX)
