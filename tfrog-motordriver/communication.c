@@ -1655,6 +1655,9 @@ int command_analyze(unsigned char* data, int len)
       case PARAM_hall_delay_factor:
         motor_param[imotor].hall_delay_factor = i.integer;
         break;
+      case PARAM_lr_cutoff_vel:
+        motor_param[imotor].lr_cutoff_vel = i.integer;
+        break;
       case PARAM_enc_type:
         motor_param[imotor].enc_type = i.integer;
         break;

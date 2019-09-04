@@ -44,6 +44,7 @@ static const Pin pinPWMEnable = PIN_PWM_ENABLE;
 
 static char init = 1;
 short SinTB[1024];
+short AtanTB[512];
 int PWM_abs_max = 0;
 int PWM_abs_min = 0;
 int PWM_center = 0;
@@ -64,6 +65,17 @@ inline short sin_(int x)
   else if (x < 2048 + 1024)
     return -SinTB[x - 2048];
   return -SinTB[4096 - x];
+}
+
+inline short atan_(const int x)
+{
+  if (x <= -511)
+    return -AtanTB[511];
+  else if (x < 0)
+    return -AtanTB[x];
+  else if (x < 511)
+    return AtanTB[x];
+  return AtanTB[511];
 }
 
 extern Tfrog_EEPROM_data saved_param;
@@ -136,6 +148,10 @@ void controlPWM_config(int i)
 
   motor_param[i].enc0 = 0;
   motor_param[i].enc0tran = 0;
+  if (motor_param[i].lr_cutoff_vel == 0)
+    motor_param[i].lr_cutoff_vel_inv = 0;
+  else
+    motor_param[i].lr_cutoff_vel_inv = 32768 * sizeof(AtanTB) / motor_param[i].lr_cutoff_vel;
 
   if (motor_param[i].motor_type != MOTOR_TYPE_DC &&
       motor_param[i].enc_type != 0)
@@ -312,10 +328,11 @@ void FIQ_PWMPeriod()
         }
         case MOTOR_TYPE_AC3:
         {
+          const int tan = motor[j].vel * motor_param[j].lr_cutoff_vel_inv / 32768;
           phase[2] = motor[j].pos - motor_param[j].enc0tran;
           phase[2] = (int64_t)(phase[2] + motor_param[j].phase_offset) *
                          motor_param[j].enc_mul / 0x40000 +
-                     SinTB_2PI + SinTB_2PI / 4;
+                     SinTB_2PI + SinTB_2PI / 4 + AtanTB[tan];
           phase[1] = phase[2] - SinTB_2PI / 3;
           phase[0] = phase[2] - SinTB_2PI * 2 / 3;
 
@@ -651,6 +668,11 @@ void controlPWM_init()
       ival = -4096;
 
     SinTB[j] = ival;
+  }
+  for (j = 0; j < sizeof(AtanTB); j++)
+  {
+    const fixp4 a = fp4atan(DOUBLE2FP4(1.0 * j / sizeof(AtanTB)));
+    AtanTB[j] = a * SinTB_2PI / FP4_PI2;
   }
 
   PIO_Configure(&pinPWMCycle2, 1);
