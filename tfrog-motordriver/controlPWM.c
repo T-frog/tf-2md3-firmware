@@ -136,7 +136,6 @@ void controlPWM_config(int i)
 
   motor_param[i].enc0 = 0;
   motor_param[i].enc0tran = 0;
-  motor_param[i].hall_delay_factor = 0;
 
   if (motor_param[i].motor_type != MOTOR_TYPE_DC &&
       motor_param[i].enc_type != 0)
