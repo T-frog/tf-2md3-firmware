@@ -335,11 +335,12 @@ void FIQ_PWMPeriod()
         }
         case MOTOR_TYPE_AC3:
         {
-          const int tan = motor[j].vel * motor_param[j].lr_cutoff_vel_inv / 32768;
+          const int tan = motor[j].vel1 * motor_param[j].lr_cutoff_vel_inv / 32768;
+          const int delay = atan_(tan);
           phase[2] = motor[j].pos - motor_param[j].enc0tran;
           phase[2] = (int64_t)(phase[2] + motor_param[j].phase_offset) *
                          motor_param[j].enc_mul / 0x40000 +
-                     SinTB_2PI + SinTB_2PI / 4 - atan_(tan);
+                     SinTB_2PI + SinTB_2PI / 4 + delay;
           phase[1] = phase[2] - SinTB_2PI / 3;
           phase[0] = phase[2] - SinTB_2PI * 2 / 3;
 
