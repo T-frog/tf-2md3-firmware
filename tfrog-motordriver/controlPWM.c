@@ -599,7 +599,7 @@ void FIQ_PWMPeriod()
       }
 
       // ホール素子は高速域では信頼できない
-      if (_abs(motor[i].vel) > motor_param[i].vel_rely_hall &&
+      if (_abs(motor[i].vel1) > motor_param[i].vel_rely_hall &&
           !saved_param.rely_hall)
         continue;
 
