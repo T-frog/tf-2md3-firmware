@@ -158,7 +158,7 @@ void controlPWM_config(int i)
   if (motor_param[i].lr_cutoff_vel == 0)
     motor_param[i].lr_cutoff_vel_inv = 0;
   else
-    motor_param[i].lr_cutoff_vel_inv = 32768 * AtanTB_LEN / motor_param[i].lr_cutoff_vel;
+    motor_param[i].lr_cutoff_vel_inv = 32768 * AtanTB_LEN / (motor_param[i].lr_cutoff_vel * 16);
 
   if (motor_param[i].motor_type != MOTOR_TYPE_DC &&
       motor_param[i].enc_type != 0)
@@ -335,8 +335,11 @@ void FIQ_PWMPeriod()
         }
         case MOTOR_TYPE_AC3:
         {
-          const int tan = motor[j].vel1 * motor_param[j].lr_cutoff_vel_inv / 32768;
+          // Estimate LR circuit delay.
+          // Use reference velocity to avoid unstability due to disturbance.
+          const int tan = motor[j].ref.vel * motor_param[j].lr_cutoff_vel_inv / 32768;
           const int delay = atan_(tan);
+
           phase[2] = motor[j].pos - motor_param[j].enc0tran;
           phase[2] = (int64_t)(phase[2] + motor_param[j].phase_offset) *
                          motor_param[j].enc_mul / 0x40000 +
