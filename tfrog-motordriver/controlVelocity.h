@@ -21,7 +21,9 @@
 #include <board.h>
 #include <stdint.h>
 #include <assert.h>
+
 #include "communication.h"
+#include "filter.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,6 +44,9 @@ typedef enum _ErrorID
 #define ENC0_BUF_MAX_DENOMINATOR 16  // up to 16 electric revolution
 #define ENC0_BUF_MAX (ENC0_BUF_MAX_DENOMINATOR * 6)
 #define ENC0_BUF_UNKNOWN 0x7FFFFFF
+
+#define ACCEL_FILTER_TIME 15.0  // Velocity control steps
+#define ENC0_FILTER_TIME 16.0   // PWM interrupt steps
 
 typedef struct _MotorState
 {
@@ -77,14 +82,15 @@ typedef struct _MotorState
   char control_init;
   YPSpur_servo_level servo_level;
   ErrorID error_state;
+  Filter1st enc0_lpf;
 } MotorState;
 
 typedef struct _MotorParam
 {
   int enc_rev;  // count/rev
   int phase_offset;
-  int enc_rev_h;  // count/rev
-  int enc_rev_1p;
+  int enc_rev_h;              // count/rev
+  int deprecated_enc_rev_1p;  // [DEPRECATED]
   unsigned char enc_type;
   int vel_rely_hall;
   int enc_drev[6];

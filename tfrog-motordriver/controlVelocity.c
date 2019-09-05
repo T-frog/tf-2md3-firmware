@@ -354,26 +354,6 @@ void timer0_vel_calc()
     }
   }
 
-  // encoder absolute angle LPF
-  for (i = 0; i < 2; i++)
-  {
-    if (motor[i].servo_level == SERVO_LEVEL_STOP)
-      continue;
-
-    int enc0 = motor_param[i].enc0;
-    int diff;
-    diff = motor_param[i].enc0tran - enc0;
-    normalize(&diff, -motor_param[i].enc_rev_h, motor_param[i].enc_rev);
-
-    if (_abs(diff) <= motor_param[i].enc_rev_1p)
-      motor_param[i].enc0tran = enc0;
-    else if (diff > 0)
-      motor_param[i].enc0tran -= motor_param[i].enc_rev_1p;
-    else
-      motor_param[i].enc0tran += motor_param[i].enc_rev_1p;
-
-    normalize(&motor_param[i].enc0tran, 0, motor_param[i].enc_rev_raw);
-  }
   ISR_VelocityControl();
   LED_off(1);
 
@@ -385,7 +365,6 @@ void timer0_vel_calc()
 // ------------------------------------------------------------------------------
 void controlVelocity_init()
 {
-#define ACCEL_FILTER_TIME 15.0
   int i;
 
   Filter1st_CreateLPF(&accelf0, ACCEL_FILTER_TIME);
@@ -424,7 +403,7 @@ void controlVelocity_init()
 }
 void controlVelocity_config()
 {
-  Filter1st_CreateLPF(&accelf0, 15 / driver_param.control_cycle);
+  Filter1st_CreateLPF(&accelf0, ACCEL_FILTER_TIME / driver_param.control_cycle);
   accelf[0] = accelf[1] = accelf0;
 
   {
