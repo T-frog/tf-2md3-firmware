@@ -419,7 +419,7 @@ void controlVelocity_init()
     motor_param[i].phase_offset = 0;
     motor_param[i].enc_type = 2;
     motor_param[i].hall_delay_factor = 0;
-    motor_param[i].lr_cutoff_vel = 1386;  // XXX: for testing
+    motor_param[i].lr_cutoff_vel = 0;
   }
 }
 void controlVelocity_config()
