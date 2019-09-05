@@ -125,11 +125,11 @@ void controlPWM_config(int i)
   motor_param[i].enc_drev[4] = motor_param[i].enc_rev * 5 / 6;
   motor_param[i].enc_drev[5] = motor_param[i].enc_rev * 6 / 6;
 
-  // Interrupt interval should be less than 0.5%(= 1.8deg of phase error) of
+  // Interrupt interval should be less than 1%(= 3.6deg of phase error) of
   // hall signal edge interval.
   motor_param[i].vel_rely_hall =
       motor_param[i].enc_rev * 48000 /
-      (2 * PWM_resolution * driver_param.control_cycle * 200);
+      (2 * PWM_resolution * driver_param.control_cycle * 100);
 
   motor_param[i].enc_rev_1p = motor_param[i].enc_rev / 300;
   if (motor_param[i].enc_rev_1p == 0)
