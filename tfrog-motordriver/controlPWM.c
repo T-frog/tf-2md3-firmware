@@ -339,7 +339,7 @@ void FIQ_PWMPeriod()
           phase[2] = motor[j].pos - motor_param[j].enc0tran;
           phase[2] = (int64_t)(phase[2] + motor_param[j].phase_offset) *
                          motor_param[j].enc_mul / 0x40000 +
-                     SinTB_2PI + SinTB_2PI / 4 + atan_(tan);
+                     SinTB_2PI + SinTB_2PI / 4 - atan_(tan);
           phase[1] = phase[2] - SinTB_2PI / 3;
           phase[0] = phase[2] - SinTB_2PI * 2 / 3;
 
