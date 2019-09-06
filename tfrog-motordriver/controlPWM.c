@@ -409,18 +409,11 @@ void FIQ_PWMPeriod()
         continue;
       }
       int diff = motor_param[j].enc0 - motor_param[j].enc0tran;
-      if (_abs(diff) > motor_param[j].enc_rev_raw)
-      {
-        motor_param[j].enc0tran = motor_param[j].enc0;
-      }
-      else
-      {
-        normalize(&diff, -motor_param[j].enc_rev_h, motor_param[j].enc_rev);
+      normalize(&diff, -motor_param[j].enc_rev_h, motor_param[j].enc_rev);
 
-        const int diff_filtered = Filter1st_Filter(&motor[j].enc0_lpf, diff * 256);
-        motor_param[j].enc0tran += diff_filtered / 256;
-        normalize(&motor_param[j].enc0tran, 0, motor_param[j].enc_rev_raw);
-      }
+      const int diff_filtered = Filter1st_Filter(&motor[j].enc0_lpf, diff * 256);
+      motor_param[j].enc0tran += diff_filtered / 256;
+      normalize(&motor_param[j].enc0tran, 0, motor_param[j].enc_rev_raw);
     }
   }
 
