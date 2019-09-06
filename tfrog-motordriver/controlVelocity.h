@@ -45,8 +45,8 @@ typedef enum _ErrorID
 #define ENC0_BUF_MAX (ENC0_BUF_MAX_DENOMINATOR * 6)
 #define ENC0_BUF_UNKNOWN 0x7FFFFFF
 
-#define ACCEL_FILTER_TIME 15  // Velocity control steps
-#define ENC0_FILTER_TIME 16   // PWM interrupt steps
+#define ACCEL_FILTER_TIME 15  // Timeconstant in velocity control steps
+#define ENC0_FILTER_TIME 16   // Timeconstant in PWM interrupt steps
 
 typedef struct _MotorState
 {
