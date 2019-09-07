@@ -408,14 +408,6 @@ void FIQ_PWMPeriod()
     if (motor[i].servo_level == SERVO_LEVEL_STOP)
       continue;
 
-    // LPF encoder origin
-    {
-      motor_param[i].enc0tran =
-          FilterExp_FilterAngle(
-              &motor[i].enc0_lpf, motor_param[i].enc0,
-              motor_param[i].enc_rev, motor_param[i].enc_rev_raw);
-    }
-
     if (motor_param[i].motor_type != MOTOR_TYPE_DC &&
         motor_param[i].enc_type != 0)
     {
