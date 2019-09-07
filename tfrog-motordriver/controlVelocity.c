@@ -357,6 +357,14 @@ void timer0_vel_calc()
   {
     if (motor[i].servo_level == SERVO_LEVEL_STOP)
       continue;
+
+    // LPF encoder origin
+    motor_param[i].enc0tran =
+        FilterExp_FilterAngle(
+            &motor[i].enc0_lpf, motor_param[i].enc0,
+            motor_param[i].enc_rev, motor_param[i].enc_rev_raw);
+
+    // Calculate 1 rev average of encoder origin
     if (!motor[i].enc0_buf_updated)
       continue;
 
