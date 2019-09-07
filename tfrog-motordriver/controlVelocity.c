@@ -353,6 +353,17 @@ void timer0_vel_calc()
       pwm_num[i] = 0;
     }
   }
+  for (i = 0; i < 2; i++)
+  {
+    if (motor[i].servo_level == SERVO_LEVEL_STOP)
+      continue;
+
+    // LPF encoder origin
+    motor_param[i].enc0tran =
+        FilterExp_FilterAngle(
+            &motor[i].enc0_lpf, motor_param[i].enc0,
+            motor_param[i].enc_rev, motor_param[i].enc_rev_raw);
+  }
 
   ISR_VelocityControl();
   LED_off(1);
