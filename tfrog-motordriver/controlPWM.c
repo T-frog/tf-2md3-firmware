@@ -152,7 +152,7 @@ void controlPWM_config(int i)
 
   motor_param[i].enc0 = 0;
   motor_param[i].enc0tran = 0;
-  Filter1st_CreateLPF(&motor[i].enc0_lpf, ENC0_FILTER_TIME * 1200 / PWM_resolution);
+  FilterExp_CreateLPF(&motor[i].enc0_lpf, ENC0_FILTER_TIME * 1200 / PWM_resolution);
 
   if (motor_param[i].lr_cutoff_vel == 0)
     motor_param[i].lr_cutoff_vel_inv = 0;
@@ -400,22 +400,6 @@ void FIQ_PWMPeriod()
         }
       }
     }
-
-    // LPF encoder origin
-    for (j = 0; j < 2; j++)
-    {
-      if (motor[j].servo_level == SERVO_LEVEL_STOP ||
-          motor[j].servo_level == SERVO_LEVEL_OPENFREE)
-      {
-        continue;
-      }
-      int diff = motor_param[j].enc0 - motor_param[j].enc0tran;
-      normalize(&diff, -motor_param[j].enc_rev_h, motor_param[j].enc_rev);
-
-      const int diff_filtered = Filter1st_Filter(&motor[j].enc0_lpf, diff * 256);
-      motor_param[j].enc0tran += diff_filtered / 256;
-      normalize(&motor_param[j].enc0tran, 0, motor_param[j].enc_rev_raw);
-    }
   }
 
   // ゼロ点計算
@@ -423,6 +407,14 @@ void FIQ_PWMPeriod()
   {
     if (motor[i].servo_level == SERVO_LEVEL_STOP)
       continue;
+
+    // LPF encoder origin
+    {
+      motor_param[i].enc0tran =
+          FilterExp_FilterAngle(
+              &motor[i].enc0_lpf, motor_param[i].enc0,
+              motor_param[i].enc_rev, motor_param[i].enc_rev_raw);
+    }
 
     if (motor_param[i].motor_type != MOTOR_TYPE_DC &&
         motor_param[i].enc_type != 0)

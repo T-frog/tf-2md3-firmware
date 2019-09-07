@@ -15,7 +15,10 @@
  * ----------------------------------------------------------------------------
  */
 
+#include <stdint.h>
+
 #include "filter.h"
+#include "utils.h"
 
 #define FIXED_POINT 4096
 
@@ -38,5 +41,43 @@ int Filter1st_CreateLPF(Filter1st* filter, float timeconst)
   filter->k[1] = (int)(((1.0 - 2.0 * timeconst) * (-1.0 / (1.0 + 2.0 * timeconst))) * FIXED_POINT);
   filter->k[0] = -filter->k[1] - FIXED_POINT;
   filter->x = 0;
+  return 1;
+}
+
+int FilterExp_Filter(FilterExp* filter, const int input)
+{
+  if (filter->init == 0)
+  {
+    filter->init = 1;
+    filter->x = input * FIXED_POINT;
+  }
+  filter->x = filter->x * filter->alpha_complement / FIXED_POINT + input * filter->alpha;
+  return filter->x / FIXED_POINT;
+}
+
+int FilterExp_FilterAngle(FilterExp* filter, int input, const int pi2, const int ang_max)
+{
+  if (filter->init == 0)
+  {
+    filter->init = 1;
+    filter->x = input * FIXED_POINT;
+  }
+
+  const int x0 = filter->x / FIXED_POINT;
+  normalize(&input, x0 - pi2 / 2, pi2);
+
+  filter->x =
+      (int)((int64_t)(filter->x) * filter->alpha_complement / FIXED_POINT) +
+      input * filter->alpha;
+
+  normalize(&filter->x, 0, ang_max * FIXED_POINT);
+  return filter->x / FIXED_POINT;
+}
+
+int FilterExp_CreateLPF(FilterExp* filter, const int timeconst)
+{
+  filter->init = 0;
+  filter->alpha = FIXED_POINT / timeconst;
+  filter->alpha_complement = FIXED_POINT - filter->alpha;
   return 1;
 }

@@ -28,4 +28,16 @@ typedef struct
 int Filter1st_Filter(Filter1st* filter, int input);
 int Filter1st_CreateLPF(Filter1st* filter, float timeconst);
 
+typedef struct
+{
+  int x;
+  int alpha;
+  int alpha_complement;
+  char init;
+} FilterExp;
+
+int FilterExp_Filter(FilterExp* filter, const int input);
+int FilterExp_FilterAngle(FilterExp* filter, int input, const int pi2, const int ang_max);
+int FilterExp_CreateLPF(FilterExp* filter, const int timeconst);
+
 #endif
