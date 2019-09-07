@@ -188,6 +188,7 @@ void controlPWM_config(int i)
       motor_param[i].enc0 = 0;
     }
   }
+  normalize(&motor_param[i].enc0, 0, motor_param[i].enc_rev);
   motor_param[i].enc0tran = motor_param[i].enc0;
   init = 1;
 }
