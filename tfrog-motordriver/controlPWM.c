@@ -336,8 +336,8 @@ void FIQ_PWMPeriod()
         {
           // Estimate LR circuit delay.
           // Use reference velocity to avoid unstability due to disturbance.
-          const int tan = motor[j].ref.vel * motor_param[j].lr_cutoff_vel_inv / 32768;
-          const int delay = atan_(tan);
+          const int tan_index = motor[j].ref.vel * motor_param[j].lr_cutoff_vel_inv / 32768;
+          const int delay = atan_(tan_index);
 
           phase[2] = motor[j].pos - motor_param[j].enc0tran;
           phase[2] = (int64_t)(phase[2] + motor_param[j].phase_offset) *
