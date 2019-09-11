@@ -111,7 +111,12 @@ void controlPWM_config(int i)
   motor_param[i].enc_drev[4] = motor_param[i].enc_rev * 5 / 6;
   motor_param[i].enc_drev[5] = motor_param[i].enc_rev * 6 / 6;
 
-  motor_param[i].enc_10hz = motor_param[i].enc_rev * 10 * 16 / 1000;
+  // Interrupt interval should be less than 1%(= 3.6deg of phase error) of
+  // hall signal edge interval.
+  motor_param[i].vel_rely_hall =
+      motor_param[i].enc_rev * 48000 /
+      (2 * PWM_resolution * driver_param.control_cycle * 100);
+
   motor_param[i].enc_rev_1p = motor_param[i].enc_rev / 300;
   if (motor_param[i].enc_rev_1p == 0)
     motor_param[i].enc_rev_1p = 1;
@@ -594,9 +599,12 @@ void FIQ_PWMPeriod()
       }
 
       // ホール素子は高速域では信頼できない
-      if (_abs(motor[i].vel) > motor_param[i].enc_10hz &&
+      if (_abs(motor[i].vel1) > motor_param[i].vel_rely_hall &&
           !saved_param.rely_hall)
         continue;
+
+      // Compensate hall signal delay
+      enc0 -= motor[i].vel1 * motor_param[i].hall_delay_factor / 32768;
 
       // Fill enc0_buf and calculate average
       if (hall_pos >= ENC0_BUF_MAX)
