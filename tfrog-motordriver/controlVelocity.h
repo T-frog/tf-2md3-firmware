@@ -41,9 +41,14 @@ typedef enum _ErrorID
 } ErrorID;
 #define ERROR_NUM 6
 
-#define ENC0_BUF_MAX_DENOMINATOR 16  // up to 16 electric revolution
-#define ENC0_BUF_MAX (ENC0_BUF_MAX_DENOMINATOR * 6)
+// ENC0_BUF_MAX must be 2^n to reduce computation cost.
+#define ENC0_BUF_MAX 64
+#define ENC0_DENOMINATOR_MAX ((int)(ENC0_BUF_MAX / 6))
 #define ENC0_BUF_UNKNOWN 0x7FFFFFF
+
+static_assert(
+    ENC0_BUF_MAX && ((ENC0_BUF_MAX & (ENC0_BUF_MAX - 1)) == 0),
+    "ENC0_BUF_MAX must be 2^n");
 
 #define ACCEL_FILTER_TIME 15  // Timeconstant in velocity control steps
 #define ENC0_FILTER_TIME 32   // Timeconstant in velocity control steps
@@ -60,8 +65,6 @@ typedef struct _MotorState
   unsigned int spd_cnt;
   unsigned short enc;
   short dir;
-  int enc0_buf[ENC0_BUF_MAX];
-  unsigned short enc0_buf_len;
 
   struct
   {
@@ -80,6 +83,11 @@ typedef struct _MotorState
   int error;
   int64_t error_integ;
   char control_init;
+
+  char enc0_buf_updated;
+  int enc0_buf[ENC0_BUF_MAX];
+  unsigned short enc0_buf_len;
+
   YPSpur_servo_level servo_level;
   ErrorID error_state;
   FilterExp enc0_lpf;

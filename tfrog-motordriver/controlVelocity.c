@@ -363,6 +363,30 @@ void timer0_vel_calc()
         FilterExp_FilterAngle(
             &motor[i].enc0_lpf, motor_param[i].enc0,
             motor_param[i].enc_rev, motor_param[i].enc_rev_raw);
+
+    // Calculate 1 rev average of encoder origin
+    if (!motor[i].enc0_buf_updated)
+      continue;
+
+    motor[i].enc0_buf_updated = 0;
+
+    int enc0 = motor_param[i].enc0;
+    int sum_enc0_err = 0, num_enc0 = 0;
+    for (int j = 0; j < motor[i].enc0_buf_len; ++j)
+    {
+      const int e0 = motor[i].enc0_buf[j];
+      if (e0 != ENC0_BUF_UNKNOWN)
+      {
+        int err = e0 - enc0;
+        normalize(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev);
+
+        sum_enc0_err += err;
+        num_enc0++;
+      }
+    }
+    enc0 += sum_enc0_err / num_enc0;
+    normalize(&enc0, 0, motor_param[i].enc_rev_raw);
+    motor_param[i].enc0 = enc0;
   }
 
   ISR_VelocityControl();

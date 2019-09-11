@@ -111,12 +111,13 @@ void controlPWM_config(int i)
 
   // initialize encoder zero position buffer
   motor[i].enc0_buf_len =
-      motor_param[i].enc_denominator < ENC0_BUF_MAX_DENOMINATOR ?
+      motor_param[i].enc_denominator < ENC0_DENOMINATOR_MAX ?
           motor_param[i].enc_denominator * 6 :
           ENC0_BUF_MAX;
   int j;
   for (j = 0; j < motor[i].enc0_buf_len; ++j)
     motor[i].enc0_buf[j] = ENC0_BUF_UNKNOWN;
+  motor[i].enc0_buf_updated = 0;
 
   motor_param[i].enc_drev[0] = motor_param[i].enc_rev * 1 / 6;
   motor_param[i].enc_drev[1] = motor_param[i].enc_rev * 2 / 6;
@@ -629,26 +630,9 @@ void FIQ_PWMPeriod()
       enc0 -= motor[i].vel1 * motor_param[i].hall_delay_factor / 32768;
 
       // Fill enc0_buf and calculate average
-      if (hall_pos >= ENC0_BUF_MAX)
-        hall_pos = hall_pos % ENC0_BUF_MAX;
-
+      hall_pos = hall_pos % ENC0_BUF_MAX;
       motor[i].enc0_buf[hall_pos] = enc0;
-      int j;
-      int sum_enc0_err = 0, num_enc0 = 0;
-      for (j = 0; j < motor[i].enc0_buf_len; ++j)
-      {
-        if (motor[i].enc0_buf[j] != ENC0_BUF_UNKNOWN)
-        {
-          int err = motor[i].enc0_buf[j] - enc0;
-          normalize(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev);
-
-          sum_enc0_err += err;
-          num_enc0++;
-        }
-      }
-      enc0 += (sum_enc0_err / num_enc0);
-      normalize(&enc0, 0, motor_param[i].enc_rev);
-      motor_param[i].enc0 = enc0;
+      motor[i].enc0_buf_updated = 1;
     }
   }
 
