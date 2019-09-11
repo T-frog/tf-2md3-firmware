@@ -621,16 +621,19 @@ void FIQ_PWMPeriod()
         }
       }
 
-      // ホール素子は高速域では信頼できない
+      hall_pos = hall_pos % ENC0_BUF_MAX;
+
+      // Rely hall signal only if the velocity is under the threshold.
+      // Force using all measurement result if it is first time of measurement.
       if (_abs(motor[i].vel1) > motor_param[i].vel_rely_hall &&
-          !saved_param.rely_hall)
+          !saved_param.rely_hall &&
+          motor[i].enc0_buf[hall_pos] != ENC0_BUF_UNKNOWN)
         continue;
 
       // Compensate hall signal delay
       enc0 -= motor[i].vel1 * motor_param[i].hall_delay_factor / 32768;
 
       // Fill enc0_buf and calculate average
-      hall_pos = hall_pos % ENC0_BUF_MAX;
       motor[i].enc0_buf[hall_pos] = enc0;
       motor[i].enc0_buf_updated = 1;
     }
