@@ -131,10 +131,6 @@ void controlPWM_config(int i)
       motor_param[i].enc_rev * 48000 /
       (2 * PWM_resolution * driver_param.control_cycle * 100);
 
-  motor_param[i].enc_rev_1p = motor_param[i].enc_rev / 300;
-  if (motor_param[i].enc_rev_1p == 0)
-    motor_param[i].enc_rev_1p = 1;
-
   motor_param[i].enc_mul =
       (int)((int64_t)SinTB_2PI * 0x40000 * motor_param[i].enc_denominator /
             motor_param[i].enc_rev_raw);
@@ -155,6 +151,8 @@ void controlPWM_config(int i)
 
   motor_param[i].enc0 = 0;
   motor_param[i].enc0tran = 0;
+  FilterExp_CreateLPF(&motor[i].enc0_lpf, ENC0_FILTER_TIME * 1200 / PWM_resolution);
+
   if (motor_param[i].lr_cutoff_vel == 0)
     motor_param[i].lr_cutoff_vel_inv = 0;
   else
@@ -189,6 +187,7 @@ void controlPWM_config(int i)
       motor_param[i].enc0 = 0;
     }
   }
+  normalize(&motor_param[i].enc0, 0, motor_param[i].enc_rev);
   motor_param[i].enc0tran = motor_param[i].enc0;
   init = 1;
 }
