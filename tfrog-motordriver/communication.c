@@ -459,6 +459,14 @@ int int_send(const char param, const char id, const int value)
 }
 int int_send485(const char param, const char id, const int value)
 {
+  char to = -1;
+  if (driver_state.ifmode == 0)
+    to = 0;
+
+  return int_send485to(to, param, id, value);
+}
+int int_send485to(const char to, const char param, const char id, const int value)
+{
   unsigned char data[8];
   int len, encode_len;
   data[0] = param;
@@ -481,9 +489,7 @@ int int_send485(const char param, const char id, const int value)
 
   buf[0] = COMMUNICATION_INT_BYTE;
   buf[1] = saved_param.id485 + 0x40;
-  if (driver_state.ifmode == 0)
-    buf[1] = 0x40;
-  buf[2] = 0x40 - 1;
+  buf[2] = 0x40 + to;
   buf_len = 3;
 
   encode_len = encode((unsigned char*)data, len, buf + buf_len,
@@ -728,7 +734,7 @@ static inline int data_analyze_(
         state = STATE_CRC16_2;
         break;
       case STATE_CRC16_2:
-        if (!(to == id || (id == 0 && to == -1)))
+        if (!(to == id || to == COMMUNICATION_ID_BROADCAST || (id == 0 && to == -1)))
         {
           state = STATE_IDLE;
           receive_period = 1;
@@ -1547,6 +1553,19 @@ int command_analyze(unsigned char* data, int len)
     case PARAM_protocol_version:
       driver_state.protocol_version = i.integer;
       break;
+    case PARAM_debug_msg:
+    {
+      int j;
+      printf("Debug msg: received '");
+      for (j = 0; j < 4; j++)
+      {
+        if (i.byte[j] == 0)
+          break;
+        printf("%c", i.byte[j]);
+      }
+      printf("'\n\r");
+      break;
+    }
     default:
       param_set = 1;
   }

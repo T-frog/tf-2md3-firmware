@@ -91,6 +91,7 @@ typedef enum
   PARAM_ad_mask,
   PARAM_phase_offset,
   PARAM_protocol_version,
+  PARAM_debug_msg,
 } YPSpur_loco_param;
 
 typedef enum
@@ -103,6 +104,8 @@ typedef enum
 #define COMMUNICATION_START_BYTE 0x09
 #define COMMUNICATION_INT_BYTE 0x07
 #define COMMUNICATION_END_BYTE 0x0a
+
+#define COMMUNICATION_ID_BROADCAST 0x3e  // coded as 0x7e='~'
 
 #define COMMAND_LEN (1 /*START*/ + 1 /*param*/ + 1 /*id*/ + 4 /*data*/ + 1 /*end*/)
 
@@ -143,6 +146,7 @@ int data_send(short* cnt, short* pwm, char* en, short* analog, unsigned short an
 int data_send485(short* cnt, short* pwm, char* en, short* analog, unsigned short analog_mask);
 int int_send(const char param, const char id, const int value);
 int int_send485(const char param, const char id, const int value);
+int int_send485to(const char to, const char param, const char id, const int value);
 int data_pack(short* cnt, short* pwm, char* en, short* analog, unsigned short analog_mask, unsigned char* data);
 
 int decord(unsigned char* src, int len, unsigned char* dst, int buf_max);

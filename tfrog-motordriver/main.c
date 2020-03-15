@@ -905,20 +905,19 @@ int main()
             case 'c':
               state = -1;
               break;
-            case 'r':
-            {
-              int len;
-              len = RS485BUF_SIZE - AT91C_BASE_US0->US_RCR;
-              rs485buf[len] = 0;
-              printf("RS-485: received '%s' (%d)\n\r", rs485buf, len);
-              AT91C_BASE_US0->US_RCR = 0;
-              USART_ReadBuffer(AT91C_BASE_US0, rs485buf, RS485BUF_SIZE);
-            }
-            break;
             case 'w':
             {
-              printf("RS-485: send '%s'\n\r", &buf[1]);
-              USART_WriteBuffer(AT91C_BASE_US0, &buf[1], nbuf - 1);
+              int j;
+              int val = 0;
+              buf[5] = 0;
+              for (j = 0; j < 4; j++)
+              {
+                if (buf[j + 1] == 0)
+                  break;
+                val |= buf[j + 1] << (8 * j);
+              }
+              printf("Debug msg: send '%s'\n\r", &buf[1]);
+              int_send485to(COMMUNICATION_ID_BROADCAST, PARAM_debug_msg, 0, val);
             }
             break;
           }
