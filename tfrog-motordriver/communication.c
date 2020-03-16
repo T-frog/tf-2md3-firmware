@@ -758,7 +758,7 @@ static inline int data_analyze_(
       static unsigned char rawdata[16];
       int data_len;
 
-      if (to == id)
+      if (to == id || (fromto && to == COMMUNICATION_ID_BROADCAST))
       {
         data_len = decord(line, len - 1, rawdata, 16);
         if (data_len < 6)
@@ -768,7 +768,8 @@ static inline int data_analyze_(
         else
         {
           unsigned char imotor = rawdata[1];
-          if (id * 2 <= imotor && imotor <= id * 2 + 1)
+          if ((id * 2 <= imotor && imotor <= id * 2 + 1) ||
+              to == COMMUNICATION_ID_BROADCAST)
           {
             rawdata[1] = rawdata[1] & 1;
 
@@ -1553,17 +1554,10 @@ int command_analyze(unsigned char* data, int len)
     case PARAM_protocol_version:
       driver_state.protocol_version = i.integer;
       break;
-    case PARAM_debug_msg:
+    case PARAM_ping:
     {
-      int j;
-      printf("Debug msg: received '");
-      for (j = 0; j < 4; j++)
-      {
-        if (i.byte[j] == 0)
-          break;
-        printf("%c", i.byte[j]);
-      }
-      printf("'\n\r");
+      printf("Ping: 0x%08x\n\r", (unsigned int)i.integer);
+      int_send485to(-1, INT_ping_response, imotor, i.integer);
       break;
     }
     default:

@@ -905,21 +905,6 @@ int main()
             case 'c':
               state = -1;
               break;
-            case 'w':
-            {
-              int j;
-              int val = 0;
-              buf[5] = 0;
-              for (j = 0; j < 4; j++)
-              {
-                if (buf[j + 1] == 0)
-                  break;
-                val |= buf[j + 1] << (8 * j);
-              }
-              printf("Debug msg: send '%s'\n\r", &buf[1]);
-              int_send485to(COMMUNICATION_ID_BROADCAST, PARAM_debug_msg, 0, val);
-            }
-            break;
           }
           nbuf = 0;
         }

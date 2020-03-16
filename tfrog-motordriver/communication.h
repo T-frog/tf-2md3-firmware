@@ -91,7 +91,7 @@ typedef enum
   PARAM_ad_mask,
   PARAM_phase_offset,
   PARAM_protocol_version,
-  PARAM_debug_msg,
+  PARAM_ping,
 } YPSpur_loco_param;
 
 typedef enum
@@ -99,13 +99,14 @@ typedef enum
   INT_enc_index_rise = 0,
   INT_enc_index_fall,
   INT_error_state,
+  INT_ping_response,
 } YPSpur_loco_interrupt;
 
 #define COMMUNICATION_START_BYTE 0x09
 #define COMMUNICATION_INT_BYTE 0x07
 #define COMMUNICATION_END_BYTE 0x0a
 
-#define COMMUNICATION_ID_BROADCAST 0x3e  // coded as 0x7e='~'
+#define COMMUNICATION_ID_BROADCAST (0xFF / 2)
 
 #define COMMAND_LEN (1 /*START*/ + 1 /*param*/ + 1 /*id*/ + 4 /*data*/ + 1 /*end*/)
 
