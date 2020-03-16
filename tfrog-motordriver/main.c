@@ -1094,6 +1094,21 @@ int main()
 
       if (++mscnt >= ERROR_BLINK_MS)
       {
+        if (driver_state.ping_request != 0)
+        {
+          LED_on(0);
+          LED_on(2);
+          printf("Ping: %x\n\r", driver_state.ping_request);
+          if (driver_state.ifmode == 0)
+            int_send(INT_ping_response, 0, driver_state.ping_request);
+          else
+            int_send485to(
+                COMMUNICATION_ID_BROADCAST, -1, INT_ping_response, 0, driver_state.ping_request);
+          driver_state.ping_request = 0;
+          LED_off(0);
+          LED_off(2);
+        }
+
         if (usb_timeout_cnt > 0)
         {
           printf("USB:w timeout (%d)\n\r", usb_timeout_cnt);

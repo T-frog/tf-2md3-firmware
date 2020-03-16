@@ -413,6 +413,7 @@ void controlVelocity_init()
   driver_state.io_mask[0] = 0;
   driver_state.io_mask[1] = 0;
   driver_state.velcontrol = 0;
+  driver_state.ping_request = 0;
 
   for (i = 0; i < 2; i++)
   {

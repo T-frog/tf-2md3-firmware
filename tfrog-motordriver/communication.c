@@ -463,9 +463,9 @@ int int_send485(const char param, const char id, const int value)
   if (driver_state.ifmode == 0)
     to = 0;
 
-  return int_send485to(to, param, id, value);
+  return int_send485to(saved_param.id485, to, param, id, value);
 }
-int int_send485to(const char to, const char param, const char id, const int value)
+int int_send485to(const char from, const char to, const char param, const char id, const int value)
 {
   unsigned char data[8];
   int len, encode_len;
@@ -488,7 +488,7 @@ int int_send485to(const char to, const char param, const char id, const int valu
   buf_len = 0;
 
   buf[0] = COMMUNICATION_INT_BYTE;
-  buf[1] = saved_param.id485 + 0x40;
+  buf[1] = 0x40 + from;
   buf[2] = 0x40 + to;
   buf_len = 3;
 
@@ -682,7 +682,8 @@ static inline int data_analyze_(
         {
           line[len - 1] = 0;
 
-          extended_command_analyze((char*)line);
+          if (!fromto)
+            extended_command_analyze((char*)line);
           len = 0;
           receive_period = 1;
           state = STATE_IDLE;
@@ -823,26 +824,28 @@ static inline int data_analyze_(
           }
         }
       }
-      else if (id == 0 && to == -1 &&
-               0 < from && from < COM_MOTORS / 2)
+      else if (id == 0 && to == -1)
       {
         // Forward packet from RS485 to USB
         data_len = decord(line, len - 1, rawdata, 16);
         if (mode == ISOCHRONOUS)
         {
-          Integer2 tmp;
-          int i = 0, j;
-          for (j = 0; j < 2; j++)
+          if (0 < from && from < COM_MOTORS / 2)
           {
-            tmp.byte[1] = rawdata[i++];
-            tmp.byte[0] = rawdata[i++];
-            com_cnts[from * 2 + j] = tmp.integer;
-          }
-          for (j = 0; j < 2; j++)
-          {
-            tmp.byte[1] = rawdata[i++];
-            tmp.byte[0] = rawdata[i++];
-            com_pwms[from * 2 + j] = tmp.integer;
+            Integer2 tmp;
+            int i = 0, j;
+            for (j = 0; j < 2; j++)
+            {
+              tmp.byte[1] = rawdata[i++];
+              tmp.byte[0] = rawdata[i++];
+              com_cnts[from * 2 + j] = tmp.integer;
+            }
+            for (j = 0; j < 2; j++)
+            {
+              tmp.byte[1] = rawdata[i++];
+              tmp.byte[0] = rawdata[i++];
+              com_pwms[from * 2 + j] = tmp.integer;
+            }
           }
         }
         else
@@ -1555,11 +1558,8 @@ int command_analyze(unsigned char* data, int len)
       driver_state.protocol_version = i.integer;
       break;
     case PARAM_ping:
-    {
-      printf("Ping: 0x%08x\n\r", (unsigned int)i.integer);
-      int_send485to(-1, INT_ping_response, imotor, i.integer);
+      driver_state.ping_request = i.integer;
       break;
-    }
     default:
       param_set = 1;
   }
