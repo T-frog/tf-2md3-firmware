@@ -1504,9 +1504,6 @@ int command_analyze(unsigned char* data, int len)
     return 0;
   }
 
-  //if(data[0] != PARAM_w_ref &&
-  //		data[0] != PARAM_w_ref_highprec)
-  //	printf("get %d %d %d\n\r",data[0],data[1],i.integer);
   char param_set = 0;
   switch (data[0])
   {
