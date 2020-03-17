@@ -234,6 +234,8 @@ void FIQ_PWMPeriod()
       s = THEVA.MOTOR[i].SPEED * driver_param.control_cycle;
       __vel = (short)(enc[i] - _enc[i]);
 
+      // Store pulse width based speed if the counter is incremented or decremented.
+      // In this timing, sign of the velocity can be observed.
       if (s < 256 * 16 * 8 && __vel != 0)
       {
         if (__vel > 0)
