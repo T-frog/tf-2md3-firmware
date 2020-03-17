@@ -465,6 +465,7 @@ int int_send485(const char param, const char id, const int value)
 
   return int_send485to(saved_param.id485, to, param, id, value);
 }
+
 int int_send485to(const char from, const char to, const char param, const char id, const int value)
 {
   unsigned char data[8];
