@@ -967,10 +967,17 @@ int main()
       LED_on(2);
       printf("Ping: %x\n\r", driver_state.ping_request);
       if (driver_state.ifmode == 0)
+      {
         int_send(INT_ping_response, 0, driver_state.ping_request);
+      }
       else
-        int_send485to(
-            COMMUNICATION_ID_BROADCAST, -1, INT_ping_response, 0, driver_state.ping_request);
+      {
+        const char from =
+            (saved_param.id485 == 0) ?
+                (COMMUNICATION_ID_BROADCAST) :
+                saved_param.id485;
+        int_send485to(from, -1, INT_ping_response, 0, driver_state.ping_request);
+      }
       driver_state.ping_request = 0;
       LED_off(0);
       LED_off(2);
