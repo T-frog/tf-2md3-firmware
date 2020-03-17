@@ -635,6 +635,7 @@ static inline int data_analyze_(
   for (;;)
   {
     char receive_period = 0;
+    char start = 0;
     if (r_buf == w_buf)
       break;
 
@@ -655,6 +656,7 @@ static inline int data_analyze_(
         if (*data == COMMUNICATION_START_BYTE ||
             *data == COMMUNICATION_INT_BYTE)
         {
+          start = 1;
           len = 0;
           if (fromto)
           {
@@ -697,6 +699,7 @@ static inline int data_analyze_(
         if (*data == COMMUNICATION_START_BYTE ||
             *data == COMMUNICATION_INT_BYTE)
         {
+          start = 1;
           len = 0;
           if (fromto)
           {
@@ -853,7 +856,7 @@ static inline int data_analyze_(
       state = STATE_IDLE;
     }
 
-    if (len == 0 && !receive_period)
+    if (start && !receive_period)
     {
       // Line buffer is cleared. Move receive pointer to the current position.
       *r_receive_buf = r_buf;
