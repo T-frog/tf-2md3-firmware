@@ -172,6 +172,7 @@ typedef struct _DriverState
   } board_version;
   unsigned char protocol_version;
   unsigned int velcontrol;
+  unsigned int ping_request;
 } DriverState;
 
 static_assert(sizeof(DriverParam) < 0x100, "DriverParam overflows reserved EEPROM capacity");

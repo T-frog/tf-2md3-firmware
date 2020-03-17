@@ -459,6 +459,15 @@ int int_send(const char param, const char id, const int value)
 }
 int int_send485(const char param, const char id, const int value)
 {
+  char to = -1;
+  if (driver_state.ifmode == 0)
+    to = 0;
+
+  return int_send485to(saved_param.id485, to, param, id, value);
+}
+
+int int_send485to(const char from, const char to, const char param, const char id, const int value)
+{
   unsigned char data[8];
   int len, encode_len;
   data[0] = param;
@@ -480,10 +489,8 @@ int int_send485(const char param, const char id, const int value)
   buf_len = 0;
 
   buf[0] = COMMUNICATION_INT_BYTE;
-  buf[1] = saved_param.id485 + 0x40;
-  if (driver_state.ifmode == 0)
-    buf[1] = 0x40;
-  buf[2] = 0x40 - 1;
+  buf[1] = 0x40 + from;
+  buf[2] = 0x40 + to;
   buf_len = 3;
 
   encode_len = encode((unsigned char*)data, len, buf + buf_len,
@@ -678,7 +685,8 @@ static inline int data_analyze_(
         {
           line[len - 1] = 0;
 
-          extended_command_analyze((char*)line);
+          if (!fromto)
+            extended_command_analyze((char*)line);
           len = 0;
           receive_period = 1;
           state = STATE_IDLE;
@@ -731,7 +739,7 @@ static inline int data_analyze_(
         state = STATE_CRC16_2;
         break;
       case STATE_CRC16_2:
-        if (!(to == id || (id == 0 && to == -1)))
+        if (!(to == id || to == COMMUNICATION_ID_BROADCAST || (id == 0 && to == -1)))
         {
           state = STATE_IDLE;
           receive_period = 1;
@@ -755,7 +763,7 @@ static inline int data_analyze_(
       static unsigned char rawdata[16];
       int data_len;
 
-      if (to == id)
+      if (to == id || (fromto && to == COMMUNICATION_ID_BROADCAST))
       {
         data_len = decord(line, len - 1, rawdata, 16);
         if (data_len < 6)
@@ -765,7 +773,8 @@ static inline int data_analyze_(
         else
         {
           unsigned char imotor = rawdata[1];
-          if (id * 2 <= imotor && imotor <= id * 2 + 1)
+          if ((id * 2 <= imotor && imotor <= id * 2 + 1) ||
+              to == COMMUNICATION_ID_BROADCAST)
           {
             rawdata[1] = rawdata[1] & 1;
 
@@ -819,26 +828,28 @@ static inline int data_analyze_(
           }
         }
       }
-      else if (id == 0 && to == -1 &&
-               0 < from && from < COM_MOTORS / 2)
+      else if (id == 0 && to == -1)
       {
         // Forward packet from RS485 to USB
         data_len = decord(line, len - 1, rawdata, 16);
         if (mode == ISOCHRONOUS)
         {
-          Integer2 tmp;
-          int i = 0, j;
-          for (j = 0; j < 2; j++)
+          if (0 < from && from < COM_MOTORS / 2)
           {
-            tmp.byte[1] = rawdata[i++];
-            tmp.byte[0] = rawdata[i++];
-            com_cnts[from * 2 + j] = tmp.integer;
-          }
-          for (j = 0; j < 2; j++)
-          {
-            tmp.byte[1] = rawdata[i++];
-            tmp.byte[0] = rawdata[i++];
-            com_pwms[from * 2 + j] = tmp.integer;
+            Integer2 tmp;
+            int i = 0, j;
+            for (j = 0; j < 2; j++)
+            {
+              tmp.byte[1] = rawdata[i++];
+              tmp.byte[0] = rawdata[i++];
+              com_cnts[from * 2 + j] = tmp.integer;
+            }
+            for (j = 0; j < 2; j++)
+            {
+              tmp.byte[1] = rawdata[i++];
+              tmp.byte[0] = rawdata[i++];
+              com_pwms[from * 2 + j] = tmp.integer;
+            }
           }
         }
         else
@@ -1546,6 +1557,9 @@ int command_analyze(unsigned char* data, int len)
       break;
     case PARAM_protocol_version:
       driver_state.protocol_version = i.integer;
+      break;
+    case PARAM_ping:
+      driver_state.ping_request = i.integer;
       break;
     default:
       param_set = 1;

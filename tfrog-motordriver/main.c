@@ -905,22 +905,6 @@ int main()
             case 'c':
               state = -1;
               break;
-            case 'r':
-            {
-              int len;
-              len = RS485BUF_SIZE - AT91C_BASE_US0->US_RCR;
-              rs485buf[len] = 0;
-              printf("RS-485: received '%s' (%d)\n\r", rs485buf, len);
-              AT91C_BASE_US0->US_RCR = 0;
-              USART_ReadBuffer(AT91C_BASE_US0, rs485buf, RS485BUF_SIZE);
-            }
-            break;
-            case 'w':
-            {
-              printf("RS-485: send '%s'\n\r", &buf[1]);
-              USART_WriteBuffer(AT91C_BASE_US0, &buf[1], nbuf - 1);
-            }
-            break;
           }
           nbuf = 0;
         }
@@ -977,6 +961,20 @@ int main()
     }
 
     data_analyze485();
+    if (driver_state.ping_request != 0)
+    {
+      LED_on(0);
+      LED_on(2);
+      printf("Ping: %x\n\r", driver_state.ping_request);
+      if (driver_state.ifmode == 0)
+        int_send(INT_ping_response, 0, driver_state.ping_request);
+      else
+        int_send485to(
+            COMMUNICATION_ID_BROADCAST, -1, INT_ping_response, 0, driver_state.ping_request);
+      driver_state.ping_request = 0;
+      LED_off(0);
+      LED_off(2);
+    }
 
     if (connecting)
     {
