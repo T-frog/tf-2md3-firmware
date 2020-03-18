@@ -297,7 +297,7 @@ void timer0_vel_calc()
     {
       // spd[i] is a 8+4bit fixed point speed calculated from pulse width.
       // In this speed, a next pulse should be observed after spd_cnt[i] counts,
-      // otherwise, the speed is decresed.
+      // otherwise, the speed is decreased.
       _spd_cnt[i] = 256 * 16 / _abs(spd[i]);
       vel = spd[i] / 256;
 
