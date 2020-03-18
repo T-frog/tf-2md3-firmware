@@ -109,7 +109,7 @@ void ISR_VelocityControl()
           motor[i].ref.vel_diff = 0;
         }
 
-        motor[i].error = motor[i].ref.vel_buf - motor[i].vel;
+        motor[i].error = motor[i].ref.vel - motor[i].vel;
         motor[i].error_integ += motor[i].error;
         if (motor[i].error_integ > motor_param[i].integ_max)
         {

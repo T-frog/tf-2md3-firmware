@@ -1524,10 +1524,12 @@ int command_analyze(unsigned char* data, int len)
     case PARAM_w_ref:
       i.integer *= 16;
     case PARAM_w_ref_highprec:
-      if (motor[imotor].ref.vel != i.integer)
-        motor[imotor].ref.vel_changed = 1;
+    {
+      const char changed = (motor[imotor].ref.vel != i.integer) ? 1 : 0;
       motor[imotor].ref.vel = i.integer;
+      motor[imotor].ref.vel_changed = changed;
       break;
+    }
     case PARAM_p_toq_offset:
       motor[imotor].ref.torque_offset = i.integer;
       break;
