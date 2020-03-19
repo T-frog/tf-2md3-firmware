@@ -124,7 +124,7 @@ typedef enum
 #endif
 /* vendor */
 #ifndef YP_VENDOR_NAME
-#define YP_VENDOR_NAME "T-frog Prject"
+#define YP_VENDOR_NAME "T-frog Project"
 #endif
 
 /* Driver parameters */
