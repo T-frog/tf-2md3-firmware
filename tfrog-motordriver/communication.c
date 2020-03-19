@@ -1525,7 +1525,7 @@ int command_analyze(unsigned char* data, int len)
       i.integer *= 16;
     case PARAM_w_ref_highprec:
     {
-      const char changed = (motor[imotor].ref.vel != i.integer) ? 1 : 0;
+      const char changed = (motor[imotor].ref.vel != i.integer);
       motor[imotor].ref.vel = i.integer;
       motor[imotor].ref.vel_changed = changed;
       break;
