@@ -32,6 +32,7 @@
 #include "controlPWM.h"
 #include "eeprom.h"
 #include "io.h"
+#include "debug.h"
 
 #include "crc16.h"
 
@@ -435,7 +436,6 @@ int data_send485(short* cnt, short* pwm, char* en, short* analog, unsigned short
 int int_send(const char param, const char id, const int value)
 {
   unsigned char data[8];
-  int len, encode_len;
   data[0] = param;
   data[1] = id;
   Integer4 v;
@@ -444,8 +444,12 @@ int int_send(const char param, const char id, const int value)
   data[3] = v.byte[2];
   data[4] = v.byte[1];
   data[5] = v.byte[0];
-  len = 6;
+  return int_nsend(data, 6);
+}
 
+int int_nsend(const void *data, const int len)
+{
+  int encode_len;
   send_buf_pos = 0;
   send_buf[0] = COMMUNICATION_INT_BYTE;
   encode_len = encode((unsigned char*)data, len, send_buf + 1, SEND_BUF_LEN - 2);
@@ -457,6 +461,7 @@ int int_send(const char param, const char id, const int value)
   flush();
   return encode_len;
 }
+
 int int_send485(const char param, const char id, const int value)
 {
   char to = -1;
@@ -1562,6 +1567,9 @@ int command_analyze(unsigned char* data, int len)
       break;
     case PARAM_ping:
       driver_state.ping_request = i.integer;
+      break;
+    case PARAM_dump:
+      dump(imotor, i.integer);
       break;
     default:
       param_set = 1;

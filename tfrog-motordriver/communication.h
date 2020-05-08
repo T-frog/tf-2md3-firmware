@@ -92,6 +92,7 @@ typedef enum
   PARAM_phase_offset,
   PARAM_protocol_version,
   PARAM_ping,
+  PARAM_dump,
 } YPSpur_loco_param;
 
 typedef enum
@@ -100,6 +101,7 @@ typedef enum
   INT_enc_index_fall,
   INT_error_state,
   INT_ping_response,
+  INT_debug_dump,
 } YPSpur_loco_interrupt;
 
 #define COMMUNICATION_START_BYTE 0x09
@@ -146,6 +148,7 @@ int buf_left();
 int data_send(short* cnt, short* pwm, char* en, short* analog, unsigned short analog_mask);
 int data_send485(short* cnt, short* pwm, char* en, short* analog, unsigned short analog_mask);
 int int_send(const char param, const char id, const int value);
+int int_nsend(const void *data, const int len);
 int int_send485(const char param, const char id, const int value);
 int int_send485to(const char from, const char to, const char param, const char id, const int value);
 int data_pack(short* cnt, short* pwm, char* en, short* analog, unsigned short analog_mask, unsigned char* data);

@@ -140,6 +140,7 @@ C_OBJECTS += power.o math.o filter.o
 C_OBJECTS += eeprom.o adc.o io.o
 C_OBJECTS += controlVelocity.o controlPWM.o communication.o
 C_OBJECTS += fixpawd.o fixpawd_math.o
+C_OBJECTS += debug.o
 
 # Low level object files (don't optimize them)
 C_OBJECTS2 = board_lowlevel.o board_memories.o
