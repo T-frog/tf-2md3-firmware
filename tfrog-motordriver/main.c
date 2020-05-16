@@ -70,6 +70,7 @@
 #include "io.h"
 #include "filter.h"
 #include "errors.h"
+#include "debug.h"
 
 // extern int getStackPointer( void );
 // extern int getIrqStackPointer( void );
@@ -1120,8 +1121,10 @@ int main()
           printf("USB:w timeout (%d)\n\r", usb_timeout_cnt);
           usb_timeout_cnt = 0;
         }
-        if (mscnt == ERROR_BLINK_MS &&
-            driver_state.protocol_version >= 10 &&
+
+        dump_send();  // return state dump if requested
+
+        if ( driver_state.protocol_version >= 10 &&
             (motor[0].servo_level >= SERVO_LEVEL_TORQUE ||
              motor[1].servo_level >= SERVO_LEVEL_TORQUE))
         {

@@ -62,7 +62,7 @@ int send(char* buf) RAMFUNC;
 int nsend(char* buf, int len) RAMFUNC;
 void flush(void) RAMFUNC;
 void flush485(void) RAMFUNC;
-int encode(unsigned char* src, int len, unsigned char* dst, int buf_max) RAMFUNC;
+int encode(const unsigned char* src, int len, unsigned char* dst, int buf_max) RAMFUNC;
 int decord(unsigned char* src, int len, unsigned char* dst, int buf_max) RAMFUNC;
 short rs485_timeout_wait(unsigned char t, unsigned short timeout) RAMFUNC;
 int data_send(short* cnt, short* pwm, char* en, short* analog, unsigned short analog_mask) RAMFUNC;
@@ -275,7 +275,7 @@ void flush485(void)
 /**
  * @brief エンコード
  */
-int encode(unsigned char* src, int len, unsigned char* dst, int buf_max)
+int encode(const unsigned char* src, int len, unsigned char* dst, int buf_max)
 {
   static int pos, s_pos, w_pos;
   static unsigned short b;
@@ -444,15 +444,10 @@ int int_send(const char param, const char id, const int value)
   data[3] = v.byte[2];
   data[4] = v.byte[1];
   data[5] = v.byte[0];
-  return int_nsend(data, 6);
-}
 
-int int_nsend(const void *data, const int len)
-{
-  int encode_len;
   send_buf_pos = 0;
   send_buf[0] = COMMUNICATION_INT_BYTE;
-  encode_len = encode((unsigned char*)data, len, send_buf + 1, SEND_BUF_LEN - 2);
+  const int encode_len = encode(data, 6, send_buf + 1, SEND_BUF_LEN - 2);
   if (encode_len < 0)
     return encode_len;
   send_buf[encode_len + 1] = COMMUNICATION_END_BYTE;
@@ -1569,7 +1564,7 @@ int command_analyze(unsigned char* data, int len)
       driver_state.ping_request = i.integer;
       break;
     case PARAM_dump:
-      dump(imotor, i.integer);
+      start_dump(imotor, i.integer);
       break;
     default:
       param_set = 1;

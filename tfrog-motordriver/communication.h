@@ -154,7 +154,7 @@ int int_send485to(const char from, const char to, const char param, const char i
 int data_pack(short* cnt, short* pwm, char* en, short* analog, unsigned short analog_mask, unsigned char* data);
 
 int decord(unsigned char* src, int len, unsigned char* dst, int buf_max);
-int encode(unsigned char* src, int len, unsigned char* dst, int buf_max);
+int encode(const unsigned char* src, int len, unsigned char* dst, int buf_max);
 
 int extended_command_analyze(char* data);
 int command_analyze(unsigned char* data, int len);
