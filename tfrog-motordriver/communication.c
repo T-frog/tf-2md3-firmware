@@ -1038,10 +1038,10 @@ int extended_command_analyze(char* data)
     send("BUZ_LVL");
     itoa10(val, saved_param.buz_lvl);
     send(val);
-    send("; \nINIT_IO_DIR:");
+    send("; \nINITIODIR:");
     nhex(val, saved_param.io_dir, 2);
     send(val);
-    send("; \nINIT_IO_DATA:");
+    send("; \nINITIODATA:");
     nhex(val, saved_param.io_data, 2);
     send(val);
     send("; \n\n");
