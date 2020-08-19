@@ -119,6 +119,11 @@ int hextoi(char* buf)
       ret *= 16;
       ret += *buf - 'A' + 0xA;
     }
+    else if ('a' <= *buf && *buf <= 'f')
+    {
+      ret *= 16;
+      ret += *buf - 'a' + 0xA;
+    }
     buf++;
   }
   return ret;
