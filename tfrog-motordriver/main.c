@@ -587,6 +587,7 @@ int main()
       THEVA.GENERAL.ENCODER.HFREQ = 0;
     }
 
+    driver_state.io_dir = saved_param.io_dir;
     set_io_dir(saved_param.io_dir);
     set_io_data(saved_param.io_data);
   }
