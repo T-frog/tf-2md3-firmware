@@ -37,6 +37,8 @@ typedef struct _Tfrog_EEPROM_data
   unsigned char buz_lvl;
   unsigned char high_frequency_encoder;
   unsigned char rely_hall;
+  unsigned char io_dir;
+  unsigned char io_data;
   char __endbyte;  // must be at the end of the struct to detect actual struct size
 } Tfrog_EEPROM_data;
 
@@ -59,6 +61,8 @@ typedef struct _Tfrog_EEPROM_data
         { "unknown" },              \
         1200,                       \
         20,                         \
+        0,                          \
+        0,                          \
         0,                          \
         0,                          \
         0,                          \
