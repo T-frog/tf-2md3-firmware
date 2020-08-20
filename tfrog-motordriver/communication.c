@@ -120,6 +120,11 @@ int hextoi(char* buf)
       ret *= 16;
       ret += *buf - 'A' + 0xA;
     }
+    else if ('a' <= *buf && *buf <= 'f')
+    {
+      ret *= 16;
+      ret += *buf - 'a' + 0xA;
+    }
     buf++;
   }
   return ret;
@@ -1033,6 +1038,12 @@ int extended_command_analyze(char* data)
     send("BUZ_LVL");
     itoa10(val, saved_param.buz_lvl);
     send(val);
+    send("; \nINITIODIR:");
+    nhex(val, saved_param.io_dir, 2);
+    send(val);
+    send("; \nINITIODATA:");
+    nhex(val, saved_param.io_data, 2);
+    send(val);
     send("; \n\n");
   }
   else if (strstr(data, "$LOCKPARAM") == data)
@@ -1233,6 +1244,20 @@ int extended_command_analyze(char* data)
     saved_param.buz_lvl = atoi(data + 15);
     if (saved_param.buz_lvl > 4)
       saved_param.buz_lvl = 4;
+
+    send(data);
+    send("\n00P\n\n");
+  }
+  else if (strstr(data, "$SETINITIODIR") == data)
+  {
+    saved_param.io_dir = hextoi(data + 13);
+
+    send(data);
+    send("\n00P\n\n");
+  }
+  else if (strstr(data, "$SETINITIODATA") == data)
+  {
+    saved_param.io_data = hextoi(data + 14);
 
     send(data);
     send("\n00P\n\n");
