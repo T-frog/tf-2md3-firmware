@@ -34,26 +34,27 @@ void start_dump(const int imotor, const int arg)
 
   dump_id = imotor << 4 | arg;
   dump_cnt = 0;
-  switch (arg){
-  case 0:
-    dump_ptr = &motor[imotor];
-    dump_size = sizeof(MotorState);
-    break;
-  case 1:
-    dump_ptr = &motor_param[imotor];
-    dump_size = sizeof(MotorParam);
-    break;
-  case 2:
-    dump_ptr = &driver_state;
-    dump_size = sizeof(DriverState);
-    break;
-  case 3:
-    dump_ptr = &driver_param;
-    dump_size = sizeof(DriverParam);
-    break;
-  default:
-    dump_ptr = 0;
-    break;
+  switch (arg)
+  {
+    case 0:
+      dump_ptr = &motor[imotor];
+      dump_size = sizeof(MotorState);
+      break;
+    case 1:
+      dump_ptr = &motor_param[imotor];
+      dump_size = sizeof(MotorParam);
+      break;
+    case 2:
+      dump_ptr = &driver_state;
+      dump_size = sizeof(DriverState);
+      break;
+    case 3:
+      dump_ptr = &driver_param;
+      dump_size = sizeof(DriverParam);
+      break;
+    default:
+      dump_ptr = 0;
+      break;
   }
 }
 
@@ -63,8 +64,8 @@ void dump_send()
     return;
 
   int size = dump_size;
-  if (size > 64)
-    size = 64;
+  if (size > 32)
+    size = 32;
 
   send_buf_pos = 0;
   send_buf[0] = COMMUNICATION_INT_BYTE;
