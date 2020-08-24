@@ -1046,6 +1046,8 @@ int main()
       }
     }
 
+    dump_send();  // return state dump if requested
+
     if (driver_state.velcontrol > 0)
     {
 #define ERROR_BLINK_MS 200
@@ -1058,8 +1060,6 @@ int main()
           printf("USB:w timeout (%d)\n\r", usb_timeout_cnt);
           usb_timeout_cnt = 0;
         }
-
-        dump_send();  // return state dump if requested
 
         if (driver_state.protocol_version >= 10 &&
             (motor[0].servo_level >= SERVO_LEVEL_TORQUE ||
