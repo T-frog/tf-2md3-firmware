@@ -70,6 +70,7 @@
 #include "io.h"
 #include "filter.h"
 #include "errors.h"
+#include "debug.h"
 
 // extern int getStackPointer( void );
 // extern int getIrqStackPointer( void );
@@ -884,73 +885,6 @@ int main()
       }
     }
 
-    {
-      static char buf[16];
-      static int nbuf = 0;
-      static int state = -1;
-      if (DBGU_IsRxReady())
-      {
-        buf[nbuf] = DBGU_GetChar();
-        if (buf[nbuf] == '\n' || buf[nbuf] == '\r')
-        {
-          buf[nbuf] = 0;
-          switch (buf[0])
-          {
-            case '0':
-              state = 0;
-              if (buf[1] == 'c')
-                state |= 0x04;
-              break;
-            case '1':
-              state = 1;
-              if (buf[1] == 'c')
-                state |= 0x04;
-              break;
-            case 'c':
-              state = -1;
-              break;
-          }
-          nbuf = 0;
-        }
-        else
-        {
-          nbuf++;
-          if (nbuf > 15)
-            nbuf = 15;
-        }
-      }
-      if (state >= 0)
-      {
-        int mn;
-        mn = state & 0x03;
-        if (state < 3)
-          state = -1;
-        printf("vel:%d\n\r", motor[mn].vel);
-        printf("vel1:%d\n\r", motor[mn].vel1);
-        printf("pos:%d\n\r", motor[mn].pos);
-        printf("enc_buf:%d\n\r", motor[mn].enc_buf);
-        printf("spd:%d\n\r", motor[mn].spd);
-        printf("enc:%d\n\r", motor[mn].enc);
-        printf("dir:%d\n\r", motor[mn].dir);
-        printf("ref.vel:%d\n\r", motor[mn].ref.vel);
-        printf("ref.vel_buf:%d\n\r", motor[mn].ref.vel_buf);
-        //printf( "ref.vel_buf_prev:%d\n\r",	motor[mn].ref.vel_buf_prev );
-        //printf( "ref.vel_interval:%d\n\r",	motor[mn].ref.vel_interval );
-        printf("ref.vel_diff:%d\n\r", motor[mn].ref.vel_diff);
-        printf("ref.torque:%d\n\r", motor[mn].ref.torque);
-        printf("ref.rate:%d\n\r", motor[mn].ref.rate);
-        printf("ref.rate2:%d\n\r", motor[mn].ref.rate2);
-        //printf( "ref.rate_buf:%d\n\r",		motor[mn].ref.rate_buf );
-        printf("ref.vel_changed:%d\n\r", motor[mn].ref.vel_changed);
-        printf("error:%d\n\r", motor[mn].error);
-        printf("error_integ:%d\n\r", (int)motor[mn].error_integ);
-        //printf( "control_init:%d\n\r",	motor[mn].control_init );
-        printf("vsrc:%d\n\r", driver_state.vsrc);
-        printf("vsrc0:%d\n\r", driver_param.vsrc_rated);
-        printf("vsrc_f:%d\n\r", driver_state.vsrc_factor);
-      }
-    }
-
     if (usb_read_pause)
     {
       printf("USB:flush r:%d,w:%d\n\r", r_receive_buf, w_receive_buf);
@@ -1112,6 +1046,8 @@ int main()
       }
     }
 
+    dump_send();  // return state dump if requested
+
     if (driver_state.velcontrol > 0)
     {
 #define ERROR_BLINK_MS 200
@@ -1124,8 +1060,8 @@ int main()
           printf("USB:w timeout (%d)\n\r", usb_timeout_cnt);
           usb_timeout_cnt = 0;
         }
-        if (mscnt == ERROR_BLINK_MS &&
-            driver_state.protocol_version >= 10 &&
+
+        if (driver_state.protocol_version >= 10 &&
             (motor[0].servo_level >= SERVO_LEVEL_TORQUE ||
              motor[1].servo_level >= SERVO_LEVEL_TORQUE))
         {

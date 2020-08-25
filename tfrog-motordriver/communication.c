@@ -32,6 +32,7 @@
 #include "controlPWM.h"
 #include "eeprom.h"
 #include "io.h"
+#include "debug.h"
 
 #include "crc16.h"
 
@@ -61,7 +62,7 @@ int send(char* buf) RAMFUNC;
 int nsend(char* buf, int len) RAMFUNC;
 void flush(void) RAMFUNC;
 void flush485(void) RAMFUNC;
-int encode(unsigned char* src, int len, unsigned char* dst, int buf_max) RAMFUNC;
+int encode(const unsigned char* src, int len, unsigned char* dst, int buf_max) RAMFUNC;
 int decord(unsigned char* src, int len, unsigned char* dst, int buf_max) RAMFUNC;
 short rs485_timeout_wait(unsigned char t, unsigned short timeout) RAMFUNC;
 int data_send(short* cnt, short* pwm, char* en, short* analog, unsigned short analog_mask) RAMFUNC;
@@ -279,7 +280,7 @@ void flush485(void)
 /**
  * @brief エンコード
  */
-int encode(unsigned char* src, int len, unsigned char* dst, int buf_max)
+int encode(const unsigned char* src, int len, unsigned char* dst, int buf_max)
 {
   static int pos, s_pos, w_pos;
   static unsigned short b;
@@ -440,7 +441,6 @@ int data_send485(short* cnt, short* pwm, char* en, short* analog, unsigned short
 int int_send(const char param, const char id, const int value)
 {
   unsigned char data[8];
-  int len, encode_len;
   data[0] = param;
   data[1] = id;
   Integer4 v;
@@ -449,11 +449,10 @@ int int_send(const char param, const char id, const int value)
   data[3] = v.byte[2];
   data[4] = v.byte[1];
   data[5] = v.byte[0];
-  len = 6;
 
   send_buf_pos = 0;
   send_buf[0] = COMMUNICATION_INT_BYTE;
-  encode_len = encode((unsigned char*)data, len, send_buf + 1, SEND_BUF_LEN - 2);
+  const int encode_len = encode(data, 6, send_buf + 1, SEND_BUF_LEN - 2);
   if (encode_len < 0)
     return encode_len;
   send_buf[encode_len + 1] = COMMUNICATION_END_BYTE;
@@ -462,6 +461,7 @@ int int_send(const char param, const char id, const int value)
   flush();
   return encode_len;
 }
+
 int int_send485(const char param, const char id, const int value)
 {
   char to = -1;
@@ -1587,6 +1587,9 @@ int command_analyze(unsigned char* data, int len)
       break;
     case PARAM_ping:
       driver_state.ping_request = i.integer;
+      break;
+    case PARAM_dump:
+      start_dump(imotor, i.integer);
       break;
     default:
       param_set = 1;
