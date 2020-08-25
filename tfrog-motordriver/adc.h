@@ -18,8 +18,10 @@
 #ifndef __ADC_H__
 #define __ADC_H__
 
+#include <stdint.h>
+
 void ADC_Init();
 void ADC_Start();
-int ADC_Read(int i);
+uint32_t ADC_Read(const char i);
 
 #endif  // __ADC_H__

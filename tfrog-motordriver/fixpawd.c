@@ -20,6 +20,8 @@
 	@brief Fixed point value operation
  */
 
+#include <stdint.h>
+
 #include "fixpawd.h"
 
 /**
@@ -30,7 +32,7 @@
  */
 fixp4 fp4mulf(fixp4 a, fixp4 b)
 {
-  return (fixp4)(((long long)a * b) / FP4_ONE);
+  return (fixp4)(((int64_t)a * b) / FP4_ONE);
 }
 
 /**
@@ -41,9 +43,9 @@ fixp4 fp4mulf(fixp4 a, fixp4 b)
  */
 fixp4 fp4mul(fixp4 a, fixp4 b)
 {
-  long long y;
+  int64_t y;
 
-  y = (long long)a * b;
+  y = (int64_t)a * b;
   y = y >> FP4_POINTBIT;
 
   if (y > 0x7FFFFFFF)
@@ -61,7 +63,7 @@ fixp4 fp4mul(fixp4 a, fixp4 b)
  */
 fixp4 fp4div(fixp4 a, fixp4 b)
 {
-  return (fixp4)(((long long)a * FP4_ONE) / b);
+  return (fixp4)(((int64_t)a * FP4_ONE) / b);
 }
 
 /**
@@ -75,11 +77,11 @@ fixp4 double2fp4(double a)
 }
 
 /**
-	@brief Convert int value to fixed point value
+	@brief Convert int32_t value to fixed point value
 	@param a [in] Input value A
 	@return A expressed in fixed point
  */
-fixp4 int2fp4(int a)
+fixp4 int2fp4(int32_t a)
 {
   return (fixp4)(a * FP4_ONE);
 }

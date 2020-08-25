@@ -40,12 +40,12 @@ MotorState motor[2];
 MotorParam motor_param[2];
 DriverParam driver_param;
 DriverState driver_state;
-short com_cnts[COM_MOTORS];
-short com_pwms[COM_MOTORS];
+int16_t com_cnts[COM_MOTORS];
+int16_t com_pwms[COM_MOTORS];
 char com_en[COM_MOTORS];
-int pwm_sum[2] = { 0, 0 };
-int pwm_num[2] = { 0, 0 };
-short soft_start[2] = { 0, 0 };
+int32_t pwm_sum[2] = { 0, 0 };
+int32_t pwm_num[2] = { 0, 0 };
+int16_t soft_start[2] = { 0, 0 };
 
 Filter1st accelf[2];
 Filter1st accelf0;
@@ -61,7 +61,7 @@ void timer0_vel_calc() RAMFUNC;
 // ------------------------------------------------------------------------------
 void ISR_VelocityControl()
 {
-  int i;
+  int32_t i;
   int64_t toq[2];
   int64_t out_pwm[2];
   int64_t acc[2];
@@ -163,7 +163,7 @@ void ISR_VelocityControl()
       if (motor[i].servo_level >= SERVO_LEVEL_VELOCITY &&
           motor[i].servo_level != SERVO_LEVEL_OPENFREE)
       {
-        int ipair;
+        int32_t ipair;
         if (i == 0)
           ipair = 1;
         else
@@ -246,12 +246,12 @@ void ISR_VelocityControl()
 
 void timer0_vel_calc()
 {
-  static unsigned int enc[2];
+  static uint32_t enc[2];
   static char _spd_cnt[2];
-  unsigned int __enc[2];
-  int spd[2];
-  int i;
-  volatile unsigned int dummy;
+  uint32_t __enc[2];
+  int32_t spd[2];
+  int32_t i;
+  volatile uint32_t dummy;
 
   dummy = AT91C_BASE_TC0->TC_SR;
   dummy = dummy;
@@ -277,10 +277,10 @@ void timer0_vel_calc()
   // calculate motor velocities
   for (i = 0; i < 2; i++)
   {
-    int __vel;
-    int vel;
+    int32_t __vel;
+    int32_t vel;
 
-    __vel = (int)(enc[i] - __enc[i]);
+    __vel = (int32_t)(enc[i] - __enc[i]);
     motor[i].vel1 = __vel;
 
     if (_abs(__vel) > 6 || driver_state.fpga_version == 0)
@@ -373,14 +373,14 @@ void timer0_vel_calc()
 
     motor[i].enc0_buf_updated = 0;
 
-    int enc0 = motor_param[i].enc0;
-    int sum_enc0_err = 0, num_enc0 = 0;
-    for (int j = 0; j < motor[i].enc0_buf_len; ++j)
+    int32_t enc0 = motor_param[i].enc0;
+    int32_t sum_enc0_err = 0, num_enc0 = 0;
+    for (int32_t j = 0; j < motor[i].enc0_buf_len; ++j)
     {
-      const int e0 = motor[i].enc0_buf[j];
+      const int32_t e0 = motor[i].enc0_buf[j];
       if (e0 != ENC0_BUF_UNKNOWN)
       {
-        int err = e0 - enc0;
+        int32_t err = e0 - enc0;
         normalize(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev);
 
         sum_enc0_err += err;
@@ -403,7 +403,7 @@ void timer0_vel_calc()
 // ------------------------------------------------------------------------------
 void controlVelocity_init()
 {
-  int i;
+  int32_t i;
 
   Filter1st_CreateLPF(&accelf0, ACCEL_FILTER_TIME);
   accelf[0] = accelf[1] = accelf0;
@@ -446,7 +446,7 @@ void controlVelocity_config()
   accelf[0] = accelf[1] = accelf0;
 
   {
-    volatile unsigned int dummy;
+    volatile uint32_t dummy;
 
     AT91C_BASE_PMC->PMC_PCER = 1 << AT91C_ID_TC0;
 

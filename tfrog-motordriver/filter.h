@@ -20,24 +20,24 @@
 
 typedef struct
 {
-  int k[4];
-  int x;
+  int32_t k[4];
+  int32_t x;
   char init;
 } Filter1st;
 
-int Filter1st_Filter(Filter1st* filter, int input);
-int Filter1st_CreateLPF(Filter1st* filter, float timeconst);
+int32_t Filter1st_Filter(Filter1st* filter, int32_t input);
+int32_t Filter1st_CreateLPF(Filter1st* filter, float timeconst);
 
 typedef struct
 {
-  int x;
-  int alpha;
-  int alpha_complement;
+  int32_t x;
+  int32_t alpha;
+  int32_t alpha_complement;
   char init;
 } FilterExp;
 
-int FilterExp_Filter(FilterExp* filter, const int input);
-int FilterExp_FilterAngle(FilterExp* filter, int input, const int pi2, const int ang_max);
-int FilterExp_CreateLPF(FilterExp* filter, const int timeconst);
+int32_t FilterExp_Filter(FilterExp* filter, const int32_t input);
+int32_t FilterExp_FilterAngle(FilterExp* filter, int32_t input, const int32_t pi2, const int32_t ang_max);
+int32_t FilterExp_CreateLPF(FilterExp* filter, const int32_t timeconst);
 
 #endif

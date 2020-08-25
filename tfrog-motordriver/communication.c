@@ -36,46 +36,46 @@
 
 #include "crc16.h"
 
-unsigned char send_buf[SEND_BUF_LEN];
-volatile unsigned long send_buf_pos = 0;
-unsigned char send_buf485_[2][SEND_BUF_LEN];
-unsigned char* send_buf485 = (unsigned char*)&send_buf485_[0][0];
-volatile unsigned long send_buf_pos485 = 0;
-unsigned char receive_buf[RECV_BUF_LEN];
-volatile int w_receive_buf = 0;
-volatile int r_receive_buf = 0;
-unsigned char receive_buf485[RECV_BUF_LEN];
-volatile int w_receive_buf485 = 0;
-volatile int r_receive_buf485 = 0;
+uint8_t send_buf[SEND_BUF_LEN];
+volatile uint32_t send_buf_pos = 0;
+uint8_t send_buf485_[2][SEND_BUF_LEN];
+uint8_t* send_buf485 = (uint8_t*)&send_buf485_[0][0];
+volatile uint32_t send_buf_pos485 = 0;
+uint8_t receive_buf[RECV_BUF_LEN];
+volatile int32_t w_receive_buf = 0;
+volatile int32_t r_receive_buf = 0;
+uint8_t receive_buf485[RECV_BUF_LEN];
+volatile int32_t w_receive_buf485 = 0;
+volatile int32_t r_receive_buf485 = 0;
 extern const Pin pinPWMEnable;
 extern Tfrog_EEPROM_data saved_param;
 extern volatile char rs485_timeout;
-extern volatile short tic;
-extern volatile unsigned char usb_read_pause;
-volatile int usb_timeout_cnt = 0;
+extern volatile int16_t tic;
+extern volatile uint8_t usb_read_pause;
+volatile int32_t usb_timeout_cnt = 0;
 
-unsigned short crc16(unsigned char* buf, int len) RAMFUNC;
-unsigned char crc8(unsigned char* buf, int len) RAMFUNC;
-int add_crc_485(unsigned char* buf, int len) RAMFUNC;
-char verify_crc_485(unsigned char* buf, int len) RAMFUNC;
-int send(char* buf) RAMFUNC;
-int nsend(char* buf, int len) RAMFUNC;
+uint16_t crc16(uint8_t* buf, int32_t len) RAMFUNC;
+uint8_t crc8(uint8_t* buf, int32_t len) RAMFUNC;
+int32_t add_crc_485(uint8_t* buf, int32_t len) RAMFUNC;
+char verify_crc_485(uint8_t* buf, int32_t len) RAMFUNC;
+int32_t send(char* buf) RAMFUNC;
+int32_t nsend(char* buf, int32_t len) RAMFUNC;
 void flush(void) RAMFUNC;
 void flush485(void) RAMFUNC;
-int encode(const unsigned char* src, int len, unsigned char* dst, int buf_max) RAMFUNC;
-int decord(unsigned char* src, int len, unsigned char* dst, int buf_max) RAMFUNC;
-short rs485_timeout_wait(unsigned char t, unsigned short timeout) RAMFUNC;
-int data_send(short* cnt, short* pwm, char* en, short* analog, unsigned short analog_mask) RAMFUNC;
-int data_send485(short* cnt, short* pwm, char* en, short* analog, unsigned short analog_mask) RAMFUNC;
-int data_fetch_(unsigned char* receive_buf,
-                volatile int* w_receive_buf, volatile int* r_receive_buf,
-                unsigned char* data, int len) RAMFUNC;
-int command_analyze(unsigned char* data, int len) RAMFUNC;
+int32_t encode(const uint8_t* src, int32_t len, uint8_t* dst, int32_t buf_max) RAMFUNC;
+int32_t decord(uint8_t* src, int32_t len, uint8_t* dst, int32_t buf_max) RAMFUNC;
+int16_t rs485_timeout_wait(uint8_t t, uint16_t timeout) RAMFUNC;
+int32_t data_send(int16_t* cnt, int16_t* pwm, char* en, int16_t* analog, uint16_t analog_mask) RAMFUNC;
+int32_t data_send485(int16_t* cnt, int16_t* pwm, char* en, int16_t* analog, uint16_t analog_mask) RAMFUNC;
+int32_t data_fetch_(uint8_t* receive_buf,
+                    volatile int32_t* w_receive_buf, volatile int32_t* r_receive_buf,
+                    uint8_t* data, int32_t len) RAMFUNC;
+int32_t command_analyze(uint8_t* data, int32_t len) RAMFUNC;
 
-unsigned short crc16(unsigned char* buf, int len)
+uint16_t crc16(uint8_t* buf, int32_t len)
 {
-  unsigned short ret = 0;
-  unsigned char* pos;
+  uint16_t ret = 0;
+  uint8_t* pos;
 
   for (pos = buf; len; len--)
   {
@@ -85,9 +85,9 @@ unsigned short crc16(unsigned char* buf, int len)
   return ret;
 }
 
-int add_crc_485(unsigned char* buf, int len)
+int32_t add_crc_485(uint8_t* buf, int32_t len)
 {
-  unsigned short crc = crc16(buf, len);
+  uint16_t crc = crc16(buf, len);
   buf[len] = crc & 0xFF;
   len++;
   buf[len] = crc >> 8;
@@ -97,16 +97,16 @@ int add_crc_485(unsigned char* buf, int len)
   return len;
 }
 
-char verify_crc_485(unsigned char* buf, int len)
+char verify_crc_485(uint8_t* buf, int32_t len)
 {
   if (crc16(buf, len - 2) == (buf[len - 2] | buf[len - 1] << 8))
     return 1;
   return 0;
 }
 
-int hextoi(char* buf)
+int32_t hextoi(char* buf)
 {
-  int ret;
+  int32_t ret;
   ret = 0;
   for (; *buf;)
   {
@@ -130,9 +130,9 @@ int hextoi(char* buf)
   return ret;
 }
 
-int atoi(char* buf)
+int32_t atoi(char* buf)
 {
-  int ret;
+  int32_t ret;
   ret = 0;
   for (; *buf;)
   {
@@ -146,12 +146,12 @@ int atoi(char* buf)
   return ret;
 }
 
-int nhex(char* buf, int data, int len)
+int32_t nhex(char* buf, int32_t data, int32_t len)
 {
-  int i;
+  int32_t i;
   for (i = 0; i < len; i++)
   {
-    *buf = (((unsigned int)data >> ((len - i - 1) * 4)) & 0xF) + '0';
+    *buf = (((uint32_t)data >> ((len - i - 1) * 4)) & 0xF) + '0';
     if (*buf > '9')
     {
       *buf = *buf - '9' - 1 + 'A';
@@ -162,12 +162,12 @@ int nhex(char* buf, int data, int len)
   return len;
 }
 
-int itoa10(char* buf, int data)
+int32_t itoa10(char* buf, int32_t data)
 {
-  int i;
-  int len;
+  int32_t i;
+  int32_t len;
   char txt[16];
-  int sign = 0;
+  int32_t sign = 0;
 
   if (data < 0)
   {
@@ -194,12 +194,12 @@ int itoa10(char* buf, int data)
   return len;
 }
 
-int send(char* buf)
+int32_t send(char* buf)
 {
-  int i = 0;
+  int32_t i = 0;
   for (; *buf; buf++)
   {
-    send_buf[send_buf_pos] = (unsigned char)(*buf);
+    send_buf[send_buf_pos] = (uint8_t)(*buf);
     send_buf_pos++;
     if (send_buf_pos >= SEND_BUF_LEN || *buf == '\n')
       flush();
@@ -208,12 +208,12 @@ int send(char* buf)
   return i;
 }
 
-int nsend(char* buf, int len)
+int32_t nsend(char* buf, int32_t len)
 {
-  int i;
+  int32_t i;
   for (i = 0; i < len && *buf; i++, buf++)
   {
-    send_buf[send_buf_pos] = (unsigned char)(*buf);
+    send_buf[send_buf_pos] = (uint8_t)(*buf);
     send_buf_pos++;
     if (send_buf_pos >= SEND_BUF_LEN - 1 || *buf == '\n')
       flush();
@@ -223,14 +223,14 @@ int nsend(char* buf, int len)
 
 void flush(void)
 {
-  const int len = send_buf_pos;
+  const int32_t len = send_buf_pos;
   char ret;
 
   if (len == 0)
     return;
 
-  const unsigned short tic_start = tic;
-  while ((unsigned short)(tic - tic_start) < 46)
+  const uint16_t tic_start = tic;
+  while ((uint16_t)(tic - tic_start) < 46)
   {
     ret = CDCDSerialDriver_Write(send_buf, len, 0, 0);
     if (ret == USBD_STATUS_LOCKED)
@@ -257,15 +257,15 @@ void flush485(void)
   if (send_buf_pos485 == 0)
     return;
 
-  const unsigned short tic_start = tic;
-  while ((unsigned short)(tic - tic_start) < 10)
+  const uint16_t tic_start = tic;
+  while ((uint16_t)(tic - tic_start) < 10)
   {
     if (USART_WriteBuffer(AT91C_BASE_US0, send_buf485, send_buf_pos485))
     {
-      if (send_buf485 == (unsigned char*)&send_buf485_[0][0])
-        send_buf485 = (unsigned char*)&send_buf485_[1][0];
+      if (send_buf485 == (uint8_t*)&send_buf485_[0][0])
+        send_buf485 = (uint8_t*)&send_buf485_[1][0];
       else
-        send_buf485 = (unsigned char*)&send_buf485_[0][0];
+        send_buf485 = (uint8_t*)&send_buf485_[0][0];
 
       send_buf_pos485 = 0;
       rs485_timeout = 0;
@@ -280,10 +280,10 @@ void flush485(void)
 /**
  * @brief エンコード
  */
-int encode(const unsigned char* src, int len, unsigned char* dst, int buf_max)
+int32_t encode(const uint8_t* src, int32_t len, uint8_t* dst, int32_t buf_max)
 {
-  static int pos, s_pos, w_pos;
-  static unsigned short b;
+  static int32_t pos, s_pos, w_pos;
+  static uint16_t b;
   pos = 0;    // read position
   w_pos = 0;  // write_position
   s_pos = 0;
@@ -324,11 +324,11 @@ int encode(const unsigned char* src, int len, unsigned char* dst, int buf_max)
  * @param buf_max[in] デコード後のデータバッファのサイズ
  * @return デコード後のバイト数
  */
-int decord(unsigned char* src, int len, unsigned char* dst, int buf_max)
+int32_t decord(uint8_t* src, int32_t len, uint8_t* dst, int32_t buf_max)
 {
-  static unsigned short dat, b;
-  static int s_pos, w_pos;
-  static int rerr;
+  static uint16_t dat, b;
+  static int32_t s_pos, w_pos;
+  static int32_t rerr;
 
   w_pos = 0;  // write_position
   s_pos = 0;  // shift position
@@ -362,26 +362,26 @@ int decord(unsigned char* src, int len, unsigned char* dst, int buf_max)
   return w_pos;
 }
 
-short rs485_timeout_wait(unsigned char t, unsigned short timeout)
+int16_t rs485_timeout_wait(uint8_t t, uint16_t timeout)
 {
-  const unsigned short tic_start = tic;
+  const uint16_t tic_start = tic;
   while (rs485_timeout < t)
   {
-    if ((unsigned short)(tic - tic_start) > timeout)
+    if ((uint16_t)(tic - tic_start) > timeout)
       return 0;
   }
   return 1;
 }
 
-int data_send(short* cnt, short* pwm, char* en, short* analog, unsigned short analog_mask)
+int32_t data_send(int16_t* cnt, int16_t* pwm, char* en, int16_t* analog, uint16_t analog_mask)
 {
-  unsigned char data[34];
-  int len, encode_len;
+  uint8_t data[34];
+  int32_t len, encode_len;
   len = data_pack(cnt, pwm, en, analog, analog_mask, data);
 
   send_buf_pos = 0;
   send_buf[0] = COMMUNICATION_START_BYTE;
-  encode_len = encode((unsigned char*)data, len, send_buf + 1, SEND_BUF_LEN - 2);
+  encode_len = encode((uint8_t*)data, len, send_buf + 1, SEND_BUF_LEN - 2);
   if (encode_len < 0)
     return encode_len;
   send_buf[encode_len + 1] = COMMUNICATION_END_BYTE;
@@ -390,17 +390,17 @@ int data_send(short* cnt, short* pwm, char* en, short* analog, unsigned short an
   flush();
   return encode_len;
 }
-int data_send485(short* cnt, short* pwm, char* en, short* analog, unsigned short analog_mask)
+int32_t data_send485(int16_t* cnt, int16_t* pwm, char* en, int16_t* analog, uint16_t analog_mask)
 {
-  unsigned char data[34];
-  int len, encode_len;
+  uint8_t data[34];
+  int32_t len, encode_len;
   len = data_pack(cnt, pwm, en, analog, analog_mask, data);
 
   send_buf485[0] = 0xAA;
   send_buf_pos485 = 1;
 
-  unsigned char* buf;
-  int buf_len;
+  uint8_t* buf;
+  int32_t buf_len;
   buf = &send_buf485[send_buf_pos485];
   buf_len = 0;
 
@@ -411,7 +411,7 @@ int data_send485(short* cnt, short* pwm, char* en, short* analog, unsigned short
   buf[2] = 0x40 - 1;
   buf_len = 3;
 
-  encode_len = encode((unsigned char*)data, len, buf + buf_len,
+  encode_len = encode((uint8_t*)data, len, buf + buf_len,
                       SEND_BUF_LEN - send_buf_pos485 - buf_len - 3);
   if (encode_len < 0)
     return encode_len;
@@ -438,9 +438,9 @@ int data_send485(short* cnt, short* pwm, char* en, short* analog, unsigned short
   }
 }
 
-int int_send(const char param, const char id, const int value)
+int32_t int_send(const char param, const char id, const int32_t value)
 {
-  unsigned char data[8];
+  uint8_t data[8];
   data[0] = param;
   data[1] = id;
   Integer4 v;
@@ -452,7 +452,7 @@ int int_send(const char param, const char id, const int value)
 
   send_buf_pos = 0;
   send_buf[0] = COMMUNICATION_INT_BYTE;
-  const int encode_len = encode(data, 6, send_buf + 1, SEND_BUF_LEN - 2);
+  const int32_t encode_len = encode(data, 6, send_buf + 1, SEND_BUF_LEN - 2);
   if (encode_len < 0)
     return encode_len;
   send_buf[encode_len + 1] = COMMUNICATION_END_BYTE;
@@ -462,7 +462,7 @@ int int_send(const char param, const char id, const int value)
   return encode_len;
 }
 
-int int_send485(const char param, const char id, const int value)
+int32_t int_send485(const char param, const char id, const int32_t value)
 {
   char to = -1;
   if (driver_state.ifmode == 0)
@@ -471,10 +471,10 @@ int int_send485(const char param, const char id, const int value)
   return int_send485to(saved_param.id485, to, param, id, value);
 }
 
-int int_send485to(const char from, const char to, const char param, const char id, const int value)
+int32_t int_send485to(const char from, const char to, const char param, const char id, const int32_t value)
 {
-  unsigned char data[8];
-  int len, encode_len;
+  uint8_t data[8];
+  int32_t len, encode_len;
   data[0] = param;
   data[1] = id;
   Integer4 v;
@@ -488,8 +488,8 @@ int int_send485to(const char from, const char to, const char param, const char i
   send_buf485[0] = 0xAA;
   send_buf_pos485 = 1;
 
-  unsigned char* buf;
-  int buf_len;
+  uint8_t* buf;
+  int32_t buf_len;
   buf = &send_buf485[send_buf_pos485];
   buf_len = 0;
 
@@ -498,7 +498,7 @@ int int_send485to(const char from, const char to, const char param, const char i
   buf[2] = 0x40 + to;
   buf_len = 3;
 
-  encode_len = encode((unsigned char*)data, len, buf + buf_len,
+  encode_len = encode((uint8_t*)data, len, buf + buf_len,
                       SEND_BUF_LEN - send_buf_pos485 - buf_len - 3);
   if (encode_len < 0)
     return encode_len;
@@ -526,10 +526,10 @@ int int_send485to(const char from, const char to, const char param, const char i
 }
 
 /* オドメトリデータの送信 */
-inline int data_pack(short* cnt, short* pwm, char* en, short* analog, unsigned short analog_mask, unsigned char* data)
+inline int32_t data_pack(int16_t* cnt, int16_t* pwm, char* en, int16_t* analog, uint16_t analog_mask, uint8_t* data)
 {
-  static int i;
-  int len = 0;
+  static int32_t i;
+  int32_t len = 0;
 
   for (i = 0; i < COM_MOTORS; i++)
   {
@@ -558,21 +558,21 @@ inline int data_pack(short* cnt, short* pwm, char* en, short* analog, unsigned s
   return len;
 }
 
-int data_fetch(unsigned char* data, int len)
+int32_t data_fetch(uint8_t* data, int32_t len)
 {
   return data_fetch_(receive_buf,
                      &w_receive_buf, &r_receive_buf,
                      data, len);
 }
-int data_fetch485(unsigned char* data, int len)
+int32_t data_fetch485(uint8_t* data, int32_t len)
 {
   return data_fetch_(receive_buf485,
                      &w_receive_buf485, &r_receive_buf485,
                      data, len);
 }
-int buf_left()
+int32_t buf_left()
 {
-  int buf_left;
+  int32_t buf_left;
 
   buf_left = r_receive_buf - w_receive_buf;
   if (buf_left <= 0)
@@ -581,11 +581,11 @@ int buf_left()
 
   return buf_left;
 }
-int data_fetch_(unsigned char* receive_buf,
-                volatile int* w_receive_buf, volatile int* r_receive_buf,
-                unsigned char* data, int len)
+int32_t data_fetch_(uint8_t* receive_buf,
+                    volatile int32_t* w_receive_buf, volatile int32_t* r_receive_buf,
+                    uint8_t* data, int32_t len)
 {
-  int buf_left;
+  int32_t buf_left;
 
   buf_left = *r_receive_buf - *w_receive_buf;
   if (buf_left <= 0)
@@ -609,16 +609,16 @@ int data_fetch_(unsigned char* receive_buf,
   return len;
 }
 
-static inline int data_analyze_(
-    unsigned char* receive_buf,
-    volatile int* w_receive_buf, volatile int* r_receive_buf, int fromto)
+static inline int32_t data_analyze_(
+    uint8_t* receive_buf,
+    volatile int32_t* w_receive_buf, volatile int32_t* r_receive_buf, int32_t fromto)
 {
-  static unsigned char line_full[64 + 3];
-  static unsigned char* line = line_full + 3;
-  unsigned char* data;
-  int r_buf, len, w_buf;
-  short from = -1, to = -1;
-  short id = saved_param.id485;
+  static uint8_t line_full[64 + 3];
+  static uint8_t* line = line_full + 3;
+  uint8_t* data;
+  int32_t r_buf, len, w_buf;
+  int16_t from = -1, to = -1;
+  int16_t id = saved_param.id485;
   enum
   {
     STATE_IDLE,
@@ -656,7 +656,7 @@ static inline int data_analyze_(
 
     if (len > 63)
     {
-      printf("COM:rbuf ovf %d\n\r", len);
+      printf("COM:rbuf ovf %ld\n\r", len);
       len = 0;
       receive_period = 1;
       state = STATE_IDLE;
@@ -759,25 +759,25 @@ static inline int data_analyze_(
         {
           state = STATE_IDLE;
           receive_period = 1;
-          printf("COM:CRC err (%d)\n\r", len);
+          printf("COM:CRC err (%ld)\n\r", len);
         }
         break;
     }
     if (state == STATE_RECIEVED)
     {
-      static unsigned char rawdata[16];
-      int data_len;
+      static uint8_t rawdata[16];
+      int32_t data_len;
 
       if (to == id || (fromto && to == COMMUNICATION_ID_BROADCAST))
       {
         data_len = decord(line, len - 1, rawdata, 16);
         if (data_len < 6)
         {
-          printf("COM:decode err (%d)\n\r", data_len);
+          printf("COM:decode err (%ld)\n\r", data_len);
         }
         else
         {
-          unsigned char imotor = rawdata[1];
+          uint8_t imotor = rawdata[1];
           if ((id * 2 <= imotor && imotor <= id * 2 + 1) ||
               to == COMMUNICATION_ID_BROADCAST)
           {
@@ -797,14 +797,14 @@ static inline int data_analyze_(
               send_buf485[send_buf_pos485] = 0xAA;
               send_buf_pos485++;
             }
-            unsigned char* buf;
-            int buf_len;
+            uint8_t* buf;
+            int32_t buf_len;
             buf = &send_buf485[send_buf_pos485];
             buf_len = 0;
             buf[0] = COMMUNICATION_START_BYTE;
             buf[1] = 0 + 0x40;
             buf[2] = imotor / 2 + 0x40;
-            int i;
+            int32_t i;
             for (i = 0; i < len; i++)
             {
               buf[3 + i] = line[i];
@@ -842,7 +842,7 @@ static inline int data_analyze_(
           if (0 < from && from < COM_MOTORS / 2)
           {
             Integer2 tmp;
-            int i = 0, j;
+            int32_t i = 0, j;
             for (j = 0; j < 2; j++)
             {
               tmp.byte[1] = rawdata[i++];
@@ -906,21 +906,21 @@ static inline int data_analyze_(
   return 0;
 }
 
-int data_analyze()
+int32_t data_analyze()
 {
   return data_analyze_(receive_buf, &w_receive_buf, &r_receive_buf, 0);
 }
-int data_analyze485()
+int32_t data_analyze485()
 {
   return data_analyze_(receive_buf485, &w_receive_buf485, &r_receive_buf485, 1);
 }
 
-int ext_continue = -1;
+int32_t ext_continue = -1;
 // //////////////////////////////////////////////////
 /* 受信したYPSpur拡張コマンドの解析 */
-int extended_command_analyze(char* data)
+int32_t extended_command_analyze(char* data)
 {
-  static int i;
+  static int32_t i;
 
   if (motor[0].servo_level != SERVO_LEVEL_STOP ||
       motor[1].servo_level != SERVO_LEVEL_STOP)
@@ -929,8 +929,8 @@ int extended_command_analyze(char* data)
   if (ext_continue >= 0)
   {
     char val[10];
-    int len;
-    int wrote;
+    int32_t len;
+    int32_t wrote;
 
     if (data[0] == 0)
     {
@@ -1077,8 +1077,8 @@ int extended_command_analyze(char* data)
   else if (strstr(data, "GETEMBEDDEDPARAM") == data)
   {
     char epval[256];
-    int len;
-    int i;
+    int32_t len;
+    int32_t i;
 
     send(data);
     send("\n");
@@ -1115,7 +1115,7 @@ int extended_command_analyze(char* data)
   {
     char val[3];
     char epval[256];
-    int i, j;
+    int32_t i, j;
 
     send(data);
     send("\n00P\n");
@@ -1138,7 +1138,7 @@ int extended_command_analyze(char* data)
   }
   else if (strstr(data, "$FLASHERACE") == data)
   {
-    static int erace_flag = 0;
+    static int32_t erace_flag = 0;
     if (erace_flag == 0 && data[11] == 'A')
     {
       erace_flag = 1;
@@ -1165,7 +1165,7 @@ int extended_command_analyze(char* data)
   }
   else if (strstr(data, "$EEPROMERACE") == data)
   {
-    int i;
+    int32_t i;
     char clear[16];
 
     for (i = 0; i < 16; i++)
@@ -1301,7 +1301,7 @@ int extended_command_analyze(char* data)
   }
   else if (strstr(data, "$TESTENC") == data)
   {
-    unsigned short tmp;
+    uint16_t tmp;
     char num[16];
 
     send(data);
@@ -1391,7 +1391,7 @@ int extended_command_analyze(char* data)
   }
   else if (strstr(data, "ADMASK") == data)
   {
-    unsigned char tmp;
+    uint8_t tmp;
 
     tmp = 0;
     for (i = 6; data[i] != 0 && data[i] != '\n' && data[i] != '\r'; i++)
@@ -1406,7 +1406,7 @@ int extended_command_analyze(char* data)
   }
   else if (strstr(data, "SETIODIR") == data)
   {
-    unsigned char tmp;
+    uint8_t tmp;
 
     tmp = 0;
     for (i = 8; data[i] != 0 && data[i] != '\n' && data[i] != '\r'; i++)
@@ -1422,7 +1422,7 @@ int extended_command_analyze(char* data)
   }
   else if (strstr(data, "GETIOVAL") == data)
   {
-    unsigned short tmp;
+    uint16_t tmp;
     char num[3];
     tmp = get_io_data();
     send(data);
@@ -1473,7 +1473,7 @@ int extended_command_analyze(char* data)
   }
   else if (strstr(data, "OUTPUT") == data)
   {
-    unsigned char tmp;
+    uint8_t tmp;
 
     tmp = 0;
     for (i = 6; data[i] != 0 && data[i] != '\n' && data[i] != '\r'; i++)
@@ -1488,7 +1488,7 @@ int extended_command_analyze(char* data)
   }
   else if (strstr(data, "SS") == data)
   {
-    int tmp;
+    int32_t tmp;
 
     tmp = 0;
     for (i = 2; data[i] != 0 && data[i] != '\n' && data[i] != '\r'; i++)
@@ -1526,9 +1526,9 @@ int extended_command_analyze(char* data)
 
 // //////////////////////////////////////////////////
 /* 受信したコマンドの解析 */
-int command_analyze(unsigned char* data, int len)
+int32_t command_analyze(uint8_t* data, int32_t len)
 {
-  static int imotor;
+  static int32_t imotor;
 
   static Integer4 i;
 
@@ -1712,7 +1712,7 @@ int command_analyze(unsigned char* data, int len)
         break;
       case PARAM_vsrc:
         // ad = 1024 * ( vsrc * VSRC_DIV ) / 3.3
-        driver_param.vsrc_rated = 310 * ((int)i.integer * VSRC_DIV) / 256;
+        driver_param.vsrc_rated = 310 * ((int32_t)i.integer * VSRC_DIV) / 256;
         break;
       default:
         return 0;

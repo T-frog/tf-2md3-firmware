@@ -18,8 +18,10 @@
 #ifndef __CONTROL_PWM_H__
 #define __CONTROL_PWM_H__
 
+#include <stdint.h>
+
 void controlPWM_init();
-void controlPWM_config(int i);
+void controlPWM_config(int32_t i);
 void FIQ_PWMPeriod();
 
 #endif

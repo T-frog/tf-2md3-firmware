@@ -15,6 +15,7 @@
  * ----------------------------------------------------------------------------
  */
 
+#include <stdint.h>
 #include <board.h>
 #include <pio/pio.h>
 #include <pio/pio_it.h>
@@ -34,10 +35,10 @@
 #include "communication.h"
 #include "eeprom.h"
 
-void msleep(int ms)
+void msleep(int32_t ms)
 {
-  volatile unsigned int dummy = 0;
-  int i = 0;
+  volatile uint32_t dummy = 0;
+  int32_t i = 0;
 
   AT91C_BASE_PITC->PITC_PIMR = AT91C_PITC_PITEN | 0x667;
 
@@ -55,7 +56,7 @@ void EEPROM_Init()
 #if defined(tfrog_rev5)
   static const Pin pinsEEPROM[] = { PINS_EEPROM };
   static const Pin pinsEEPROM_reset[] = { PINS_EEPROM_TWD, PINS_EEPROM_TWCK };
-  int i;
+  int32_t i;
 
   PIO_Configure(pinsEEPROM_reset, PIO_LISTSIZE(pinsEEPROM_reset));
   PIO_Set(&pinsEEPROM_reset[0]);
@@ -109,11 +110,11 @@ void EEPROM_Init()
 #endif
 }
 
-int EEPROM_Read(int addr, void* data, int len)
+int32_t EEPROM_Read(int32_t addr, void* data, int32_t len)
 {
 #if defined(tfrog_rev5)
-  int page;
-  int recieved;
+  int32_t page;
+  int32_t recieved;
 
   page = addr >> 8;
   addr = addr & 0xFF;
@@ -137,7 +138,7 @@ int EEPROM_Read(int addr, void* data, int len)
   {
     if (AT91C_BASE_TWI->TWI_SR & AT91C_TWI_RXRDY)
     {
-      ((unsigned char*)data)[recieved] = AT91C_BASE_TWI->TWI_RHR;
+      ((uint8_t*)data)[recieved] = AT91C_BASE_TWI->TWI_RHR;
       recieved++;
 
       if (recieved < len)
@@ -159,11 +160,11 @@ int EEPROM_Read(int addr, void* data, int len)
   return -1;
 }
 
-int EEPROM_Write(int addr, void* data, int len)
+int32_t EEPROM_Write(int32_t addr, void* data, int32_t len)
 {
 #if defined(tfrog_rev5)
-  int page, addr_l;
-  int sent;
+  int32_t page, addr_l;
+  int32_t sent;
 
   sent = 0;
 
@@ -181,7 +182,7 @@ int EEPROM_Write(int addr, void* data, int len)
 
     while (!(AT91C_BASE_TWI->TWI_SR & AT91C_TWI_TXRDY_MASTER))
       ;
-    AT91C_BASE_TWI->TWI_THR = ((unsigned char*)data)[sent];
+    AT91C_BASE_TWI->TWI_THR = ((uint8_t*)data)[sent];
 
     do
     {
@@ -198,7 +199,7 @@ int EEPROM_Write(int addr, void* data, int len)
           msleep(5);
           break;
         }
-        AT91C_BASE_TWI->TWI_THR = ((unsigned char*)data)[sent];
+        AT91C_BASE_TWI->TWI_THR = ((uint8_t*)data)[sent];
         continue;
       }
       else
@@ -213,7 +214,7 @@ int EEPROM_Write(int addr, void* data, int len)
   } while (1);
   return -2;
 #elif defined(tfrog_rev4)
-  FLASHD_Write((unsigned int)(FLASH_USERDATA_START + addr), data, len);
+  FLASHD_Write((uint32_t)(FLASH_USERDATA_START + addr), data, len);
   return len;
 #endif
   return -1;

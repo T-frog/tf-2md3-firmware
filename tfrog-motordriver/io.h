@@ -18,8 +18,10 @@
 #ifndef __IO_H__
 #define __IO_H__
 
-void set_io_dir(unsigned char io_dir);
-void set_io_data(unsigned char io_data);
-unsigned char get_io_data(void);
+#include <stdint.h>
+
+void set_io_dir(uint8_t io_dir);
+void set_io_data(uint8_t io_data);
+uint8_t get_io_data(void);
 
 #endif

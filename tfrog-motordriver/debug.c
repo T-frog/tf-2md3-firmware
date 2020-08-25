@@ -15,19 +15,21 @@
  * ----------------------------------------------------------------------------
  */
 
+#include <stdint.h>
+
 #include "communication.h"
 #include "controlVelocity.h"
 #include "debug.h"
 
-extern unsigned char send_buf[SEND_BUF_LEN];
-extern volatile unsigned long send_buf_pos;
+extern uint8_t send_buf[SEND_BUF_LEN];
+extern volatile uint32_t send_buf_pos;
 
-static int dump_id = -1;
+static int32_t dump_id = -1;
 static void* dump_ptr = 0;
-static int dump_size = -1;
-static int dump_cnt = 0;
+static int32_t dump_size = -1;
+static int32_t dump_cnt = 0;
 
-void start_dump(const int imotor, const int arg)
+void start_dump(const int32_t imotor, const int32_t arg)
 {
   if (dump_ptr != 0)
     return;
@@ -63,19 +65,19 @@ void dump_send()
   if (dump_ptr == 0)
     return;
 
-  int size = dump_size;
+  int32_t size = dump_size;
   if (size > 32)
     size = 32;
 
   send_buf_pos = 0;
   send_buf[0] = COMMUNICATION_INT_BYTE;
 
-  const unsigned char hdr[3] = {
+  const uint8_t hdr[3] = {
     INT_debug_dump,
     dump_id,
     dump_cnt,
   };
-  int encode_len = encode(
+  int32_t encode_len = encode(
       hdr, 3, send_buf + 1, SEND_BUF_LEN - 2);
   if (encode_len < 0)
   {
@@ -83,8 +85,8 @@ void dump_send()
     return;
   }
 
-  const int encode_len2 = encode(
-      (unsigned char*)dump_ptr, size,
+  const int32_t encode_len2 = encode(
+      (uint8_t*)dump_ptr, size,
       send_buf + 1 + encode_len, SEND_BUF_LEN - 2 - encode_len);
   if (encode_len2 < 0)
   {

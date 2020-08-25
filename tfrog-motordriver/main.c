@@ -632,9 +632,9 @@ int main()
           motor_param[1].enc_rev_raw / motor_param[1].enc_denominator != motor_param[1].enc_rev)
       {
         TRACE_ERROR("Embedded parameter has inconsistency\n\r");
-        printf("enc_rev: %d, %d\n\r", motor_param[0].enc_rev, motor_param[1].enc_rev);
+        printf("enc_rev: %ld, %ld\n\r", motor_param[0].enc_rev, motor_param[1].enc_rev);
         printf("enc_denominator: %d, %d\n\r", motor_param[0].enc_denominator, motor_param[1].enc_denominator);
-        printf("enc_rev_raw: %d, %d\n\r", motor_param[0].enc_rev_raw, motor_param[1].enc_rev_raw);
+        printf("enc_rev_raw: %ld, %ld\n\r", motor_param[0].enc_rev_raw, motor_param[1].enc_rev_raw);
         motor[0].error_state |= ERROR_EEPROM;
         motor[1].error_state |= ERROR_EEPROM;
       }
@@ -903,7 +903,7 @@ int main()
     {
       LED_on(0);
       LED_on(2);
-      printf("Ping: %x\n\r", driver_state.ping_request);
+      printf("Ping: %lx\n\r", driver_state.ping_request);
       if (driver_state.ifmode == 0)
       {
         int_send(INT_ping_response, 0, driver_state.ping_request);
@@ -1057,7 +1057,7 @@ int main()
       {
         if (usb_timeout_cnt > 0)
         {
-          printf("USB:w timeout (%d)\n\r", usb_timeout_cnt);
+          printf("USB:w timeout (%ld)\n\r", usb_timeout_cnt);
           usb_timeout_cnt = 0;
         }
 
