@@ -15,6 +15,9 @@
  * ----------------------------------------------------------------------------
  */
 
+#include <stdint.h>
+#include <string.h>
+
 #include <board.h>
 #include <pio/pio.h>
 #include <pio/pio_it.h>
@@ -22,7 +25,6 @@
 #include <tc/tc.h>
 #include <usart/usart.h>
 #include <utility/trace.h>
-#include <string.h>
 #include <utility/led.h>
 #include <flash/flashd.h>
 #include <pmc/pmc.h>

@@ -15,12 +15,13 @@
  * ----------------------------------------------------------------------------
  */
 
+#include <stdint.h>
+
 #include <board.h>
 #include <pio/pio.h>
 #include <pio/pio_it.h>
 #include <aic/aic.h>
 #include <tc/tc.h>
-#include <stdint.h>
 #include <utility/trace.h>
 #include <utility/led.h>
 #include <usb/device/cdc-serial/CDCDSerialDriver.h>

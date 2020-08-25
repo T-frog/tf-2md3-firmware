@@ -15,6 +15,9 @@
  * ----------------------------------------------------------------------------
  */
 
+#include <stdint.h>
+#include <string.h>
+
 #include <board.h>
 #include <pio/pio.h>
 #include <pio/pio_it.h>
@@ -25,8 +28,6 @@
 #include <utility/led.h>
 #include <usb/device/cdc-serial/CDCDSerialDriver.h>
 #include <usb/device/cdc-serial/CDCDSerialDriverDescriptors.h>
-#include <string.h>
-#include <stdint.h>
 
 #include "power.h"
 #include "eeprom.h"

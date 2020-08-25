@@ -15,8 +15,10 @@
  * ----------------------------------------------------------------------------
  */
 
-#include <board.h>
+#include <stdint.h>
 #include <string.h>
+
+#include <board.h>
 #include <utility/trace.h>
 #include <pio/pio.h>
 #include <pio/pio_it.h>

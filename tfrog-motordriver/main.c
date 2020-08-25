@@ -45,6 +45,10 @@
  * ----------------------------------------------------------------------------
  */
 
+#include <setjmp.h>
+#include <stdint.h>
+#include <string.h>
+
 #include <board.h>
 #include <pio/pio.h>
 #include <pio/pio_it.h>
@@ -52,13 +56,11 @@
 #include <tc/tc.h>
 #include <usart/usart.h>
 #include <utility/trace.h>
-#include <string.h>
 #include <utility/led.h>
 #include <usb/common/core/USBStringDescriptor.h>
 #include <usb/device/cdc-serial/CDCDSerialDriver.h>
 #include <usb/device/cdc-serial/CDCDSerialDriverDescriptors.h>
 #include <pmc/pmc.h>
-#include <setjmp.h>
 
 #include "power.h"
 #include "controlPWM.h"
@@ -72,9 +74,6 @@
 #include "errors.h"
 #include "debug.h"
 
-// extern int getStackPointer( void );
-// extern int getIrqStackPointer( void );
-
 #if defined(tfrog_rev5)
 #warning "T-frog driver rev.5"
 #endif
@@ -82,36 +81,31 @@
 #warning "T-frog driver rev.4"
 #endif
 
-volatile unsigned char rs485_timeout = 0;
-volatile unsigned short tic = 0;
+volatile uint8_t rs485_timeout = 0;
+volatile uint16_t tic = 0;
 
 Tfrog_EEPROM_data saved_param = TFROG_EEPROM_DEFAULT;
 
-extern unsigned char languageIdStringDescriptor[];
+extern uint8_t languageIdStringDescriptor[];
 extern USBDDriverDescriptors cdcdSerialDriverDescriptors;
-extern volatile int w_receive_buf;
-extern volatile int r_receive_buf;
+extern volatile int32_t w_receive_buf;
+extern volatile int32_t r_receive_buf;
 
-unsigned char manufacturerStringDescriptor2[64] = {
+uint8_t manufacturerStringDescriptor2[64] = {
   USBStringDescriptor_LENGTH(0),
   USBGenericDescriptor_STRING
 };
 
-unsigned char productStringDescriptor2[64] = {
+uint8_t productStringDescriptor2[64] = {
   USBStringDescriptor_LENGTH(0),
   USBGenericDescriptor_STRING
 };
 
-unsigned char* stringDescriptors2[3] = {
+uint8_t* stringDescriptors2[3] = {
   languageIdStringDescriptor,
   productStringDescriptor2,
   manufacturerStringDescriptor2
 };
-
-static void UsbDataReceived(
-    unsigned int unused, unsigned char status, unsigned int received, unsigned int remaining) RAMFUNC;
-void us0_received() RAMFUNC;
-void timer1_tic() RAMFUNC;
 
 // ------------------------------------------------------------------------------
 // Definitions
@@ -152,7 +146,7 @@ static const Pin pinVbus = PIN_USB_VBUS;
 const Pin pinPWMEnable = PIN_PWM_ENABLE;
 
 // / Buffer for storing incoming USB data.
-static unsigned char usbBuffer[DATABUFFERSIZE];
+static uint8_t usbBuffer[DATABUFFERSIZE];
 
 // ------------------------------------------------------------------------------
 // Main
@@ -177,7 +171,7 @@ void SRAM_Init()
 #endif
 }
 
-static int FPGA_test()
+static char FPGA_test()
 {
   THEVA.GENERAL.PWM.COUNT_ENABLE = 0;
   THEVA.GENERAL.OUTPUT_ENABLE = 0;
@@ -220,21 +214,21 @@ static void VBus_Configure(void)
   PIO_Configure(&pinVbus, 1);
 }
 
-volatile unsigned char usb_read_pause = 0;
+volatile uint8_t usb_read_pause = 0;
 // ------------------------------------------------------------------------------
 // / Callback invoked when data has been received on the USB.
 // ------------------------------------------------------------------------------
-static void UsbDataReceived(unsigned int unused, unsigned char status, unsigned int received, unsigned int remaining)
+static void UsbDataReceived(uint32_t unused, uint8_t status, uint32_t received, uint32_t remaining)
 {
   // Check that data has been received successfully
   if (status == USBD_STATUS_SUCCESS)
   {
-    int remain = 0;
+    int32_t remain = 0;
 
     // Check if bytes have been discarded
     if ((received == DATABUFFERSIZE) && (remaining > 0))
     {
-      printf("USB:discard %uB\n\r", remaining);
+      printf("USB:discard %luB\n\r", remaining);
     }
 
     LED_on(2);
@@ -242,7 +236,7 @@ static void UsbDataReceived(unsigned int unused, unsigned char status, unsigned 
 
     if (remain > 0)
     {
-      printf("USB:remain %dB\n\r", remain);
+      printf("USB:remain %ldB\n\r", remain);
     }
 
     if (buf_left() < COMMAND_LEN * 2)
@@ -270,7 +264,7 @@ void us0_received()
 char buz_on = 0;
 void timer1_tic()
 {
-  volatile unsigned int dummy;
+  volatile uint32_t dummy;
   dummy = AT91C_BASE_TC1->TC_SR;
   dummy = dummy;
 
@@ -298,7 +292,7 @@ void timer1_tic()
 }
 void tic_init()
 {
-  volatile unsigned int dummy;
+  volatile uint32_t dummy;
 
   AT91C_BASE_PMC->PMC_PCER = 1 << AT91C_ID_TC1;
 
@@ -327,17 +321,17 @@ void tic_init()
 // ------------------------------------------------------------------------------
 int main()
 {
-  static short analog[16];
-  static int com_index[2][2];
-  int err_cnt;
+  static int16_t analog[16];
+  static int32_t com_index[2][2];
+  int32_t err_cnt;
   Filter1st voltf;
-  int vbuslv = 0;
-  int vbus = 0;
-  int _vbus = 0;
-  unsigned int err_chk = 0;
-  short mscnt = 0;
-  unsigned char errnum = 0;
-  unsigned char blink = 0;
+  int32_t vbuslv = 0;
+  int32_t vbus = 0;
+  int32_t _vbus = 0;
+  uint32_t err_chk = 0;
+  int16_t mscnt = 0;
+  uint8_t errnum = 0;
+  uint8_t blink = 0;
 
   motor[0].error_state = 0;
   motor[1].error_state = 0;
@@ -424,7 +418,7 @@ int main()
   err_cnt = 0;
   while (((volatile TVREG)(THEVA.GENERAL.ID) & 0xFF) != 0xA0)
   {
-    volatile int i;
+    volatile int32_t i;
 
 #ifdef PINS_CLEAR
     static const Pin pinsClear[] = { PINS_CLEAR };
@@ -487,7 +481,7 @@ int main()
   {
     const char manufacturer[] = { "T-frog project" };
     const char product[] = { "T-frog Driver" };
-    int i;
+    int32_t i;
 
     manufacturerStringDescriptor2[0] = USBStringDescriptor_LENGTH(strlen(manufacturer));
     productStringDescriptor2[0] = USBStringDescriptor_LENGTH(strlen(product));
@@ -504,7 +498,7 @@ int main()
     }
   }
   cdcdSerialDriverDescriptors.pFsDevice->iManufacturer = 2;
-  cdcdSerialDriverDescriptors.pStrings = (const unsigned char**)stringDescriptors2;
+  cdcdSerialDriverDescriptors.pStrings = (const uint8_t**)stringDescriptors2;
   cdcdSerialDriverDescriptors.numStrings = 3;
   CDCDSerialDriver_Initialize();
 
@@ -656,10 +650,10 @@ int main()
   tic_init();
 
 #define RS485BUF_SIZE 128
-  unsigned char rs485buf_[2][RS485BUF_SIZE];
-  unsigned char* rs485buf;
-  unsigned char* rs485buf_next;
-  unsigned short r_rs485buf_pos;
+  uint8_t rs485buf_[2][RS485BUF_SIZE];
+  uint8_t* rs485buf;
+  uint8_t* rs485buf_next;
+  uint16_t r_rs485buf_pos;
 
   rs485buf = &rs485buf_[0][0];
   rs485buf_next = &rs485buf_[1][0];
@@ -679,7 +673,7 @@ int main()
   AIC_EnableIT(AT91C_ID_US0);
 
   {
-    int i;
+    int32_t i;
     for (i = 0; i < COM_MOTORS; i++)
     {
       com_cnts[i] = 0;
@@ -724,8 +718,8 @@ int main()
 
     if (err_chk++ % 20 == 0)
     {
-      if ((volatile int)THEVA.GENERAL.PWM.HALF_PERIOD != saved_param.PWM_resolution ||
-          (volatile int)THEVA.GENERAL.PWM.DEADTIME != saved_param.PWM_deadtime)
+      if ((volatile int32_t)THEVA.GENERAL.PWM.HALF_PERIOD != saved_param.PWM_resolution ||
+          (volatile int32_t)THEVA.GENERAL.PWM.DEADTIME != saved_param.PWM_deadtime)
       {
         err_cnt++;
         controlPWM_init();
@@ -778,12 +772,12 @@ int main()
       motor[1].error_state |= ERROR_WATCHDOG;
       printf("Watchdog - init parameters\n\r");
       {
-        int i;
+        int32_t i;
         printf("Motors: ");
         for (i = 0; i < COM_MOTORS; i++)
         {
           if (com_en[i])
-            printf("%d ", i);
+            printf("%ld ", i);
           if (!(saved_param.stored_data == TFROG_EEPROM_DATA_BIN ||
                 saved_param.stored_data == TFROG_EEPROM_DATA_BIN_LOCKED))
             com_cnts[i] = 0;
@@ -843,7 +837,7 @@ int main()
 
     if (AT91C_BASE_US0->US_RNCR == 0)
     {
-      short len;
+      int16_t len;
 
       if (driver_state.ifmode == 1)
         LED_on(2);
@@ -869,7 +863,7 @@ int main()
     }
     else
     {
-      short len;
+      int16_t len;
       len = (RS485BUF_SIZE - AT91C_BASE_US0->US_RCR) - r_rs485buf_pos;
 
       if (len > 0)
@@ -887,14 +881,14 @@ int main()
 
     if (usb_read_pause)
     {
-      printf("USB:flush r:%d,w:%d\n\r", r_receive_buf, w_receive_buf);
+      printf("USB:flush r:%ld,w:%ld\n\r", r_receive_buf, w_receive_buf);
     }
     data_analyze();
 
     if (usb_read_pause)
     {
       usb_read_pause = 0;
-      printf("USB:resume r:%d,w:%d\n\r", r_receive_buf, w_receive_buf);
+      printf("USB:resume r:%ld,w:%ld\n\r", r_receive_buf, w_receive_buf);
       CDCDSerialDriver_Read(usbBuffer, DATABUFFERSIZE, (TransferCallback)UsbDataReceived, 0);
     }
 
@@ -945,8 +939,8 @@ int main()
 
     if (driver_state.cnt_updated >= 5)
     {
-      unsigned short mask;
-      int i;
+      uint16_t mask;
+      int32_t i;
       /* 約5msおき */
       driver_state.cnt_updated -= 5;
 
@@ -988,8 +982,8 @@ int main()
 
       for (i = 0; i < 2; i++)
       {
-        const short index_r = THEVA.MOTOR[i].INDEX_RISE_ANGLE;
-        const short index_f = THEVA.MOTOR[i].INDEX_FALL_ANGLE;
+        const int16_t index_r = THEVA.MOTOR[i].INDEX_RISE_ANGLE;
+        const int16_t index_f = THEVA.MOTOR[i].INDEX_FALL_ANGLE;
 
         if (index_r != com_index[i][0])
         {
@@ -1011,7 +1005,7 @@ int main()
         com_index[i][1] = index_f;
       }
 
-      driver_state.vsrc = Filter1st_Filter(&voltf, (int)(analog[7] & 0x0FFF));
+      driver_state.vsrc = Filter1st_Filter(&voltf, (int32_t)(analog[7] & 0x0FFF));
       ADC_Start();
 
       if (driver_state.vsrc < driver_param.vsrc_rated / 4)
@@ -1080,8 +1074,8 @@ int main()
 
         if (motor[0].error_state || motor[1].error_state)
         {
-          const int motor_id = errnum / ERROR_NUM;
-          const int error_id = errnum % ERROR_NUM;
+          const int32_t motor_id = errnum / ERROR_NUM;
+          const int32_t error_id = errnum % ERROR_NUM;
           if ((motor[motor_id].error_state & (1 << (error_id))) &&
               error_pat[motor_id][error_id] != 0)
           {
