@@ -15,6 +15,9 @@
  * ----------------------------------------------------------------------------
  */
 
+#include <stdint.h>
+#include <string.h>
+
 #include <board.h>
 #include <pio/pio.h>
 #include <pio/pio_it.h>
@@ -22,7 +25,6 @@
 #include <tc/tc.h>
 #include <usart/usart.h>
 #include <utility/trace.h>
-#include <string.h>
 #include <utility/led.h>
 #include <flash/flashd.h>
 #include <pmc/pmc.h>
@@ -32,9 +34,9 @@
 void ADC_Init()
 {
   static const Pin pinsADC[] = { PINS_ADC };
-  unsigned int prescal;
-  unsigned int startup;
-  unsigned int shtim;
+  uint32_t prescal;
+  uint32_t startup;
+  uint32_t shtim;
 
   AT91C_BASE_PMC->PMC_PCER = 1 << AT91C_ID_ADC;
   PIO_Configure(pinsADC, PIO_LISTSIZE(pinsADC));
@@ -59,7 +61,7 @@ void ADC_Start()
   AT91C_BASE_ADC->ADC_CR = AT91C_ADC_START;
 }
 
-int ADC_Read(int i)
+uint32_t ADC_Read(const char i)
 {
   return *(&AT91C_BASE_ADC->ADC_CDR0 + i);
 }

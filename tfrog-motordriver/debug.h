@@ -18,7 +18,7 @@
 #ifndef __DEBUG_H__
 #define __DEBUG_H__
 
-void start_dump(const int imotor, const int arg);
+void start_dump(const int32_t imotor, const int32_t arg);
 void dump_send();
 
 #endif

@@ -18,7 +18,7 @@
 #ifndef __ERRORS_H__
 #define __ERRORS_H__
 
-const unsigned char error_pat[2][ERROR_NUM + 1] =
+const uint8_t error_pat[2][ERROR_NUM + 1] =
     {
       {
           0xCC,  // 11001100 low voltage

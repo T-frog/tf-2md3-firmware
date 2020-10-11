@@ -23,9 +23,11 @@
 #ifndef __FIX_POINT_AWD__
 #define __FIX_POINT_AWD__
 
+#include <stdint.h>
+
 #define INLINE inline
 
-typedef int fixp4;
+typedef int32_t fixp4;
 
 #ifndef FP4_POINTBIT
 #define FP4_POINTBIT 17
@@ -43,7 +45,7 @@ fixp4 fp4mul(fixp4 a, fixp4 b);
 fixp4 fp4mulf(fixp4 a, fixp4 b);
 fixp4 fp4div(fixp4 a, fixp4 b);
 fixp4 double2fp4(double a);
-fixp4 int2fp4(int a);
+fixp4 int2fp4(int32_t a);
 double fp42double(fixp4 a);
 
 #endif

@@ -18,6 +18,7 @@
 #ifndef __COMMUNICATION_H__
 #define __COMMUNICATION_H__
 
+#include <stdint.h>
 #include <board.h>
 
 #ifdef __cplusplus
@@ -26,13 +27,13 @@ extern "C" {
 
 typedef union _Integer4
 {
-  int integer;
+  int32_t integer;
   char byte[4];
 } Integer4;
 
 typedef union _Integer2
 {
-  short integer;
+  int16_t integer;
   char byte[2];
 } Integer2;
 
@@ -137,45 +138,45 @@ typedef enum
 #define SEND_BUF_LEN 128
 #define RECV_BUF_LEN 256
 
-int data_analyze();
-int data_analyze485();
+int32_t data_analyze();
+int32_t data_analyze485();
 
-int data_fetch(unsigned char* data, int len);
-int data_fetch485(unsigned char* data, int len);
+int32_t data_fetch(uint8_t* data, int32_t len);
+int32_t data_fetch485(uint8_t* data, int32_t len);
 
-int buf_left();
+int32_t buf_left();
 
-int data_send(short* cnt, short* pwm, char* en, short* analog, unsigned short analog_mask);
-int data_send485(short* cnt, short* pwm, char* en, short* analog, unsigned short analog_mask);
-int int_send(const char param, const char id, const int value);
-int int_nsend(const void *data, const int len);
-int int_send485(const char param, const char id, const int value);
-int int_send485to(const char from, const char to, const char param, const char id, const int value);
-int data_pack(short* cnt, short* pwm, char* en, short* analog, unsigned short analog_mask, unsigned char* data);
+int32_t data_send(int16_t* cnt, int16_t* pwm, char* en, int16_t* analog, uint16_t analog_mask);
+int32_t data_send485(int16_t* cnt, int16_t* pwm, char* en, int16_t* analog, uint16_t analog_mask);
+int32_t int_send(const char param, const char id, const int32_t value);
+int32_t int_nsend(const void* data, const int32_t len);
+int32_t int_send485(const char param, const char id, const int32_t value);
+int32_t int_send485to(const char from, const char to, const char param, const char id, const int32_t value);
+int32_t data_pack(int16_t* cnt, int16_t* pwm, char* en, int16_t* analog, uint16_t analog_mask, uint8_t* data);
 
-int decord(unsigned char* src, int len, unsigned char* dst, int buf_max);
-int encode(const unsigned char* src, int len, unsigned char* dst, int buf_max);
+int32_t decord(uint8_t* src, int32_t len, uint8_t* dst, int32_t buf_max);
+int32_t encode(const uint8_t* src, int32_t len, uint8_t* dst, int32_t buf_max);
 
-int extended_command_analyze(char* data);
-int command_analyze(unsigned char* data, int len);
+int32_t extended_command_analyze(char* data);
+int32_t command_analyze(uint8_t* data, int32_t len);
 
-int data_fetch_(unsigned char* receive_buf,
-                volatile int* w_receive_buf, volatile int* r_receive_buf,
-                unsigned char* data, int len);
+int32_t data_fetch_(uint8_t* receive_buf,
+                    volatile int32_t* w_receive_buf, volatile int32_t* r_receive_buf,
+                    uint8_t* data, int32_t len);
 
-int hextoi(char* buf);
-int atoi(char* buf);
-int nhex(char* buf, int data, int len);
-int itoa10(char* buf, int data);
-int send(char* buf);
-int nsend(char* buf, int len);
-int send485(char* buf);
-int nsend485(char* buf, int len);
+int32_t hextoi(char* buf);
+int32_t atoi(char* buf);
+int32_t nhex(char* buf, int32_t data, int32_t len);
+int32_t itoa10(char* buf, int32_t data);
+int32_t send(char* buf);
+int32_t nsend(char* buf, int32_t len);
+int32_t send485(char* buf);
+int32_t nsend485(char* buf, int32_t len);
 void sendclear(void);
 void flush(void);
 void flush485(void);
 
-extern volatile int usb_timeout_cnt;
+extern volatile int32_t usb_timeout_cnt;
 
 #ifdef __cplusplus
 }

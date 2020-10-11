@@ -18,7 +18,7 @@
 #ifndef __UTILS_H__
 #define __UTILS_H__
 
-inline void normalize(int* val, int min, int resolution)
+inline void normalize(int32_t* val, int32_t min, int32_t resolution)
 {
   if (resolution <= 0)
     return;
@@ -28,7 +28,7 @@ inline void normalize(int* val, int min, int resolution)
     *val -= resolution;
 }
 
-inline int _abs(int x)
+inline int32_t _abs(int32_t x)
 {
   if (x < 0)
     return -x;

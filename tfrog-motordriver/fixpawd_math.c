@@ -20,6 +20,8 @@
 	@brief Fixed point value mathmatical functions
  */
 
+#include <stdint.h>
+
 #include "fixpawd_math.h"
 
 fixp4 abs(fixp4 x)
@@ -555,7 +557,7 @@ fixp4 fp4exp(fixp4 x)
 {
   fixp4 res;  // Output
   fixp4 mask;
-  int i;
+  int32_t i;
   char inv;
 
   if (x < 0)

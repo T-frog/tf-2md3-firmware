@@ -15,12 +15,13 @@
  * ----------------------------------------------------------------------------
  */
 
+#include <stdint.h>
+
 #include <board.h>
 #include <pio/pio.h>
 #include <pio/pio_it.h>
 #include <aic/aic.h>
 #include <tc/tc.h>
-#include <stdint.h>
 #include <utility/trace.h>
 #include <utility/led.h>
 #include <usb/device/cdc-serial/CDCDSerialDriver.h>
@@ -46,19 +47,19 @@ static const Pin pinPWMEnable = PIN_PWM_ENABLE;
 #define AtanTB_LEN 512
 
 static char init = 1;
-short SinTB[1024];
-short AtanTB[AtanTB_LEN];
-int PWM_abs_max = 0;
-int PWM_abs_min = 0;
-int PWM_center = 0;
-int PWM_resolution = 0;
-int PWM_thinning = 0;
-int PWM_deadtime;
-int PWM_cpms;
+int16_t SinTB[1024];
+int16_t AtanTB[AtanTB_LEN];
+int32_t PWM_abs_max = 0;
+int32_t PWM_abs_min = 0;
+int32_t PWM_center = 0;
+int32_t PWM_resolution = 0;
+int32_t PWM_thinning = 0;
+int32_t PWM_deadtime;
+int32_t PWM_cpms;
 
 void FIQ_PWMPeriod() RAMFUNC;
 
-inline short sin_(int x)
+inline int16_t sin_(int32_t x)
 {
   if (x < 1024)
     return SinTB[x];
@@ -69,7 +70,7 @@ inline short sin_(int x)
   return -SinTB[4096 - x];
 }
 
-inline short atan_(const int x)
+inline int16_t atan_(const int32_t x)
 {
   if (x <= -(AtanTB_LEN - 1))
     return -AtanTB[AtanTB_LEN - 1];
@@ -83,7 +84,7 @@ inline short atan_(const int x)
 extern Tfrog_EEPROM_data saved_param;
 extern volatile char rs485_timeout;
 
-void controlPWM_config(int i)
+void controlPWM_config(int32_t i)
 {
   switch (motor_param[i].motor_type)
   {
@@ -114,7 +115,7 @@ void controlPWM_config(int i)
       motor_param[i].enc_denominator < ENC0_DENOMINATOR_MAX ?
           motor_param[i].enc_denominator * 6 :
           ENC0_BUF_MAX;
-  int j;
+  int32_t j;
   for (j = 0; j < motor[i].enc0_buf_len; ++j)
     motor[i].enc0_buf[j] = ENC0_BUF_UNKNOWN;
   motor[i].enc0_buf_updated = 0;
@@ -133,8 +134,8 @@ void controlPWM_config(int i)
       (2 * PWM_resolution * driver_param.control_cycle * 100);
 
   motor_param[i].enc_mul =
-      (int)((int64_t)SinTB_2PI * 0x40000 * motor_param[i].enc_denominator /
-            motor_param[i].enc_rev_raw);
+      (int32_t)((int64_t)SinTB_2PI * 0x40000 * motor_param[i].enc_denominator /
+                motor_param[i].enc_rev_raw);
   motor_param[i].enc_rev_h = motor_param[i].enc_rev / 2;
 
   // normalize phase offset
@@ -162,7 +163,7 @@ void controlPWM_config(int i)
   if (motor_param[i].motor_type != MOTOR_TYPE_DC &&
       motor_param[i].enc_type != 0)
   {
-    const unsigned short hall = *(unsigned short*)&THEVA.MOTOR[i].ROT_DETECTER;
+    const uint16_t hall = *(uint16_t*)&THEVA.MOTOR[i].ROT_DETECTER;
 
     if (hall & HALL_U)
     {
@@ -198,18 +199,18 @@ void controlPWM_config(int i)
 // ------------------------------------------------------------------------------
 void FIQ_PWMPeriod()
 {
-  int i;
-  static unsigned short enc[2];
-  static unsigned short hall[2];
-  static unsigned int cnt = 0;
-  unsigned short _enc[2];
-  unsigned short _hall[2];
+  int32_t i;
+  static uint16_t enc[2];
+  static uint16_t hall[2];
+  static uint32_t cnt = 0;
+  uint16_t _enc[2];
+  uint16_t _hall[2];
 
   cnt++;
   {
     // PWM周波数が高い場合は処理を間引く
     // PWM_resolution 2000以下で一回間引き
-    static int thin = 0;
+    static int32_t thin = 0;
 
     thin++;
     if (thin < PWM_thinning)
@@ -224,15 +225,15 @@ void FIQ_PWMPeriod()
 
   for (i = 0; i < 2; i++)
   {
-    hall[i] = *(unsigned short*)&THEVA.MOTOR[i].ROT_DETECTER;
+    hall[i] = *(uint16_t*)&THEVA.MOTOR[i].ROT_DETECTER;
     if (motor_param[i].enc_type == 2)
     {
-      unsigned short s;
-      int __vel;
+      uint16_t s;
+      int32_t __vel;
 
       motor[i].enc = enc[i] = THEVA.MOTOR[i].ENCODER;
       s = THEVA.MOTOR[i].SPEED * driver_param.control_cycle;
-      __vel = (short)(enc[i] - _enc[i]);
+      __vel = (int16_t)(enc[i] - _enc[i]);
 
       // Store pulse width based speed if the counter is incremented or decremented.
       // In this timing, sign of the velocity can be observed.
@@ -250,7 +251,7 @@ void FIQ_PWMPeriod()
     }
   }
 
-  int disabled = 0;
+  int32_t disabled = 0;
   if (motor[0].error_state || motor[1].error_state)
   {
     // Short-mode brake
@@ -276,7 +277,7 @@ void FIQ_PWMPeriod()
     if (motor_param[i].enc_type == 2 ||
         motor_param[i].enc_type == 0)
     {
-      const short diff = (short)(enc[i] - _enc[i]);
+      const int16_t diff = (int16_t)(enc[i] - _enc[i]);
       motor[i].pos += diff;
       normalize(&motor[i].pos, 0, motor_param[i].enc_rev_raw);
 
@@ -291,9 +292,9 @@ void FIQ_PWMPeriod()
   if (!disabled)
   {
     // PWM計算
-    int pwm[2][3];
-    int phase[3];
-    int j;
+    int32_t pwm[2][3];
+    int32_t phase[3];
+    int32_t j;
 
     for (j = 0; j < 2; j++)
     {
@@ -320,7 +321,7 @@ void FIQ_PWMPeriod()
       {
         case MOTOR_TYPE_DC:
         {
-          int pwmt;
+          int32_t pwmt;
           pwmt = PWM_center - rate / 2;
           if (pwmt < PWM_abs_min)
             pwmt = PWM_abs_min;
@@ -339,8 +340,8 @@ void FIQ_PWMPeriod()
         {
           // Estimate LR circuit delay.
           // Use reference velocity to avoid unstability due to disturbance.
-          const int tan_index = motor[j].ref.vel * motor_param[j].lr_cutoff_vel_inv / 32768;
-          const int delay = atan_(tan_index);
+          const int32_t tan_index = motor[j].ref.vel * motor_param[j].lr_cutoff_vel_inv / 32768;
+          const int32_t delay = atan_(tan_index);
 
           phase[2] = motor[j].pos - motor_param[j].enc0tran;
           phase[2] = (int64_t)(phase[2] + motor_param[j].phase_offset) *
@@ -351,12 +352,12 @@ void FIQ_PWMPeriod()
 
           for (i = 0; i < 3; i++)
           {
-            int pwmt;
+            int32_t pwmt;
 
-            int p = phase[i] % SinTB_2PI;
+            int32_t p = phase[i] % SinTB_2PI;
             if (p < 0)
               p += SinTB_2PI;
-            pwmt = (int)sin_(p) * rate / (4096 * 2);
+            pwmt = (int32_t)sin_(p) * rate / (4096 * 2);
             pwmt += PWM_center;
             if (pwmt < PWM_abs_min)
               pwmt = PWM_abs_min;
@@ -366,7 +367,7 @@ void FIQ_PWMPeriod()
           }
           if (motor_param[j].rotation_dir != 1)
           {
-            const int tmp = pwm[j][0];
+            const int32_t tmp = pwm[j][0];
             pwm[j][0] = pwm[j][2];
             pwm[j][2] = tmp;
           }
@@ -413,9 +414,9 @@ void FIQ_PWMPeriod()
     if (motor_param[i].motor_type != MOTOR_TYPE_DC &&
         motor_param[i].enc_type != 0)
     {
-      int u, v, w;
+      int32_t u, v, w;
       char dir;
-      unsigned short halldiff;
+      uint16_t halldiff;
 
       u = v = w = 0;
       halldiff = (hall[i] ^ _hall[i]) & 0x07;
@@ -524,8 +525,8 @@ void FIQ_PWMPeriod()
 
       if (motor_param[i].enc_type == 3)
       {
-        int _pos;
-        _pos = (int)motor[i].pos;
+        int32_t _pos;
+        _pos = (int32_t)motor[i].pos;
         if (w == -1)
           motor[i].pos = motor_param[i].enc_drev[0];
         else if (v == 1)
@@ -543,22 +544,22 @@ void FIQ_PWMPeriod()
         motor_param[i].enc0 = 0;
         motor_param[i].enc0tran = 0;
 
-        int diff;
-        diff = (int)motor[i].pos - _pos;
+        int32_t diff;
+        diff = (int32_t)motor[i].pos - _pos;
         normalize(&diff, -motor_param[i].enc_rev_h, motor_param[i].enc_rev);
         motor[i].enc += diff;
 
         if (diff > 0)
-          motor[i].spd = PWM_cpms / (int)(cnt - motor[i].spd_cnt);
+          motor[i].spd = PWM_cpms / (int32_t)(cnt - motor[i].spd_cnt);
         else
-          motor[i].spd = -PWM_cpms / (int)(cnt - motor[i].spd_cnt);
+          motor[i].spd = -PWM_cpms / (int32_t)(cnt - motor[i].spd_cnt);
         motor[i].spd_cnt = cnt;
         continue;
       }
 
-      int enc0 = 0;
-      int hall_pos = 0;
-      for (int k = motor_param[i].enc_rev; k < motor[i].pos; k += motor_param[i].enc_rev)
+      int32_t enc0 = 0;
+      int32_t hall_pos = 0;
+      for (int32_t k = motor_param[i].enc_rev; k < motor[i].pos; k += motor_param[i].enc_rev)
       {
         // Equivalent of: hall_pos = motor[i].pos % motor_param[i].enc_rev
         hall_pos += 6;
@@ -598,7 +599,7 @@ void FIQ_PWMPeriod()
       // Check hall signal consistency
       if (motor_param[i].enc_type == 2)
       {
-        int err = motor_param[i].enc0 - enc0;
+        int32_t err = motor_param[i].enc0 - enc0;
         normalize(&err, -motor_param[i].enc_rev_h, motor_param[i].enc_rev);
         // In worst case, initial encoder origin can have offset of motor_param[i].enc_rev/12.
         if (_abs(err) > motor_param[i].enc_rev / 6)
@@ -611,7 +612,7 @@ void FIQ_PWMPeriod()
           {
             // Enter error stop mode if another error occurs within one revolution
             motor[i].error_state |= ERROR_HALL_ENC;
-            printf("PWM:enc-hall err (%d)\n\r", err);
+            printf("PWM:enc-hall err (%ld)\n\r", err);
           }
           // Don't apply erroneous absolute angle
           continue;
@@ -649,12 +650,12 @@ void FIQ_PWMPeriod()
 // ------------------------------------------------------------------------------
 void controlPWM_init()
 {
-  int j;
+  int32_t j;
 
   for (j = 0; j < SinTB_2PI / 4; j++)
   {
     fixp4 val, ang;
-    int ival;
+    int32_t ival;
 
     ang = (uint64_t)FP4_PI2 * j / SinTB_2PI;
     val = (fp4sin(ang) + fp4mul(fp4sin(ang * 3), DOUBLE2FP4(0.1547)));

@@ -15,6 +15,8 @@
  * ----------------------------------------------------------------------------
  */
 
+#include <stdint.h>
+
 #include <board.h>
 #include "io.h"
 
@@ -28,7 +30,7 @@
                        (((a)&0x80) << 14))
 #define REV4_MASK 0x0021C701
 
-void set_io_dir(unsigned char io_dir)
+void set_io_dir(uint8_t io_dir)
 {
 #if defined(tfrog_rev5)
   AT91C_BASE_PIOB->PIO_ODR = 0xFF000000;
@@ -40,7 +42,7 @@ void set_io_dir(unsigned char io_dir)
 #endif
 }
 
-void set_io_data(unsigned char io_data)
+void set_io_data(uint8_t io_data)
 {
 #if defined(tfrog_rev5)
   AT91C_BASE_PIOB->PIO_CODR = ((~io_data) & 0xFF) << 24;
@@ -51,7 +53,7 @@ void set_io_data(unsigned char io_data)
 #endif
 }
 
-unsigned char get_io_data()
+uint8_t get_io_data()
 {
 #if defined(tfrog_rev5)
   return AT91C_BASE_PIOB->PIO_PDSR >> 24;

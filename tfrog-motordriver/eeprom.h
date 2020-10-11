@@ -18,31 +18,33 @@
 #ifndef __EEPROM_H__
 #define __EEPROM_H__
 
-void msleep(int ms);
+#include <stdint.h>
+
+void msleep(int32_t ms);
 void EEPROM_Init();
-int EEPROM_Read(int addr, void* data, int len);
-int EEPROM_Write(int addr, void* data, int len);
+int32_t EEPROM_Read(int32_t addr, void* data, int32_t len);
+int32_t EEPROM_Write(int32_t addr, void* data, int32_t len);
 
 typedef struct _Tfrog_EEPROM_data
 {
-  unsigned int key;
-  unsigned short size;
-  unsigned short stored_param_version;
-  unsigned int serial_no;
+  uint32_t key;
+  uint16_t size;
+  uint16_t stored_param_version;
+  uint32_t serial_no;
   char robot_name[32];
-  unsigned short PWM_resolution;
-  unsigned short PWM_deadtime;
-  unsigned char id485;
-  unsigned char stored_data;
-  unsigned char buz_lvl;
-  unsigned char high_frequency_encoder;
-  unsigned char rely_hall;
-  unsigned char io_dir;
-  unsigned char io_data;
+  uint16_t PWM_resolution;
+  uint16_t PWM_deadtime;
+  uint8_t id485;
+  uint8_t stored_data;
+  uint8_t buz_lvl;
+  uint8_t high_frequency_encoder;
+  uint8_t rely_hall;
+  uint8_t io_dir;
+  uint8_t io_data;
   char __endbyte;  // must be at the end of the struct to detect actual struct size
 } Tfrog_EEPROM_data;
 
-#define TFROG_EEPROM_DATA_SIZE ((int)(&(((Tfrog_EEPROM_data*)NULL)->__endbyte)))
+#define TFROG_EEPROM_DATA_SIZE ((int32_t)(&(((Tfrog_EEPROM_data*)NULL)->__endbyte)))
 
 #define TFROG_EEPROM_ROBOTPARAM_ADDR 0x100
 

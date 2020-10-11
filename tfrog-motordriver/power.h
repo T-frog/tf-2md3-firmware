@@ -20,7 +20,10 @@
 
 void LowPowerMode(void);
 void NormalPowerMode(void);
-void LED_on(int num);
-void LED_off(int num);
+
+static const Pin pinsLED[] = { PIN_LED_0, PIN_LED_1, PIN_LED_2 };
+
+#define LED_on(num) PIO_Clear(&pinsLED[num]);
+#define LED_off(num) PIO_Set(&pinsLED[num]);
 
 #endif

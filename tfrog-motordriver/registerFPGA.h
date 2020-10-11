@@ -18,7 +18,9 @@
 #ifndef __REGISTER_FPGA_H__
 #define __REGISTER_FPGA_H__
 
-typedef volatile unsigned short TVREG;
+#include <stdint.h>
+
+typedef volatile uint16_t TVREG;
 
 // Mapping(0x00-0x7F)
 // 0x00-0x0F General Information
