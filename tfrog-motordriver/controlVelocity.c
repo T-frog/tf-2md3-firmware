@@ -67,102 +67,103 @@ void ISR_VelocityControl()
   int64_t out_pwm[2];
   int64_t acc[2];
 
+  YPSpur_servo_level servo_level[2] = {
+    motor[0].servo_level, motor[1].servo_level,
+  };
+  if (motor[0].error_state || motor[1].error_state)
+  {
+    // Don't output PWM if error is detected
+    servo_level[0] = SERVO_LEVEL_OPENFREE;
+    servo_level[1] = SERVO_LEVEL_OPENFREE;
+  }
+
+  // Calculate acceleration from reference velocity by PI control
   for (i = 0; i < 2; i++)
   {
-    if (motor[i].servo_level == SERVO_LEVEL_STOP ||
-        motor[0].error_state || motor[1].error_state)
-      soft_start[i] = 0;
-    else if (soft_start[i] < 128)
-      soft_start[i]++;
-
-    if (motor[i].servo_level >= SERVO_LEVEL_TORQUE)
-    {
-      // servo_level 2(toque enable)
-
-      if (motor[i].servo_level >= SERVO_LEVEL_VELOCITY &&
-          motor[i].servo_level != SERVO_LEVEL_OPENFREE)
-      {
-        int64_t acc_pi;
-
-        // 積分
-        if (motor[i].control_init)
-        {
-          motor[i].ref.vel_diff = 0;
-          motor[i].error = 0;
-          motor[i].error_integ = 0;
-          motor[i].control_init = 0;
-        }
-
-        motor[i].ref.vel_interval++;
-        if (motor[i].ref.vel_changed)
-        {
-          motor[i].ref.vel_buf = motor[i].ref.vel;
-          motor[i].ref.vel_diff = (motor[i].ref.vel_buf - motor[i].ref.vel_buf_prev) / motor[i].ref.vel_interval;
-          // [cnt/msms]
-
-          motor[i].ref.vel_buf_prev = motor[i].ref.vel_buf;
-          motor[i].ref.vel_interval = 0;
-
-          motor[i].ref.vel_changed = 0;
-        }
-        else if (motor[i].ref.vel_interval > 128)
-        {
-          motor[i].ref.vel_diff = 0;
-        }
-
-        motor[i].error = motor[i].ref.vel - motor[i].vel;
-        motor[i].error_integ += motor[i].error;
-        if (motor[i].error_integ > motor_param[i].integ_max)
-        {
-          motor[i].error_integ = motor_param[i].integ_max;
-        }
-        else if (motor[i].error_integ < motor_param[i].integ_min)
-        {
-          motor[i].error_integ = motor_param[i].integ_min;
-        }
-
-        // PI制御分 単位：加速度[cnt/ss]
-        acc_pi = ((int64_t)motor[i].error * motor_param[i].Kp) * driver_param.control_s;
-        // [cnt/ms] * 1000[ms/s] * Kp[1/s] = [cnt/ss]
-        acc_pi += motor[i].error_integ * motor_param[i].Ki;
-        // [cnt] * Ki[1/ss] = [cnt/ss]
-
-        acc[i] = (acc_pi +
-                  (int64_t)Filter1st_Filter(&accelf[i], motor[i].ref.vel_diff) *
-                      driver_param.control_s * driver_param.control_s) /
-                 16;
-        // [cnt/msms] * 1000[ms/s] * 1000[ms/s] = [cnt/ss]
-      }
-      else
-      {
-        motor[i].ref.vel_buf_prev = motor[i].vel;
-        motor[i].ref.vel_buf = motor[i].vel;
-        motor[i].ref.vel = motor[i].vel;
-        motor[i].error_integ = 0;
-        motor[i].ref.vel_diff = 0;
-        Filter1st_Filter(&accelf[i], 0);
-        acc[i] = 0;
-      }
-    }
-    else
+    if (servo_level[i] != SERVO_LEVEL_VELOCITY &&
+        servo_level[i] != SERVO_LEVEL_POSITION)
     {
       motor[i].ref.rate = 0;
       motor[i].ref.vel_buf_prev = motor[i].vel;
       motor[i].ref.vel_buf = motor[i].vel;
       motor[i].ref.vel = motor[i].vel;
+      motor[i].control_init = 1;
       Filter1st_Filter(&accelf[i], 0);
       acc[i] = 0;
+      continue;
     }
+
+    // Clear integral term
+    if (motor[i].control_init)
+    {
+      motor[i].ref.vel_diff = 0;
+      motor[i].error = 0;
+      motor[i].error_integ = 0;
+      motor[i].control_init = 0;
+    }
+
+    motor[i].ref.vel_interval++;
+    if (motor[i].ref.vel_changed)
+    {
+      motor[i].ref.vel_buf = motor[i].ref.vel;
+      motor[i].ref.vel_diff = (motor[i].ref.vel_buf - motor[i].ref.vel_buf_prev) / motor[i].ref.vel_interval;
+      // [cnt/msms]
+
+      motor[i].ref.vel_buf_prev = motor[i].ref.vel_buf;
+      motor[i].ref.vel_interval = 0;
+
+      motor[i].ref.vel_changed = 0;
+    }
+    else if (motor[i].ref.vel_interval > 128)
+    {
+      motor[i].ref.vel_diff = 0;
+    }
+
+    motor[i].error = motor[i].ref.vel - motor[i].vel;
+    motor[i].error_integ += motor[i].error;
+    if (motor[i].error_integ > motor_param[i].integ_max)
+    {
+      motor[i].error_integ = motor_param[i].integ_max;
+    }
+    else if (motor[i].error_integ < motor_param[i].integ_min)
+    {
+      motor[i].error_integ = motor_param[i].integ_min;
+    }
+
+    int64_t acc_pi;
+    // PI制御分 単位：加速度[cnt/ss]
+    acc_pi = ((int64_t)motor[i].error * motor_param[i].Kp) * driver_param.control_s;
+    // [cnt/ms] * 1000[ms/s] * Kp[1/s] = [cnt/ss]
+    acc_pi += motor[i].error_integ * motor_param[i].Ki;
+    // [cnt] * Ki[1/ss] = [cnt/ss]
+
+    acc[i] = (acc_pi +
+              (int64_t)Filter1st_Filter(&accelf[i], motor[i].ref.vel_diff) *
+                  driver_param.control_s * driver_param.control_s) /
+             16;
+    // [cnt/msms] * 1000[ms/s] * 1000[ms/s] = [cnt/ss]
   }
 
+  // Calculate PWM duty ratio from acceleration and velocity
   for (i = 0; i < 2; i++)
   {
-    if (motor[i].servo_level >= SERVO_LEVEL_TORQUE)
+    if (servo_level[i] == SERVO_LEVEL_STOP ||
+        servo_level[i] == SERVO_LEVEL_OPENFREE)
+    {
+      // Soft-start if it is uncontrolled state (STOP, OPENFREE)
+      soft_start[i] = 0;
+    }
+    else if (soft_start[i] < 128)
+    {
+      soft_start[i]++;
+    }
+
+    if (servo_level[i] >= SERVO_LEVEL_TORQUE)
     {
       // servo_level 2(toque enable)
 
-      if (motor[i].servo_level >= SERVO_LEVEL_VELOCITY &&
-          motor[i].servo_level != SERVO_LEVEL_OPENFREE)
+      if (servo_level[i] >= SERVO_LEVEL_VELOCITY &&
+          servo_level[i] != SERVO_LEVEL_OPENFREE)
       {
         int32_t ipair;
         if (i == 0)
