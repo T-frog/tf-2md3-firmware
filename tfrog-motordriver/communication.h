@@ -85,6 +85,7 @@ typedef enum
   PARAM_enc_denominator,
   PARAM_hall_delay_factor,
   PARAM_lr_cutoff_vel,
+  PARAM_vmin,
   PARAM_servo = 64,
   PARAM_watch_dog_limit,
   PARAM_io_dir = 96,

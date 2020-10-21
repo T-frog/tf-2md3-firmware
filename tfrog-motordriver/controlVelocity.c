@@ -410,6 +410,7 @@ void controlVelocity_init()
   Filter1st_CreateLPF(&accelf0, ACCEL_FILTER_TIME);
   accelf[0] = accelf[1] = accelf0;
 
+  driver_param.vmin = 0;  // no soft limit by default
   driver_param.watchdog_limit = 600;
   driver_param.control_cycle = 1;
   driver_state.protocol_version = 0;

@@ -1716,6 +1716,9 @@ int32_t command_analyze(uint8_t* data, int32_t len)
         // ad = 1024 * ( vsrc * VSRC_DIV ) / 3.3
         driver_param.vsrc_rated = 310 * ((int32_t)i.integer * VSRC_DIV) / 256;
         break;
+      case PARAM_vmin:
+        driver_param.vmin = 310 * ((int32_t)i.integer * VSRC_DIV) / 256;
+        break;
       default:
         return 0;
     }

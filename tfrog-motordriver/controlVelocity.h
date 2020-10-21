@@ -143,6 +143,7 @@ typedef struct _DriverParam
   int32_t control_s;
   int32_t vsrc_rated;
   uint16_t watchdog_limit;
+  int32_t vmin;
 } DriverParam;
 
 typedef struct _DriverState
