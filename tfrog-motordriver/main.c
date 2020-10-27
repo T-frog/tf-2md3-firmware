@@ -1008,11 +1008,7 @@ int main()
       driver_state.vsrc = Filter1st_Filter(&voltf, (int32_t)(analog[7] & 0x0FFF));
       ADC_Start();
 
-      if (driver_state.vsrc < driver_param.vsrc_rated / 4)
-      {
-        driver_state.vsrc_factor = 0;
-      }
-      else if (driver_param.vsrc_rated >= 0x03FF)
+      if (driver_param.vsrc_rated >= 0x03FF)
       {
         driver_state.vsrc_factor = 32768;
       }
@@ -1020,7 +1016,7 @@ int main()
       {
         driver_state.vsrc_factor = driver_param.vsrc_rated * 32768 / driver_state.vsrc;
       }
-      if (driver_state.vsrc > 310 * 8 * VSRC_DIV)
+      if (driver_state.vsrc > 310 * 8 * VSRC_DIV && driver_state.vsrc > driver_param.vmin)
       {
         if (driver_state.error.low_voltage < 100)
         {
@@ -1034,6 +1030,7 @@ int main()
       }
       else
       {
+        driver_state.vsrc_factor = 0;
         driver_state.error.low_voltage = 0;
         motor[0].error_state |= ERROR_LOW_VOLTAGE;
         motor[1].error_state |= ERROR_LOW_VOLTAGE;
