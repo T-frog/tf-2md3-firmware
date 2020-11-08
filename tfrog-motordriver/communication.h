@@ -20,6 +20,7 @@
 
 #include <stdint.h>
 #include <board.h>
+#include <assert.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -86,8 +87,10 @@ typedef enum
   PARAM_hall_delay_factor,
   PARAM_lr_cutoff_vel,
   PARAM_vmin,
+  PARAM_BLOCK0_END,
   PARAM_servo = 64,
   PARAM_watch_dog_limit,
+  PARAM_BLOCK1_END,
   PARAM_io_dir = 96,
   PARAM_io_data,
   PARAM_ad_mask,
@@ -95,7 +98,14 @@ typedef enum
   PARAM_protocol_version,
   PARAM_ping,
   PARAM_dump,
+  PARAM_BLOCK2_END,
 } YPSpur_loco_param;
+
+#if __USE_ISOC11
+static_assert(PARAM_BLOCK0_END <= PARAM_servo, "Parameter enum overwrapped");
+static_assert(PARAM_BLOCK1_END <= PARAM_io_dir, "Parameter enum overwrapped");
+static_assert(PARAM_BLOCK2_END <= 255, "Parameter enum overflow");
+#endif
 
 typedef enum
 {
