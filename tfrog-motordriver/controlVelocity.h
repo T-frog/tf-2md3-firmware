@@ -46,7 +46,7 @@ typedef enum _ErrorID
 #define ENC0_DENOMINATOR_MAX ((int)(ENC0_BUF_MAX / 6))
 #define ENC0_BUF_UNKNOWN 0x7FFFFFF
 
-#if __USE_ISOC11
+#if __USE_ISOC11 || __STDC_VERSION__ >= 201112L
 static_assert(
     ENC0_BUF_MAX && ((ENC0_BUF_MAX & (ENC0_BUF_MAX - 1)) == 0),
     "ENC0_BUF_MAX must be 2^n");
@@ -178,7 +178,7 @@ typedef struct _DriverState
   uint32_t ping_request;
 } DriverState;
 
-#if __USE_ISOC11
+#if __USE_ISOC11 || __STDC_VERSION__ >= 201112L
 static_assert(sizeof(DriverParam) < 0x100, "DriverParam overflows reserved EEPROM capacity");
 static_assert(sizeof(MotorParam) < 0x100, "MotorParam overflows reserved EEPROM capacity");
 #endif
