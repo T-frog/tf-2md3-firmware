@@ -20,20 +20,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v2
 
-      - name: Cache multiple paths
-        uses: actions/cache@v2
-        with:
-          path: ~/toolchain
-          key: toolchain-${{ env.TOOLCHAIN_URI }}
-      - name: Setup toolchain
-        run: |
-          if [ ! -f ~/toolchain/${TOOLCHAIN_ARCHIVE} ]; then
-            wget --trust-server-names \
-              -O ~/toolchain/${TOOLCHAIN_ARCHIVE} ${TOOLCHAIN_URI}
-          fi
-          sudo tar xjf ~/toolchain/${TOOLCHAIN_ARCHIVE} \
-            --strip-components 1 -C /usr
-
       - name: Get tag
         if: github.event_name == 'release'
         run: echo "TAG=${GITHUB_REF#refs/tags/}" >> ${GITHUB_ENV}
@@ -42,6 +28,21 @@ jobs:
           echo "SHORT_HASH=$(git rev-parse --short HEAD)" >> ${GITHUB_ENV}
           echo "RELEASE_FILENAME_R4=tf-2md3-r4-${TAG:-latest}.bin" >> ${GITHUB_ENV}
           echo "RELEASE_FILENAME_R6=tf-2md3-r6-${TAG:-latest}.bin" >> ${GITHUB_ENV}
+          echo "TOOLCHAIN_URI_HASH=$(echo ${TOOLCHAIN_URI} | sha512sum -)" >> ${GITHUB_ENV}
+
+      - name: Cache toolchain
+        uses: actions/cache@v2
+        with:
+          path: ~/toolchain
+          key: toolchain-${{ env.TOOLCHAIN_URI_HASH }}
+      - name: Setup toolchain
+        run: |
+          if [ ! -f ~/toolchain/${TOOLCHAIN_ARCHIVE} ]; then
+            wget --trust-server-names \
+              -O ~/toolchain/${TOOLCHAIN_ARCHIVE} ${TOOLCHAIN_URI}
+          fi
+          sudo tar xjf ~/toolchain/${TOOLCHAIN_ARCHIVE} \
+            --strip-components 1 -C /usr
 
       - name: Build rev4
         run: |
