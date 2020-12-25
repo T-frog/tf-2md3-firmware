@@ -1,0 +1,84 @@
+name: ci
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+  release:
+    types: [published]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    env:
+      TOOLCHAIN_URI: "https://developer.arm.com/-/media/Files/downloads/gnu-rm/6-2017q2/gcc-arm-none-eabi-6-2017-q2-update-linux.tar.bz2?product=GNU%20ARM%20Embedded%20Toolchain,64-bit,,Linux,6-2017-q2-update"
+      TOOLCHAIN_ARCHIVE: gcc-arm-none-eabi.tar.bz2
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Get tag
+        if: github.event_name == 'release'
+        run: echo "TAG=${GITHUB_REF#refs/tags/}" >> ${GITHUB_ENV}
+      - name: Set environment variables
+        run: |
+          echo "SHORT_HASH=$(git rev-parse --short HEAD)" >> ${GITHUB_ENV}
+          echo "RELEASE_FILENAME_R4=tf-2md3-r4-${TAG:-latest}.bin" >> ${GITHUB_ENV}
+          echo "RELEASE_FILENAME_R6=tf-2md3-r6-${TAG:-latest}.bin" >> ${GITHUB_ENV}
+          echo "TOOLCHAIN_URI_HASH=$(echo ${TOOLCHAIN_URI} | sha512sum -)" >> ${GITHUB_ENV}
+
+      - name: Cache toolchain
+        uses: actions/cache@v2
+        with:
+          path: ~/toolchain
+          key: toolchain-${{ env.TOOLCHAIN_URI_HASH }}
+      - name: Setup toolchain
+        run: |
+          if [ ! -f ~/toolchain/${TOOLCHAIN_ARCHIVE} ]; then
+            mkdir -p ~/toolchain
+            wget --trust-server-names \
+              -O ~/toolchain/${TOOLCHAIN_ARCHIVE} ${TOOLCHAIN_URI}
+          fi
+          sudo tar xjf ~/toolchain/${TOOLCHAIN_ARCHIVE} \
+            --strip-components 1 -C /usr
+
+      - name: Build rev4
+        run: |
+          cd tfrog-motordriver/
+          make \
+            BOARD=tfrog-rev4 \
+            FIRMINFO="-DYP_FIRMWARE_NAME=\\\"tf-2md3-r4-${TAG:-latest}-${SHORT_HASH}\\\""
+          mv bin/tfrog-motordriver-tfrog-rev4-at91sam7se512-flash.bin \
+            bin/${RELEASE_FILENAME_R4}
+      - name: Build rev6
+        run: |
+          cd tfrog-motordriver/
+          make \
+            BOARD=tfrog-rev5 \
+            FIRMINFO="-DYP_FIRMWARE_NAME=\\\"tf-2md3-r6-${TAG:-latest}-${SHORT_HASH}\\\""
+          mv bin/tfrog-motordriver-tfrog-rev5-at91sam7se256-flash.bin \
+            bin/${RELEASE_FILENAME_R6}
+
+      - name: Deploy rev4
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: tfrog-motordriver/bin/${{ env.RELEASE_FILENAME_R4 }}
+          asset_name: ${{ env.RELEASE_FILENAME_R4 }}
+          asset_content_type: application/octet-stream
+      - name: Deploy rev6
+        if: github.event_name == 'release'
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: tfrog-motordriver/bin/${{ env.RELEASE_FILENAME_R6 }}
+          asset_name: ${{ env.RELEASE_FILENAME_R6 }}
+          asset_content_type: application/octet-stream
