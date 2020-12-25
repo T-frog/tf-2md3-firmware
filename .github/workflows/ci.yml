@@ -50,7 +50,7 @@ jobs:
           cd tfrog-motordriver/
           make \
             BOARD=tfrog-rev4 \
-            FIRMINFO="-DYP_FIRMWARE_NAME=tf-2md3-r4-${TAG:-latest}-${SHORT_HASH}"
+            FIRMINFO="-DYP_FIRMWARE_NAME=\\\"tf-2md3-r4-${TAG:-latest}-${SHORT_HASH}\\\""
           mv bin/tfrog-motordriver-tfrog-rev4-at91sam7se512-flash.bin \
             bin/${RELEASE_FILENAME_R4}
       - name: Build rev6
@@ -58,7 +58,7 @@ jobs:
           cd tfrog-motordriver/
           make \
             BOARD=tfrog-rev5 \
-            FIRMINFO="-DYP_FIRMWARE_NAME=tf-2md3-r6-${TAG:-latest}-${SHORT_HASH}"
+            FIRMINFO="-DYP_FIRMWARE_NAME=\\\"tf-2md3-r6-${TAG:-latest}-${SHORT_HASH}\\\""
           mv bin/tfrog-motordriver-tfrog-rev5-at91sam7se256-flash.bin \
             bin/${RELEASE_FILENAME_R6}
 
