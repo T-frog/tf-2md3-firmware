@@ -38,6 +38,7 @@ jobs:
       - name: Setup toolchain
         run: |
           if [ ! -f ~/toolchain/${TOOLCHAIN_ARCHIVE} ]; then
+            mkdir -p ~/toolchain
             wget --trust-server-names \
               -O ~/toolchain/${TOOLCHAIN_ARCHIVE} ${TOOLCHAIN_URI}
           fi
