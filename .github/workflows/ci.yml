@@ -82,3 +82,20 @@ jobs:
           asset_path: tfrog-motordriver/bin/${{ env.RELEASE_FILENAME_R6 }}
           asset_name: ${{ env.RELEASE_FILENAME_R6 }}
           asset_content_type: application/octet-stream
+
+      - name: Create license tarball
+        run: |
+          mkdir -p licenses/tf-2md3-firmware/at91lib
+          cp LICENSE licenses/tf-2md3-firmware/
+          cp LICENSE.at91lib licenses/tf-2md3-firmware/at91lib/
+          tar czf licenses.tar.gz licenses
+      - name: Upload license tarball
+        uses: actions/upload-release-asset@v1
+        if: github.event_name == 'release'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ./licenses.tar.gz
+          asset_name: licenses.tar.gz
+          asset_content_type: application/gzip
