@@ -20,12 +20,14 @@
 #include "communication.h"
 #include "controlVelocity.h"
 #include "debug.h"
+#include "eeprom.h"
+#include "registerFPGA.h"
 
 extern uint8_t send_buf[SEND_BUF_LEN];
 extern volatile uint32_t send_buf_pos;
 
 static int32_t dump_id = -1;
-static void* dump_ptr = 0;
+static volatile void* dump_ptr = 0;
 static int32_t dump_size = -1;
 static int32_t dump_cnt = 0;
 
@@ -53,6 +55,14 @@ void start_dump(const int32_t imotor, const int32_t arg)
     case 3:
       dump_ptr = &driver_param;
       dump_size = sizeof(DriverParam);
+      break;
+    case 4:
+      dump_ptr = &saved_param;
+      dump_size = sizeof(Tfrog_EEPROM_data);
+      break;
+    case 5:
+      dump_ptr = &THEVA;
+      dump_size = sizeof(THEVA_REG);
       break;
     default:
       dump_ptr = 0;

@@ -43,7 +43,7 @@ static const Pin pinPWMCycle2 = PIN_PWM_CYCLE2;
 // / PWM Enable pin instance.
 static const Pin pinPWMEnable = PIN_PWM_ENABLE;
 
-#define SinTB_2PI 4096
+#define SinTB_2PI  4096
 #define AtanTB_LEN 512
 
 static char init = 1;
@@ -81,7 +81,6 @@ inline int16_t atan_(const int32_t x)
   return AtanTB[AtanTB_LEN - 1];
 }
 
-extern Tfrog_EEPROM_data saved_param;
 extern volatile char rs485_timeout;
 
 void controlPWM_config(int32_t i)

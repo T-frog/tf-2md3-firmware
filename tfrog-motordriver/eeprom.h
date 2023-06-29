@@ -72,9 +72,11 @@ typedef struct _Tfrog_EEPROM_data
         0,                          \
   }
 
-#define TFROG_EEPROM_DATA_TEXT 0
-#define TFROG_EEPROM_DATA_BIN 1
+#define TFROG_EEPROM_DATA_TEXT       0
+#define TFROG_EEPROM_DATA_BIN        1
 #define TFROG_EEPROM_DATA_BIN_SAVING 2
 #define TFROG_EEPROM_DATA_BIN_LOCKED 3
+
+extern Tfrog_EEPROM_data saved_param;
 
 #endif
