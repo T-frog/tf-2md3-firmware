@@ -55,8 +55,8 @@ void msleep(int32_t ms)
 void EEPROM_Init()
 {
 #if defined(tfrog_rev5)
-  static const Pin pinsEEPROM[] = { PINS_EEPROM };
-  static const Pin pinsEEPROM_reset[] = { PINS_EEPROM_TWD, PINS_EEPROM_TWCK };
+  static const Pin pinsEEPROM[] = {PINS_EEPROM};
+  static const Pin pinsEEPROM_reset[] = {PINS_EEPROM_TWD, PINS_EEPROM_TWCK};
   int32_t i;
 
   PIO_Configure(pinsEEPROM_reset, PIO_LISTSIZE(pinsEEPROM_reset));

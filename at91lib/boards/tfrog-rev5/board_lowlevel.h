@@ -31,9 +31,9 @@
 /// \unit
 ///
 /// !!!Purpose
-/// 
+///
 /// Collection of methods for lowlevel.
-/// 
+///
 //------------------------------------------------------------------------------
 
 #ifndef BOARD_LOWLEVEL_H
@@ -44,6 +44,5 @@
 //------------------------------------------------------------------------------
 extern void LowLevelInit(void);
 
-#endif // BOARD_LOWLEVEL_H
-
+#endif  // BOARD_LOWLEVEL_H
 

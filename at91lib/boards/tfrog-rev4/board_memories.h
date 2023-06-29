@@ -42,19 +42,18 @@
 #ifndef BOARD_MEMORIES_H
 #define BOARD_MEMORIES_H
 
-
 //------------------------------------------------------------------------------
 //         Definitions
 //------------------------------------------------------------------------------
 
 /// Alias for BOARD_ConfigureSdram48MHz() function
-#define BOARD_ConfigureSdram48MHz       BOARD_ConfigureSdram
+#define BOARD_ConfigureSdram48MHz BOARD_ConfigureSdram
 
 /// Alias for BOARD_ConfigureNandFlash48MHz() function
-#define BOARD_ConfigureNandFlash48MHz   BOARD_ConfigureNandFlash
+#define BOARD_ConfigureNandFlash48MHz BOARD_ConfigureNandFlash
 
 /// Alias for BOARD_ConfigureNorFlash48MHz() function
-#define BOARD_ConfigureNorFlash48MHz    BOARD_ConfigureNorFlash
+#define BOARD_ConfigureNorFlash48MHz BOARD_ConfigureNorFlash
 
 //------------------------------------------------------------------------------
 //         Exported functions
@@ -66,5 +65,5 @@ extern void BOARD_RemapRam(void);
 
 extern void BOARD_ConfigureFlash48MHz(void);
 
-#endif //#ifndef BOARD_MEMORIES_H
+#endif  //#ifndef BOARD_MEMORIES_H
 
