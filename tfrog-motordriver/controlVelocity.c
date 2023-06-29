@@ -44,9 +44,9 @@ DriverState driver_state;
 int16_t com_cnts[COM_MOTORS];
 int16_t com_pwms[COM_MOTORS];
 char com_en[COM_MOTORS];
-int32_t pwm_sum[2] = { 0, 0 };
-int32_t pwm_num[2] = { 0, 0 };
-int16_t soft_start[2] = { 0, 0 };
+int32_t pwm_sum[2] = {0, 0};
+int32_t pwm_num[2] = {0, 0};
+int16_t soft_start[2] = {0, 0};
 
 Filter1st accelf[2];
 Filter1st accelf0;
@@ -68,7 +68,8 @@ void ISR_VelocityControl()
   int64_t acc[2];
 
   YPSpur_servo_level servo_level[2] = {
-    motor[0].servo_level, motor[1].servo_level,
+      motor[0].servo_level,
+      motor[1].servo_level,
   };
   if (motor[0].error_state || motor[1].error_state)
   {

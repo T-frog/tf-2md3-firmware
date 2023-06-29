@@ -92,19 +92,19 @@ extern volatile int32_t w_receive_buf;
 extern volatile int32_t r_receive_buf;
 
 uint8_t manufacturerStringDescriptor2[64] = {
-  USBStringDescriptor_LENGTH(0),
-  USBGenericDescriptor_STRING
+    USBStringDescriptor_LENGTH(0),
+    USBGenericDescriptor_STRING,
 };
 
 uint8_t productStringDescriptor2[64] = {
-  USBStringDescriptor_LENGTH(0),
-  USBGenericDescriptor_STRING
+    USBStringDescriptor_LENGTH(0),
+    USBGenericDescriptor_STRING,
 };
 
 uint8_t* stringDescriptors2[3] = {
-  languageIdStringDescriptor,
-  productStringDescriptor2,
-  manufacturerStringDescriptor2
+    languageIdStringDescriptor,
+    productStringDescriptor2,
+    manufacturerStringDescriptor2,
 };
 
 // ------------------------------------------------------------------------------
@@ -124,19 +124,18 @@ char connected = 0;
 
 // / List of pins that must be configured for use by the application.
 static const Pin pins[] = {
-  PIN_PWM_ENABLE,
-  PIN_PCK_PCK1,
-  PINS_USERIO,
-  PINS_RS485,
+    PIN_PWM_ENABLE,
+    PIN_PCK_PCK1,
+    PINS_USERIO,
+    PINS_RS485,
 #if defined(tfrog_rev5)
-  PIN_VERSION,
-  PIN_BUZ,
+    PIN_VERSION,
+    PIN_BUZ,
 #endif
-  PIN_LED_0, PIN_LED_1, PIN_LED_2
-};
+    PIN_LED_0, PIN_LED_1, PIN_LED_2};
 #if defined(tfrog_rev5)
-static const Pin pinBuz[] = { PIN_BUZ };
-static const Pin pinVer[] = { PIN_VERSION };
+static const Pin pinBuz[] = {PIN_BUZ};
+static const Pin pinVer[] = {PIN_VERSION};
 #endif
 
 // / VBus pin instance.
@@ -154,7 +153,7 @@ static uint8_t usbBuffer[DATABUFFERSIZE];
 
 void SRAM_Init()
 {
-  static const Pin pinsSram[] = { PINS_SRAM };
+  static const Pin pinsSram[] = {PINS_SRAM};
 
   // Enable corresponding PIOs
   PIO_Configure(pinsSram, PIO_LISTSIZE(pinsSram));
@@ -376,8 +375,8 @@ int main()
     default:
 #ifdef PINS_CLEAR
     {
-      static const Pin pinsClear[] = { PINS_CLEAR };
-      static const Pin pinsSet[] = { PINS_SET };
+      static const Pin pinsClear[] = {PINS_CLEAR};
+      static const Pin pinsSet[] = {PINS_SET};
 
       AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDDIS;
       AT91C_BASE_RSTC->RSTC_RMR = 0xA5000400;
@@ -421,8 +420,8 @@ int main()
     volatile int32_t i;
 
 #ifdef PINS_CLEAR
-    static const Pin pinsClear[] = { PINS_CLEAR };
-    static const Pin pinsSet[] = { PINS_SET };
+    static const Pin pinsClear[] = {PINS_CLEAR};
+    static const Pin pinsSet[] = {PINS_SET};
 
     AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDDIS;
     PIO_Configure(pinsClear, PIO_LISTSIZE(pinsClear));
@@ -479,8 +478,8 @@ int main()
 
   // BOT driver initialization
   {
-    const char manufacturer[] = { "T-frog project" };
-    const char product[] = { "T-frog Driver" };
+    const char manufacturer[] = {"T-frog project"};
+    const char product[] = {"T-frog Driver"};
     int32_t i;
 
     manufacturerStringDescriptor2[0] = USBStringDescriptor_LENGTH(strlen(manufacturer));

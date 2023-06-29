@@ -73,9 +73,9 @@ void dump_send()
   send_buf[0] = COMMUNICATION_INT_BYTE;
 
   const uint8_t hdr[3] = {
-    INT_debug_dump,
-    dump_id,
-    dump_cnt,
+      INT_debug_dump,
+      dump_id,
+      dump_cnt,
   };
   int32_t encode_len = encode(
       hdr, 3, send_buf + 1, SEND_BUF_LEN - 2);

@@ -53,7 +53,7 @@ static_assert(
 #endif
 
 #define ACCEL_FILTER_TIME 15  // Timeconstant in velocity control steps
-#define ENC0_FILTER_TIME 32   // Timeconstant in velocity control steps
+#define ENC0_FILTER_TIME 32  // Timeconstant in velocity control steps
 
 typedef struct _MotorState
 {

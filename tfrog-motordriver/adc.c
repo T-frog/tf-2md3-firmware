@@ -33,7 +33,7 @@
 
 void ADC_Init()
 {
-  static const Pin pinsADC[] = { PINS_ADC };
+  static const Pin pinsADC[] = {PINS_ADC};
   uint32_t prescal;
   uint32_t startup;
   uint32_t shtim;

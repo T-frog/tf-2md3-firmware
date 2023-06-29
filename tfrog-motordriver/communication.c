@@ -1001,7 +1001,7 @@ int32_t extended_command_analyze(char* data)
   else if (strstr(data, "PP") == data)
   {
     char val[10];
-    char sep[2] = { 0 };
+    char sep[2] = {0};
     send(data);
     send("\n00P\nNAME:");
     send(saved_param.robot_name);

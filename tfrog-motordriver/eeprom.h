@@ -60,7 +60,7 @@ typedef struct _Tfrog_EEPROM_data
         TFROG_EEPROM_DATA_SIZE,     \
         TFROG_EEPROM_PARAM_VERSION, \
         0x01300000,                 \
-        { "unknown" },              \
+        {"unknown"},                \
         1200,                       \
         20,                         \
         0,                          \
