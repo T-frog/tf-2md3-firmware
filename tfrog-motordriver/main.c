@@ -710,6 +710,7 @@ int main()
   driver_state.error.hallenc[1] = 0;
   driver_state.ifmode = 0;
   driver_state.watchdog = 0;
+  driver_state.odom_drop = 0;
   // Driver loop
   while (1)
   {
@@ -942,6 +943,10 @@ int main()
       int32_t i;
       /* 約5msおき */
       driver_state.cnt_updated -= 5;
+      for (; driver_state.cnt_updated >= 5; driver_state.cnt_updated -= 5)
+      {
+        driver_state.odom_drop++;
+      }
 
       mask = driver_state.admask;  // analog_mask;
       if (driver_state.io_mask[0])

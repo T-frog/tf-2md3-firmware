@@ -42,9 +42,9 @@ typedef enum _ErrorID
 #define ERROR_NUM 6
 
 // ENC0_BUF_MAX must be 2^n to reduce computation cost.
-#define ENC0_BUF_MAX 64
+#define ENC0_BUF_MAX         64
 #define ENC0_DENOMINATOR_MAX ((int)(ENC0_BUF_MAX / 6))
-#define ENC0_BUF_UNKNOWN 0x7FFFFFF
+#define ENC0_BUF_UNKNOWN     0x7FFFFFF
 
 #ifdef static_assert
 static_assert(
@@ -53,7 +53,7 @@ static_assert(
 #endif
 
 #define ACCEL_FILTER_TIME 15  // Timeconstant in velocity control steps
-#define ENC0_FILTER_TIME 32  // Timeconstant in velocity control steps
+#define ENC0_FILTER_TIME  32  // Timeconstant in velocity control steps
 
 typedef struct _MotorState
 {
@@ -176,6 +176,7 @@ typedef struct _DriverState
   uint8_t protocol_version;
   uint32_t velcontrol;
   uint32_t ping_request;
+  uint32_t odom_drop;
 } DriverState;
 
 #ifdef static_assert
