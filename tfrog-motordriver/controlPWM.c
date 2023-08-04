@@ -85,6 +85,8 @@ extern volatile char rs485_timeout;
 
 void controlPWM_config(int32_t i)
 {
+  THEVA.MOTOR[i].INVERT = 0;
+
   switch (motor_param[i].motor_type)
   {
     case MOTOR_TYPE_DC:

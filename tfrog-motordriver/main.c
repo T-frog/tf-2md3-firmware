@@ -716,10 +716,12 @@ int main()
   {
     AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
 
-    if (err_chk++ % 20 == 0)
+    if (err_chk++ % 30 == 0)
     {
       if ((volatile int32_t)THEVA.GENERAL.PWM.HALF_PERIOD != saved_param.PWM_resolution ||
-          (volatile int32_t)THEVA.GENERAL.PWM.DEADTIME != saved_param.PWM_deadtime)
+          (volatile int32_t)THEVA.GENERAL.PWM.DEADTIME != saved_param.PWM_deadtime ||
+          THEVA.MOTOR[0].INVERT != 0 ||
+          THEVA.MOTOR[1].INVERT != 0)
       {
         err_cnt++;
         controlPWM_init();
