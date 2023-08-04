@@ -51,8 +51,6 @@ int16_t soft_start[2] = {0, 0};
 Filter1st accelf[2];
 Filter1st accelf0;
 
-extern Tfrog_EEPROM_data saved_param;
-
 void ISR_VelocityControl() RAMFUNC;
 void timer0_vel_calc() RAMFUNC;
 

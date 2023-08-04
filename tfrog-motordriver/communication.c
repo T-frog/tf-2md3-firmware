@@ -50,7 +50,6 @@ uint8_t receive_buf485[RECV_BUF_LEN];
 volatile int32_t w_receive_buf485 = 0;
 volatile int32_t r_receive_buf485 = 0;
 extern const Pin pinPWMEnable;
-extern Tfrog_EEPROM_data saved_param;
 extern volatile char rs485_timeout;
 extern volatile int16_t tic;
 extern volatile uint8_t usb_read_pause;
