@@ -177,6 +177,7 @@ typedef struct _DriverState
   uint32_t velcontrol;
   uint32_t ping_request;
   uint32_t odom_drop;
+  int32_t vsrc_max;
 } DriverState;
 
 #ifdef static_assert
