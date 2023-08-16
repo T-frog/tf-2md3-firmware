@@ -711,6 +711,19 @@ int main()
   driver_state.ifmode = 0;
   driver_state.watchdog = 0;
   driver_state.odom_drop = 0;
+  driver_state.vsrc_max = 0x3ff;
+  switch (driver_state.board_version)
+  {
+    case BOARD_R6A:
+    case BOARD_R4:
+      break;
+    case BOARD_R6B:
+#if defined(tfrog_rev5)
+      driver_state.vsrc_max = 0x3ff * VSRC_CONV_B;
+#endif
+      break;
+  }
+
   // Driver loop
   while (1)
   {
@@ -1014,7 +1027,7 @@ int main()
       driver_state.vsrc = Filter1st_Filter(&voltf, (int32_t)(analog[7] & 0x0FFF));
       ADC_Start();
 
-      if (driver_param.vsrc_rated >= 0x03FF)
+      if (driver_param.vsrc_rated >= driver_state.vsrc_max)
       {
         driver_state.vsrc_factor = 32768;
       }
