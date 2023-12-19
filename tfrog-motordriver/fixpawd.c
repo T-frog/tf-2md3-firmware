@@ -16,8 +16,8 @@
  */
 
 /**
-	@file fixp.c
-	@brief Fixed point value operation
+  @file fixp.c
+  @brief Fixed point value operation
  */
 
 #include <stdint.h>
@@ -25,10 +25,10 @@
 #include "fixpawd.h"
 
 /**
-	@brief Multiple fixed point values (fast var)
-	@param a [in] Input value A
-	@param b [in] Input value B
-	@return A*B
+  @brief Multiple fixed point values (fast var)
+  @param a [in] Input value A
+  @param b [in] Input value B
+  @return A*B
  */
 fixp4 fp4mulf(fixp4 a, fixp4 b)
 {
@@ -36,10 +36,10 @@ fixp4 fp4mulf(fixp4 a, fixp4 b)
 }
 
 /**
-	@brief Multiple fixed point values
-	@param a [in] Input value A
-	@param b [in] Input value B
-	@return A*B
+  @brief Multiple fixed point values
+  @param a [in] Input value A
+  @param b [in] Input value B
+  @return A*B
  */
 fixp4 fp4mul(fixp4 a, fixp4 b)
 {
@@ -56,10 +56,10 @@ fixp4 fp4mul(fixp4 a, fixp4 b)
 }
 
 /**
-	@brief Divide Fixed point value
-	@param a [in] Input value A
-	@param b [in] Input value B
-	@return A/B
+  @brief Divide Fixed point value
+  @param a [in] Input value A
+  @param b [in] Input value B
+  @return A/B
  */
 fixp4 fp4div(fixp4 a, fixp4 b)
 {
@@ -67,9 +67,9 @@ fixp4 fp4div(fixp4 a, fixp4 b)
 }
 
 /**
-	@brief Convert double value to fixed point value
-	@param a [in] Input value A
-	@return A expressed in fixed point
+  @brief Convert double value to fixed point value
+  @param a [in] Input value A
+  @return A expressed in fixed point
  */
 fixp4 double2fp4(double a)
 {
@@ -77,9 +77,9 @@ fixp4 double2fp4(double a)
 }
 
 /**
-	@brief Convert int32_t value to fixed point value
-	@param a [in] Input value A
-	@return A expressed in fixed point
+  @brief Convert int32_t value to fixed point value
+  @param a [in] Input value A
+  @return A expressed in fixed point
  */
 fixp4 int2fp4(int32_t a)
 {
@@ -87,9 +87,9 @@ fixp4 int2fp4(int32_t a)
 }
 
 /**
-	@brief Convert fixed point value to double value
-	@param a [in] Input value A
-	@return A expressed in double
+  @brief Convert fixed point value to double value
+  @param a [in] Input value A
+  @return A expressed in double
  */
 double fp42double(fixp4 a)
 {
