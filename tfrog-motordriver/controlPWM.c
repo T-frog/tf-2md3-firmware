@@ -60,19 +60,26 @@ int32_t brake_cnt_max;
 
 void FIQ_PWMPeriod() RAMFUNC;
 
-inline void soft_brake(const int m)
+void soft_brake(const int m)
 {
+  if (brake_cnt_max == 0)
+  {
+    for (int8_t i = 0; i < 3; i++)
+    {
+      THEVA.MOTOR[m].PWM[i].H = PWM_resolution;
+      THEVA.MOTOR[m].PWM[i].L = PWM_resolution;
+    }
+    return;
+  }
+
   const int32_t pwm = PWM_resolution * motor[m].brake_cnt / brake_cnt_max;
   for (int8_t i = 0; i < 3; i++)
   {
     THEVA.MOTOR[m].PWM[i].H = PWM_resolution;
     THEVA.MOTOR[m].PWM[i].L = pwm;
   }
-  if (motor[m].brake_cnt <= brake_cnt_max)
-  {
-    motor[m].brake_cnt++;
-  }
-  else
+  motor[m].brake_cnt++;
+  if (motor[m].brake_cnt > brake_cnt_max)
   {
     motor[m].brake_cnt = brake_cnt_max;
   }
