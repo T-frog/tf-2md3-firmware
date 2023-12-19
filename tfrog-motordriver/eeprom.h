@@ -71,7 +71,7 @@ typedef struct _Tfrog_EEPROM_data
         0,                          \
         0,                          \
         0,                          \
-        1000,                       \
+        0,                          \
   }
 
 #define TFROG_EEPROM_DATA_TEXT       0
