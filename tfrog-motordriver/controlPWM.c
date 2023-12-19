@@ -110,6 +110,12 @@ void controlPWM_config(int32_t i)
 {
   THEVA.MOTOR[i].INVERT = 0;
 
+  for (int8_t j = 0; j < 3; j++)
+  {
+    THEVA.MOTOR[i].PWM[j].H = 0;
+    THEVA.MOTOR[i].PWM[j].L = 0;
+  }
+  /*
   switch (motor_param[i].motor_type)
   {
     case MOTOR_TYPE_DC:
@@ -129,6 +135,7 @@ void controlPWM_config(int32_t i)
       THEVA.MOTOR[i].PWM[2].L = PWM_resolution;
       break;
   }
+  */
 
   motor[i].ref.rate = 0;
 
