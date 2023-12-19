@@ -1049,6 +1049,9 @@ int32_t extended_command_analyze(char* data)
     send("; \nINITIODATA:");
     nhex(val, saved_param.io_data, 2);
     send(val);
+    send("SOFTBRAKEMS");
+    itoa10(val, saved_param.soft_brake_ms);
+    send(val);
     send("; \n\n");
   }
   else if (strstr(data, "$LOCKPARAM") == data)
