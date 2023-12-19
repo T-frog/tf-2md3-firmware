@@ -60,14 +60,14 @@ int32_t PWM_cpms;
 void FIQ_PWMPeriod() RAMFUNC;
 
 int32_t short_brake_cnt[2] = {0, 0};
-int32_t short_brake_cnt_max = 1200;
+int32_t short_brake_cnt_max = 10000;
 
 inline void short_brake(const int m)
 {
   const int32_t pwm = PWM_resolution * short_brake_cnt[m] / short_brake_cnt_max;
   for (int8_t i = 0; i < 3; i++)
   {
-    THEVA.MOTOR[m].PWM[i].H = pwm;
+    THEVA.MOTOR[m].PWM[i].H = PWM_resolution;
     THEVA.MOTOR[m].PWM[i].L = pwm;
   }
   short_brake_cnt[m]++;
