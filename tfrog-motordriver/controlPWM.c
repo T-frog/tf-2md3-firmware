@@ -59,6 +59,29 @@ int32_t PWM_cpms;
 
 void FIQ_PWMPeriod() RAMFUNC;
 
+int32_t short_brake_cnt[2] = {0, 0};
+int32_t short_brake_cnt_max = 1200;
+
+inline void short_brake(const int m)
+{
+  const int32_t pwm = PWM_resolution * short_brake_cnt[m] / short_brake_cnt_max;
+  for (int8_t i = 0; i < 3; i++)
+  {
+    THEVA.MOTOR[m].PWM[i].H = pwm;
+    THEVA.MOTOR[m].PWM[i].L = pwm;
+  }
+  short_brake_cnt[m]++;
+  if (short_brake_cnt[m] > short_brake_cnt_max)
+  {
+    short_brake_cnt[m] = short_brake_cnt_max;
+  }
+}
+
+inline void reset_short_brake(const int m)
+{
+  short_brake_cnt[m] = 0;
+}
+
 inline int16_t sin_(int32_t x)
 {
   if (x < 1024)
@@ -256,17 +279,16 @@ void FIQ_PWMPeriod()
   if (motor[0].error_state || motor[1].error_state)
   {
     // Short-mode brake
-    for (i = 0; i < 3 * 2; i++)
-    {
-      THEVA.MOTOR[i % 2].PWM[i / 2].H = PWM_resolution;
-      THEVA.MOTOR[i % 2].PWM[i / 2].L = PWM_resolution;
-    }
+    short_brake(0);
+    short_brake(1);
     init = 1;
     disabled = 1;
   }
   else if (init)
   {
     init = 0;
+    reset_short_brake(0);
+    reset_short_brake(1);
     return;
   }
 
@@ -380,11 +402,7 @@ void FIQ_PWMPeriod()
     {
       if (motor[j].servo_level == SERVO_LEVEL_STOP)
       {
-        for (i = 0; i < 3; i++)
-        {
-          THEVA.MOTOR[j].PWM[i].H = PWM_resolution;
-          THEVA.MOTOR[j].PWM[i].L = PWM_resolution;
-        }
+        short_brake(j);
       }
       else if (_abs(motor[j].ref.torque) < driver_state.zero_torque ||
                motor[j].servo_level == SERVO_LEVEL_OPENFREE)
@@ -430,11 +448,11 @@ void FIQ_PWMPeriod()
           (hall[i] & 0x07) == 0 ||
           halldiff == 3 || halldiff >= 5)
       {
-        //if( (hall[i] & 0x07) == ( HALL_U | HALL_V | HALL_W ) ) printf( "ENC error: 111\n\r" );
-        //if( (hall[i] & 0x07) == 0 ) printf( "ENC error: 000\n\r" );
-        //if( halldiff == 3 || halldiff >= 5 ) printf( "ENC error: %x->%x\n\r", _hall[i], hall[i] );
-        // ホール素子信号が全相1、全相0のとき
-        // ホース素子信号が2ビット以上変化したときはエラー
+        // if( (hall[i] & 0x07) == ( HALL_U | HALL_V | HALL_W ) ) printf( "ENC error: 111\n\r" );
+        // if( (hall[i] & 0x07) == 0 ) printf( "ENC error: 000\n\r" );
+        // if( halldiff == 3 || halldiff >= 5 ) printf( "ENC error: %x->%x\n\r", _hall[i], hall[i] );
+        //  ホール素子信号が全相1、全相0のとき
+        //  ホース素子信号が2ビット以上変化したときはエラー
 
         // Skip next one error to avoid counting another edge of this error.
         if (driver_state.error.hall[i] < 12)
