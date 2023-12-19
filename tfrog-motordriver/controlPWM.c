@@ -56,13 +56,12 @@ int32_t PWM_resolution = 0;
 int32_t PWM_thinning = 0;
 int32_t PWM_deadtime;
 int32_t PWM_cpms;
-int32_t brake_cnt_max;
 
 void FIQ_PWMPeriod() RAMFUNC;
 
 void soft_brake(const int m)
 {
-  if (brake_cnt_max == 0)
+  if (driver_state.brake_cnt_max == 0)
   {
     for (int8_t i = 0; i < 3; i++)
     {
@@ -72,16 +71,16 @@ void soft_brake(const int m)
     return;
   }
 
-  const int32_t pwm = PWM_resolution * motor[m].brake_cnt / brake_cnt_max;
+  const int32_t pwm = PWM_resolution * motor[m].brake_cnt / driver_state.brake_cnt_max;
   for (int8_t i = 0; i < 3; i++)
   {
     THEVA.MOTOR[m].PWM[i].H = PWM_resolution;
     THEVA.MOTOR[m].PWM[i].L = pwm;
   }
   motor[m].brake_cnt++;
-  if (motor[m].brake_cnt > brake_cnt_max)
+  if (motor[m].brake_cnt > driver_state.brake_cnt_max)
   {
-    motor[m].brake_cnt = brake_cnt_max;
+    motor[m].brake_cnt = driver_state.brake_cnt_max;
   }
 }
 
@@ -692,7 +691,7 @@ void controlPWM_init()
   THEVA.GENERAL.PWM.HALF_PERIOD = PWM_resolution;
   THEVA.GENERAL.PWM.DEADTIME = PWM_deadtime;
 
-  brake_cnt_max =
+  driver_state.brake_cnt_max =
       48000 * (int32_t)saved_param.soft_brake_ms /
       (PWM_resolution * 2 * (PWM_thinning + 1));
 
