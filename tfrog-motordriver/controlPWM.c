@@ -113,20 +113,8 @@ void controlPWM_config(int32_t i)
 {
   THEVA.MOTOR[i].INVERT = 0;
 
-  for (int j = 0; j < 3 * 2; j++)
-  {
-    if (brake_cnt_max == 0)
-    {
-      // Short-mode brake
-      THEVA.MOTOR[j % 2].PWM[j / 2].H = PWM_resolution;
-      THEVA.MOTOR[j % 2].PWM[j / 2].L = PWM_resolution;
-    }
-    else
-    {
-      THEVA.MOTOR[j % 2].PWM[j / 2].H = 0;
-      THEVA.MOTOR[j % 2].PWM[j / 2].L = 0;
-    }
-  }
+  soft_brake(0);
+  soft_brake(1);
 
   motor[i].ref.rate = 0;
 
@@ -708,20 +696,8 @@ void controlPWM_init()
       48000 * (int32_t)saved_param.soft_brake_ms /
       (PWM_resolution * 2 * (PWM_thinning + 1));
 
-  for (j = 0; j < 3 * 2; j++)
-  {
-    if (brake_cnt_max == 0)
-    {
-      // Short-mode brake
-      THEVA.MOTOR[j % 2].PWM[j / 2].H = PWM_resolution;
-      THEVA.MOTOR[j % 2].PWM[j / 2].L = PWM_resolution;
-    }
-    else
-    {
-      THEVA.MOTOR[j % 2].PWM[j / 2].H = 0;
-      THEVA.MOTOR[j % 2].PWM[j / 2].L = 0;
-    }
-  }
+  soft_brake(0);
+  soft_brake(1);
 
   driver_state.PWM_resolution = PWM_resolution;
 
