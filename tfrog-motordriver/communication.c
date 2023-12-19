@@ -424,7 +424,7 @@ int32_t data_send485(int16_t* cnt, int16_t* pwm, char* en, int16_t* analog, uint
   buf_len = add_crc_485(buf, buf_len);
   send_buf_pos485 += buf_len;
 
-  //printf("send485\n\r");
+  // printf("send485\n\r");
   if (rs485_timeout_wait(saved_param.id485 * 4 + 4, 32))
   {
     flush485();
@@ -511,7 +511,7 @@ int32_t int_send485to(const char from, const char to, const char param, const ch
   buf_len = add_crc_485(buf, buf_len);
   send_buf_pos485 += buf_len;
 
-  //printf("send485\n\r");
+  // printf("send485\n\r");
   if (rs485_timeout_wait(saved_param.id485 * 4 + 4, 32))
   {
     flush485();
@@ -749,7 +749,7 @@ static inline int32_t data_analyze_(
         {
           state = STATE_IDLE;
           receive_period = 1;
-          //printf( "not for me\n\r" );
+          // printf( "not for me\n\r" );
         }
         else if (verify_crc_485(line_full, len + 3))
         {
@@ -786,7 +786,7 @@ static inline int32_t data_analyze_(
 
             command_analyze(rawdata, data_len);
             driver_state.ifmode = fromto;
-            //printf("for me\n\r");
+            // printf("for me\n\r");
           }
           else if (from == -1)
           {
@@ -1236,6 +1236,13 @@ int32_t extended_command_analyze(char* data)
   else if (strstr(data, "$SETPWMDEADTIME") == data)
   {
     saved_param.PWM_deadtime = atoi(data + 15);
+
+    send(data);
+    send("\n00P\n\n");
+  }
+  else if (strstr(data, "$SETSOFTBRAKEMS") == data)
+  {
+    saved_param.soft_brake_ms = atoi(data + 15);
 
     send(data);
     send("\n00P\n\n");

@@ -93,6 +93,8 @@ typedef struct _MotorState
   YPSpur_servo_level servo_level;
   ErrorID error_state;
   FilterExp enc0_lpf;
+
+  int32_t brake_cnt;
 } MotorState;
 
 typedef struct _MotorParam

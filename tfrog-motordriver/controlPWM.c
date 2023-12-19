@@ -56,30 +56,26 @@ int32_t PWM_resolution = 0;
 int32_t PWM_thinning = 0;
 int32_t PWM_deadtime;
 int32_t PWM_cpms;
+int32_t brake_cnt_max;
 
 void FIQ_PWMPeriod() RAMFUNC;
 
-int32_t short_brake_cnt[2] = {0, 0};
-int32_t short_brake_cnt_max = 10000;
-
-inline void short_brake(const int m)
+inline void soft_brake(const int m)
 {
-  const int32_t pwm = PWM_resolution * short_brake_cnt[m] / short_brake_cnt_max;
+  const int32_t pwm = PWM_resolution * motor[m].brake_cnt / brake_cnt_max;
   for (int8_t i = 0; i < 3; i++)
   {
     THEVA.MOTOR[m].PWM[i].H = PWM_resolution;
     THEVA.MOTOR[m].PWM[i].L = pwm;
   }
-  short_brake_cnt[m]++;
-  if (short_brake_cnt[m] > short_brake_cnt_max)
+  if (motor[m].brake_cnt <= brake_cnt_max)
   {
-    short_brake_cnt[m] = short_brake_cnt_max;
+    motor[m].brake_cnt++;
   }
-}
-
-inline void reset_short_brake(const int m)
-{
-  short_brake_cnt[m] = 0;
+  else
+  {
+    motor[m].brake_cnt = brake_cnt_max;
+  }
 }
 
 inline int16_t sin_(int32_t x)
@@ -110,32 +106,20 @@ void controlPWM_config(int32_t i)
 {
   THEVA.MOTOR[i].INVERT = 0;
 
-  for (int8_t j = 0; j < 3; j++)
+  for (int j = 0; j < 3 * 2; j++)
   {
-    THEVA.MOTOR[i].PWM[j].H = 0;
-    THEVA.MOTOR[i].PWM[j].L = 0;
+    if (brake_cnt_max == 0)
+    {
+      // Short-mode brake
+      THEVA.MOTOR[j % 2].PWM[j / 2].H = PWM_resolution;
+      THEVA.MOTOR[j % 2].PWM[j / 2].L = PWM_resolution;
+    }
+    else
+    {
+      THEVA.MOTOR[j % 2].PWM[j / 2].H = 0;
+      THEVA.MOTOR[j % 2].PWM[j / 2].L = 0;
+    }
   }
-  /*
-  switch (motor_param[i].motor_type)
-  {
-    case MOTOR_TYPE_DC:
-      THEVA.MOTOR[i].PWM[0].H = PWM_resolution;
-      THEVA.MOTOR[i].PWM[1].H = 0;
-      THEVA.MOTOR[i].PWM[2].H = PWM_resolution;
-      THEVA.MOTOR[i].PWM[0].L = PWM_resolution;
-      THEVA.MOTOR[i].PWM[1].L = 0;
-      THEVA.MOTOR[i].PWM[2].L = PWM_resolution;
-      break;
-    case MOTOR_TYPE_AC3:
-      THEVA.MOTOR[i].PWM[0].H = PWM_resolution;
-      THEVA.MOTOR[i].PWM[1].H = PWM_resolution;
-      THEVA.MOTOR[i].PWM[2].H = PWM_resolution;
-      THEVA.MOTOR[i].PWM[0].L = PWM_resolution;
-      THEVA.MOTOR[i].PWM[1].L = PWM_resolution;
-      THEVA.MOTOR[i].PWM[2].L = PWM_resolution;
-      break;
-  }
-  */
 
   motor[i].ref.rate = 0;
 
@@ -286,16 +270,16 @@ void FIQ_PWMPeriod()
   if (motor[0].error_state || motor[1].error_state)
   {
     // Short-mode brake
-    short_brake(0);
-    short_brake(1);
+    soft_brake(0);
+    soft_brake(1);
     init = 1;
     disabled = 1;
   }
   else if (init)
   {
     init = 0;
-    reset_short_brake(0);
-    reset_short_brake(1);
+    motor[0].brake_cnt = 0;
+    motor[1].brake_cnt = 0;
     return;
   }
 
@@ -409,7 +393,7 @@ void FIQ_PWMPeriod()
     {
       if (motor[j].servo_level == SERVO_LEVEL_STOP)
       {
-        short_brake(j);
+        soft_brake(j);
       }
       else if (_abs(motor[j].ref.torque) < driver_state.zero_torque ||
                motor[j].servo_level == SERVO_LEVEL_OPENFREE)
@@ -713,11 +697,23 @@ void controlPWM_init()
   THEVA.GENERAL.PWM.HALF_PERIOD = PWM_resolution;
   THEVA.GENERAL.PWM.DEADTIME = PWM_deadtime;
 
-  // Short-mode brake
+  brake_cnt_max =
+      48000 * (int32_t)saved_param.soft_brake_ms /
+      (PWM_resolution * 2 * (PWM_thinning + 1));
+
   for (j = 0; j < 3 * 2; j++)
   {
-    THEVA.MOTOR[j % 2].PWM[j / 2].H = PWM_resolution;
-    THEVA.MOTOR[j % 2].PWM[j / 2].L = PWM_resolution;
+    if (brake_cnt_max == 0)
+    {
+      // Short-mode brake
+      THEVA.MOTOR[j % 2].PWM[j / 2].H = PWM_resolution;
+      THEVA.MOTOR[j % 2].PWM[j / 2].L = PWM_resolution;
+    }
+    else
+    {
+      THEVA.MOTOR[j % 2].PWM[j / 2].H = 0;
+      THEVA.MOTOR[j % 2].PWM[j / 2].L = 0;
+    }
   }
 
   driver_state.PWM_resolution = PWM_resolution;
