@@ -23,7 +23,7 @@ void NormalPowerMode(void);
 
 static const Pin pinsLED[] = {PIN_LED_0, PIN_LED_1, PIN_LED_2};
 
-#define LED_on(num) PIO_Clear(&pinsLED[num]);
+#define LED_on(num)  PIO_Clear(&pinsLED[num]);
 #define LED_off(num) PIO_Set(&pinsLED[num]);
 
 #endif

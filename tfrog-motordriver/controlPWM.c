@@ -430,11 +430,11 @@ void FIQ_PWMPeriod()
           (hall[i] & 0x07) == 0 ||
           halldiff == 3 || halldiff >= 5)
       {
-        //if( (hall[i] & 0x07) == ( HALL_U | HALL_V | HALL_W ) ) printf( "ENC error: 111\n\r" );
-        //if( (hall[i] & 0x07) == 0 ) printf( "ENC error: 000\n\r" );
-        //if( halldiff == 3 || halldiff >= 5 ) printf( "ENC error: %x->%x\n\r", _hall[i], hall[i] );
-        // ホール素子信号が全相1、全相0のとき
-        // ホース素子信号が2ビット以上変化したときはエラー
+        // if( (hall[i] & 0x07) == ( HALL_U | HALL_V | HALL_W ) ) printf( "ENC error: 111\n\r" );
+        // if( (hall[i] & 0x07) == 0 ) printf( "ENC error: 000\n\r" );
+        // if( halldiff == 3 || halldiff >= 5 ) printf( "ENC error: %x->%x\n\r", _hall[i], hall[i] );
+        //  ホール素子信号が全相1、全相0のとき
+        //  ホース素子信号が2ビット以上変化したときはエラー
 
         // Skip next one error to avoid counting another edge of this error.
         if (driver_state.error.hall[i] < 12)
