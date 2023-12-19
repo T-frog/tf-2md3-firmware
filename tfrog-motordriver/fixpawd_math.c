@@ -16,8 +16,8 @@
  */
 
 /**
-	@file fixpmath.c
-	@brief Fixed point value mathmatical functions
+  @file fixpmath.c
+  @brief Fixed point value mathmatical functions
  */
 
 #include <stdint.h>
@@ -32,9 +32,9 @@ fixp4 abs(fixp4 x)
 }
 
 /**
-	@brief Calculate sin function (fast ver, 0 <= x <= PI/4)
-	@param x [in] Input value
-	@return sin(x)
+  @brief Calculate sin function (fast ver, 0 <= x <= PI/4)
+  @param x [in] Input value
+  @return sin(x)
  */
 fixp4 fp4sinf(fixp4 x)
 {
@@ -56,9 +56,9 @@ fixp4 fp4sinf(fixp4 x)
 }
 
 /**
-	@brief Calculate sin function
-	@param x [in] Input value
-	@return sin(x)
+  @brief Calculate sin function
+  @param x [in] Input value
+  @return sin(x)
  */
 fixp4 fp4sin(fixp4 x)
 {
@@ -96,9 +96,9 @@ fixp4 fp4sin(fixp4 x)
 }
 
 /**
-	@brief Calculate cos function (fast ver, 0 <= x <= PI/4)
-	@param x [in] Input value
-	@return cos(x)
+  @brief Calculate cos function (fast ver, 0 <= x <= PI/4)
+  @param x [in] Input value
+  @return cos(x)
  */
 fixp4 fp4cosf(fixp4 x)
 {
@@ -118,9 +118,9 @@ fixp4 fp4cosf(fixp4 x)
 }
 
 /**
-	@brief Calculate cos function
-	@param x [in] Input value
-	@return cos(x)
+  @brief Calculate cos function
+  @param x [in] Input value
+  @return cos(x)
  */
 fixp4 fp4cos(fixp4 x)
 {
@@ -162,9 +162,9 @@ fixp4 fp4cos(fixp4 x)
 }
 
 /**
-	@brief Calculate arctan [5 digit .17bit]
-	@param x [in] Input value
-	@return atan(x)
+  @brief Calculate arctan [5 digit .17bit]
+  @param x [in] Input value
+  @return atan(x)
  */
 fixp4 fp4atan(fixp4 x)
 {
@@ -234,10 +234,10 @@ fixp4 fp4atan(fixp4 x)
 }
 
 /**
-	@brief Calculate arctan with quadrant info [5 digit .17bit]
-	@param y [in] Input value y
-	@param x [in] Input value x
-	@return atan2(y/x)
+  @brief Calculate arctan with quadrant info [5 digit .17bit]
+  @param y [in] Input value y
+  @param x [in] Input value x
+  @return atan2(y/x)
  */
 fixp4 fp4atan2(fixp4 y, fixp4 x)
 {
@@ -277,9 +277,9 @@ fixp4 fp4atan2(fixp4 y, fixp4 x)
 }
 
 /**
-	@brief Calculate sqrt function
-	@param x [in] Input value
-	@return sqrt(x)
+  @brief Calculate sqrt function
+  @param x [in] Input value
+  @return sqrt(x)
  */
 fixp4 fp4sqrt(fixp4 x)
 {
@@ -289,19 +289,19 @@ fixp4 fp4sqrt(fixp4 x)
   res = (fp4div(x, res) + res) >> 1;
 
   return res;
-  /* 
-	 * // Slow: fixp4 s, res; long long x1;
-	 * 
-	 * x1 = ( (long long) x ) << FP4_POINTBIT; s = 1 << FP4_POINTBIT; res = x; while( s < res ){ s = s << 1; res = res
-	 * >> 1; } do{ res = s; s = ( x1 / s + s ) >> 1; }while( s < res );
-	 * 
-	 * return s; */
+  /*
+   * // Slow: fixp4 s, res; long long x1;
+   *
+   * x1 = ( (long long) x ) << FP4_POINTBIT; s = 1 << FP4_POINTBIT; res = x; while( s < res ){ s = s << 1; res = res
+   * >> 1; } do{ res = s; s = ( x1 / s + s ) >> 1; }while( s < res );
+   *
+   * return s; */
 }
 
 /**
-	@brief Calculate sqrt function (fast ver)
-	@param x [in] Input value
-	@return sqrt(x)
+  @brief Calculate sqrt function (fast ver)
+  @param x [in] Input value
+  @return sqrt(x)
  */
 fixp4 fp4sqrtf(fixp4 x)
 {
@@ -309,9 +309,9 @@ fixp4 fp4sqrtf(fixp4 x)
 }
 
 /**
-	@brief Calculate 1/sqrt function
-	@param x [in] Input value
-	@return 1/sqrt(x)
+  @brief Calculate 1/sqrt function
+  @param x [in] Input value
+  @return 1/sqrt(x)
  */
 fixp4 fp4sqrtinv(fixp4 x)
 {
@@ -383,9 +383,9 @@ fixp4 fp4sqrtinv(fixp4 x)
     res = fp4_sqrt[32 - FP4_POINTBIT];
   else
     return 0;
-  /* 
-	 * // 'if' lines mean: for( i = 30; i >= 0; i -- ){ if( x & ( 1 << i ) ){ res = fp4_sqrt[ 32 - FP4_POINTBIT + i ];
-	 * break; } } */
+  /*
+   * // 'if' lines mean: for( i = 30; i >= 0; i -- ){ if( x & ( 1 << i ) ){ res = fp4_sqrt[ 32 - FP4_POINTBIT + i ];
+   * break; } } */
   do
   {
     h = FP4_ONE - (((((long long)x * res) >> FP4_POINTBIT) * res) >> FP4_POINTBIT);
@@ -407,9 +407,9 @@ fixp4 fp4sqrtinv(fixp4 x)
 }
 
 /**
-	@brief Calculate log2 function [4 digit .17bit]
-	@param x [in] Input value
-	@return log2(x)
+  @brief Calculate log2 function [4 digit .17bit]
+  @param x [in] Input value
+  @return log2(x)
  */
 fixp4 fp4log2(fixp4 x)
 {
@@ -447,9 +447,9 @@ fixp4 fp4log2(fixp4 x)
 }
 
 /**
-	@brief Calculate log2 function (fast ver) [2 digit .17bit]
-	@param x [in] Input value
-	@return log2(x)
+  @brief Calculate log2 function (fast ver) [2 digit .17bit]
+  @param x [in] Input value
+  @return log2(x)
  */
 fixp4 fp4log2f(fixp4 x)
 {
@@ -487,9 +487,9 @@ fixp4 fp4log2f(fixp4 x)
 }
 
 /**
-	@brief Calculate ln function
-	@param x [in] Input value
-	@return ln(x)
+  @brief Calculate ln function
+  @param x [in] Input value
+  @return ln(x)
  */
 fixp4 fp4ln(fixp4 x)
 {
@@ -497,9 +497,9 @@ fixp4 fp4ln(fixp4 x)
 }
 
 /**
-	@brief Calculate log function
-	@param x [in] Input value
-	@return log(x)
+  @brief Calculate log function
+  @param x [in] Input value
+  @return log(x)
  */
 fixp4 fp4log(fixp4 x)
 {
@@ -507,10 +507,10 @@ fixp4 fp4log(fixp4 x)
 }
 
 /**
-	@brief Calculate logn function
-	@param x [in] Input value
-	@param n [in] Base value
-	@return log(x)
+  @brief Calculate logn function
+  @param x [in] Input value
+  @param n [in] Base value
+  @return log(x)
  */
 fixp4 fp4logn(fixp4 x, fixp4 n)
 {
@@ -518,9 +518,9 @@ fixp4 fp4logn(fixp4 x, fixp4 n)
 }
 
 /**
-	@brief Calculate ln function (fast ver)
-	@param x [in] Input value
-	@return ln(x)
+  @brief Calculate ln function (fast ver)
+  @param x [in] Input value
+  @return ln(x)
  */
 fixp4 fp4lnf(fixp4 x)
 {
@@ -528,9 +528,9 @@ fixp4 fp4lnf(fixp4 x)
 }
 
 /**
-	@brief Calculate log function (fast ver)
-	@param x [in] Input value
-	@return log(x)
+  @brief Calculate log function (fast ver)
+  @param x [in] Input value
+  @return log(x)
  */
 fixp4 fp4logf(fixp4 x)
 {
@@ -538,10 +538,10 @@ fixp4 fp4logf(fixp4 x)
 }
 
 /**
-	@brief Calculate logn function (fast ver)
-	@param x [in] Input value
-	@param n [in] Base value
-	@return log(x)
+  @brief Calculate logn function (fast ver)
+  @param x [in] Input value
+  @param n [in] Base value
+  @return log(x)
  */
 fixp4 fp4lognf(fixp4 x, fixp4 n)
 {
@@ -549,9 +549,9 @@ fixp4 fp4lognf(fixp4 x, fixp4 n)
 }
 
 /**
-	@brief Calculate exp function
-	@param x [in] Input value
-	@return exp(x)
+  @brief Calculate exp function
+  @param x [in] Input value
+  @return exp(x)
  */
 fixp4 fp4exp(fixp4 x)
 {
@@ -585,8 +585,8 @@ fixp4 fp4exp(fixp4 x)
   if (x & (1 << (33 - 31 + FP4_POINTBIT + 2)))
     res = fp4mul(res, fp4_exp[35]);
 
-  /* 
-	 * // 'if' lines mean: for( i = 33; i < 36; i ++ ){ if( x & mask ) res = fp4mul( res, fp4_exp[i] ); mask <<= 1; } */
+  /*
+   * // 'if' lines mean: for( i = 33; i < 36; i ++ ){ if( x & mask ) res = fp4mul( res, fp4_exp[i] ); mask <<= 1; } */
 
   if (inv)
     return fp4div(FP4_ONE, res);
