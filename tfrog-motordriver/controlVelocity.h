@@ -93,6 +93,8 @@ typedef struct _MotorState
   YPSpur_servo_level servo_level;
   ErrorID error_state;
   FilterExp enc0_lpf;
+
+  int32_t brake_cnt;
 } MotorState;
 
 typedef struct _MotorParam
@@ -178,6 +180,7 @@ typedef struct _DriverState
   uint32_t ping_request;
   uint32_t odom_drop;
   int32_t vsrc_max;
+  int32_t brake_cnt_max;
 } DriverState;
 
 #ifdef static_assert

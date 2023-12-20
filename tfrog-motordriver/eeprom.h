@@ -41,6 +41,7 @@ typedef struct _Tfrog_EEPROM_data
   uint8_t rely_hall;
   uint8_t io_dir;
   uint8_t io_data;
+  uint16_t soft_brake_ms;
   char __endbyte;  // must be at the end of the struct to detect actual struct size
 } Tfrog_EEPROM_data;
 
@@ -63,6 +64,7 @@ typedef struct _Tfrog_EEPROM_data
         {"unknown"},                \
         1200,                       \
         20,                         \
+        0,                          \
         0,                          \
         0,                          \
         0,                          \

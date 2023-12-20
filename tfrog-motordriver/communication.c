@@ -144,6 +144,10 @@ int32_t atoi(char* buf)
     }
     buf++;
   }
+  if (buf[0] == '-')
+  {
+    ret = -ret;
+  }
   return ret;
 }
 
@@ -1045,6 +1049,9 @@ int32_t extended_command_analyze(char* data)
     send("; \nINITIODATA:");
     nhex(val, saved_param.io_data, 2);
     send(val);
+    send("; \nSOFTBRAKEMS:");
+    itoa10(val, saved_param.soft_brake_ms);
+    send(val);
     send("; \n\n");
   }
   else if (strstr(data, "$LOCKPARAM") == data)
@@ -1239,6 +1246,21 @@ int32_t extended_command_analyze(char* data)
 
     send(data);
     send("\n00P\n\n");
+  }
+  else if (strstr(data, "$SETSOFTBRAKEMS") == data)
+  {
+    const int32_t v = atoi(data + 15);
+    if (v < 0 || v > 10000)
+    {
+      send(data);
+      send("\n01Q\nOut of range\n\n");
+    }
+    else
+    {
+      saved_param.soft_brake_ms = v;
+      send(data);
+      send("\n00P\n\n");
+    }
   }
   else if (strstr(data, "$SETBUZZERLEVEL") == data)
   {
