@@ -422,6 +422,24 @@ void FIQ_PWMPeriod()
       char dir;
       uint16_t halldiff;
 
+      if ((hall[i] & 0x07) == (HALL_U | HALL_V | HALL_W) ||
+          (hall[i] & 0x07) == 0)
+      {
+        //  ホール素子信号が全相1、全相0のときはエラー
+
+        // Stop motor control if static hall signal error is continued for more than 2 PWM cycles.
+        if (driver_state.error.hall[i] < 12)
+        {
+          driver_state.error.hall[i] += 6;
+        }
+        if (driver_state.error.hall[i] >= 12)
+        {
+          motor[i].error_state |= ERROR_HALL_SEQ;
+          printf("PWM:static hall err (%x)\n\r", hall[i]);
+        }
+        continue;
+      }
+
       u = v = w = 0;
       halldiff = (hall[i] ^ _hall[i]) & 0x07;
 
@@ -429,20 +447,15 @@ void FIQ_PWMPeriod()
         continue;
       dir = 0;
 
-      if ((hall[i] & 0x07) == (HALL_U | HALL_V | HALL_W) ||
-          (hall[i] & 0x07) == 0 ||
-          halldiff == 3 || halldiff >= 5)
+      if (halldiff == 3 || halldiff >= 5)
       {
-        // if( (hall[i] & 0x07) == ( HALL_U | HALL_V | HALL_W ) ) printf( "ENC error: 111\n\r" );
-        // if( (hall[i] & 0x07) == 0 ) printf( "ENC error: 000\n\r" );
-        // if( halldiff == 3 || halldiff >= 5 ) printf( "ENC error: %x->%x\n\r", _hall[i], hall[i] );
-        //  ホール素子信号が全相1、全相0のとき
         //  ホース素子信号が2ビット以上変化したときはエラー
 
         // Skip next one error to avoid counting another edge of this error.
         if (driver_state.error.hall[i] < 12)
+        {
           driver_state.error.hall[i] += 12;
-
+        }
         if (driver_state.error.hall[i] > 12)
         {
           // エラー検出後、1周以内に再度エラーがあれば停止
