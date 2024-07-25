@@ -422,11 +422,10 @@ void FIQ_PWMPeriod()
       char dir;
       uint16_t halldiff;
 
+      // ホール素子信号が全相1、全相0のときはエラー
       if ((hall[i] & 0x07) == (HALL_U | HALL_V | HALL_W) ||
           (hall[i] & 0x07) == 0)
       {
-        //  ホール素子信号が全相1、全相0のときはエラー
-
         // Stop motor control if static hall signal error is continued for more than 2 PWM cycles.
         if (driver_state.error.hall[i] < 12)
         {
@@ -447,10 +446,9 @@ void FIQ_PWMPeriod()
         continue;
       dir = 0;
 
+      // ホース素子信号が2ビット以上変化したときはエラー
       if (halldiff == 3 || halldiff >= 5)
       {
-        //  ホース素子信号が2ビット以上変化したときはエラー
-
         // Skip next one error to avoid counting another edge of this error.
         if (driver_state.error.hall[i] < 12)
         {
