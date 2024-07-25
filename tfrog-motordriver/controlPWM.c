@@ -426,12 +426,12 @@ void FIQ_PWMPeriod()
       if ((hall[i] & 0x07) == (HALL_U | HALL_V | HALL_W) ||
           (hall[i] & 0x07) == 0)
       {
-        // Stop motor control if static hall signal error is continued for more than 2 PWM cycles.
+        // Stop motor control if static hall signal error is continued for more than 3 PWM cycle interrups.
         if (driver_state.error.hall[i] < 12)
         {
           driver_state.error.hall[i] += 6;
         }
-        if (driver_state.error.hall[i] >= 12)
+        if (driver_state.error.hall[i] > 12)
         {
           motor[i].error_state |= ERROR_HALL_SEQ;
           printf("PWM:static hall err (%x)\n\r", hall[i]);
