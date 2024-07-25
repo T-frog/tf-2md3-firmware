@@ -427,7 +427,7 @@ void FIQ_PWMPeriod()
           (hall[i] & 0x07) == 0)
       {
         // Stop motor control if static hall signal error is continued for more than 3 PWM cycle interrups.
-        if (driver_state.error.hall[i] < 12)
+        if (driver_state.error.hall[i] <= 12)
         {
           driver_state.error.hall[i] += 6;
         }
@@ -450,7 +450,7 @@ void FIQ_PWMPeriod()
       if (halldiff == 3 || halldiff >= 5)
       {
         // Skip next one error to avoid counting another edge of this error.
-        if (driver_state.error.hall[i] < 12)
+        if (driver_state.error.hall[i] <= 12)
         {
           driver_state.error.hall[i] += 12;
         }
