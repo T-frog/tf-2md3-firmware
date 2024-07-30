@@ -433,8 +433,11 @@ void FIQ_PWMPeriod()
         }
         if (driver_state.error.hall[i] > 12)
         {
+          if ((motor[i].error_state & ERROR_HALL_SEQ) == 0)
+          {
+            printf("PWM:static hall err (%x)\n\r", hall[i]);
+          }
           motor[i].error_state |= ERROR_HALL_SEQ;
-          printf("PWM:static hall err (%x)\n\r", hall[i]);
         }
         continue;
       }
@@ -626,8 +629,11 @@ void FIQ_PWMPeriod()
           if (driver_state.error.hallenc[i] > 12)
           {
             // Enter error stop mode if another error occurs within one revolution
+            if ((motor[i].error_state & ERROR_HALL_ENC) == 0)
+            {
+              printf("PWM:enc-hall err (%ld)\n\r", err);
+            }
             motor[i].error_state |= ERROR_HALL_ENC;
-            printf("PWM:enc-hall err (%ld)\n\r", err);
           }
           // Don't apply erroneous absolute angle
           continue;
