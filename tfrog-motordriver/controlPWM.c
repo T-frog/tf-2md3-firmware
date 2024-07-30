@@ -623,7 +623,7 @@ void FIQ_PWMPeriod()
         if (_abs(err) > motor_param[i].enc_rev / 6)
         {
           // Skip next one error to avoid counting another edge of this error.
-          if (driver_state.error.hallenc[i] < 12)
+          if (driver_state.error.hallenc[i] <= 12)
             driver_state.error.hallenc[i] += 12;
 
           if (driver_state.error.hallenc[i] > 12)
