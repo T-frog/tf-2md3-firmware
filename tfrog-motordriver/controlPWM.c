@@ -422,6 +422,26 @@ void FIQ_PWMPeriod()
       char dir;
       uint16_t halldiff;
 
+      // ホール素子信号が全相1、全相0のときはエラー
+      if ((hall[i] & 0x07) == (HALL_U | HALL_V | HALL_W) ||
+          (hall[i] & 0x07) == 0)
+      {
+        // Stop motor control if static hall signal error is continued for more than 3 PWM cycle interrups.
+        if (driver_state.error.hall[i] <= 12)
+        {
+          driver_state.error.hall[i] += 6;
+        }
+        if (driver_state.error.hall[i] > 12)
+        {
+          if ((motor[i].error_state & ERROR_HALL_SEQ) == 0)
+          {
+            printf("PWM:static hall err (%x)\n\r", hall[i]);
+          }
+          motor[i].error_state |= ERROR_HALL_SEQ;
+        }
+        continue;
+      }
+
       u = v = w = 0;
       halldiff = (hall[i] ^ _hall[i]) & 0x07;
 
@@ -429,20 +449,14 @@ void FIQ_PWMPeriod()
         continue;
       dir = 0;
 
-      if ((hall[i] & 0x07) == (HALL_U | HALL_V | HALL_W) ||
-          (hall[i] & 0x07) == 0 ||
-          halldiff == 3 || halldiff >= 5)
+      // ホース素子信号が2ビット以上変化したときはエラー
+      if (halldiff == 3 || halldiff >= 5)
       {
-        // if( (hall[i] & 0x07) == ( HALL_U | HALL_V | HALL_W ) ) printf( "ENC error: 111\n\r" );
-        // if( (hall[i] & 0x07) == 0 ) printf( "ENC error: 000\n\r" );
-        // if( halldiff == 3 || halldiff >= 5 ) printf( "ENC error: %x->%x\n\r", _hall[i], hall[i] );
-        //  ホール素子信号が全相1、全相0のとき
-        //  ホース素子信号が2ビット以上変化したときはエラー
-
         // Skip next one error to avoid counting another edge of this error.
-        if (driver_state.error.hall[i] < 12)
+        if (driver_state.error.hall[i] <= 12)
+        {
           driver_state.error.hall[i] += 12;
-
+        }
         if (driver_state.error.hall[i] > 12)
         {
           // エラー検出後、1周以内に再度エラーがあれば停止
@@ -609,14 +623,17 @@ void FIQ_PWMPeriod()
         if (_abs(err) > motor_param[i].enc_rev / 6)
         {
           // Skip next one error to avoid counting another edge of this error.
-          if (driver_state.error.hallenc[i] < 12)
+          if (driver_state.error.hallenc[i] <= 12)
             driver_state.error.hallenc[i] += 12;
 
           if (driver_state.error.hallenc[i] > 12)
           {
             // Enter error stop mode if another error occurs within one revolution
+            if ((motor[i].error_state & ERROR_HALL_ENC) == 0)
+            {
+              printf("PWM:enc-hall err (%ld)\n\r", err);
+            }
             motor[i].error_state |= ERROR_HALL_ENC;
-            printf("PWM:enc-hall err (%ld)\n\r", err);
           }
           // Don't apply erroneous absolute angle
           continue;
