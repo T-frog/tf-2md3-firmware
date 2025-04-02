@@ -18,7 +18,7 @@ jobs:
       TOOLCHAIN_ARCHIVE: gcc-arm-none-eabi.tar.bz2
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Get tag
         if: github.event_name == 'release'
@@ -31,7 +31,7 @@ jobs:
           echo "TOOLCHAIN_URI_HASH=$(echo ${TOOLCHAIN_URI} | sha512sum -)" >> ${GITHUB_ENV}
 
       - name: Cache toolchain
-        uses: actions/cache@v2
+        uses: actions/cache@v4
         with:
           path: ~/toolchain
           key: toolchain-${{ env.TOOLCHAIN_URI_HASH }}
@@ -64,24 +64,16 @@ jobs:
 
       - name: Deploy rev4
         if: github.event_name == 'release'
-        uses: actions/upload-release-asset@v1
+        run: gh release upload ${{ github.event.release.tag_name }} ${{ env.RELEASE_FILENAME_R4 }} --clobber
+        working-directory: tfrog-motordriver/bin
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: tfrog-motordriver/bin/${{ env.RELEASE_FILENAME_R4 }}
-          asset_name: ${{ env.RELEASE_FILENAME_R4 }}
-          asset_content_type: application/octet-stream
       - name: Deploy rev6
         if: github.event_name == 'release'
-        uses: actions/upload-release-asset@v1
+        run: gh release upload ${{ github.event.release.tag_name }} ${{ env.RELEASE_FILENAME_R6 }} --clobber
+        working-directory: tfrog-motordriver/bin
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: tfrog-motordriver/bin/${{ env.RELEASE_FILENAME_R6 }}
-          asset_name: ${{ env.RELEASE_FILENAME_R6 }}
-          asset_content_type: application/octet-stream
 
       - name: Create license tarball
         run: |
@@ -90,12 +82,7 @@ jobs:
           cp LICENSE.at91lib licenses/tf-2md3-firmware/at91lib/
           tar czf licenses.tar.gz licenses
       - name: Upload license tarball
-        uses: actions/upload-release-asset@v1
+        run: gh release upload ${{ github.event.release.tag_name }} licenses.tar.gz --clobber
         if: github.event_name == 'release'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ./licenses.tar.gz
-          asset_name: licenses.tar.gz
-          asset_content_type: application/gzip
