@@ -1159,6 +1159,14 @@ int32_t extended_command_analyze(char* data)
       send(data);
       send("\n00P\n\n");
       flush();
+
+      // Wait 0.5s to avoid reset during USB communication
+      for (int i = 0; i < 5; i++)
+      {
+        AT91C_BASE_WDTC->WDTC_WDCR = 1 | 0xA5000000;
+        msleep(100);
+      }
+
       FLASHD_ClearGPNVM(2);
       AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST | AT91C_RSTC_PROCRST | AT91C_RSTC_PERRST;
       while (1)
