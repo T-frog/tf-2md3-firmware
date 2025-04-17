@@ -168,6 +168,7 @@ typedef struct _DriverState
     uint8_t low_voltage;
     uint8_t hall[2];
     uint8_t hallenc[2];
+    uint8_t hall_static[2];
   } error;
   enum
   {
