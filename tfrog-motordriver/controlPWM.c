@@ -427,11 +427,11 @@ void FIQ_PWMPeriod()
           (hall[i] & 0x07) == 0)
       {
         // Stop motor control if static hall signal error is continued for more than 3 PWM cycle interrups.
-        if (driver_state.error.hall[i] <= 12)
+        if (driver_state.error.hall_static[i] <= 3)
         {
-          driver_state.error.hall[i] += 6;
+          driver_state.error.hall_static[i]++;
         }
-        if (driver_state.error.hall[i] > 12)
+        if (driver_state.error.hall_static[i] > 3)
         {
           if ((motor[i].error_state & ERROR_HALL_SEQ) == 0)
           {
@@ -441,6 +441,7 @@ void FIQ_PWMPeriod()
         }
         continue;
       }
+      driver_state.error.hall_static[i] = 0;
 
       u = v = w = 0;
       halldiff = (hall[i] ^ _hall[i]) & 0x07;
