@@ -124,6 +124,9 @@ char connected = 0;
 
 // / List of pins that must be configured for use by the application.
 static const Pin pins[] = {
+    // PIN_PWM_ENABLE was originally intended to be a PWM output enable signal sent to FPGA.
+    // However, FPGA logic of TF-2MD3-R5/6 doesn't read this pin and also outputs a signal.
+    // PWM_ENABLE pin is currently unused and setup as an input.
     PIN_PWM_ENABLE,
     PIN_PCK_PCK1,
     PINS_USERIO,
@@ -140,9 +143,6 @@ static const Pin pinVer[] = {PIN_VERSION};
 
 // / VBus pin instance.
 static const Pin pinVbus = PIN_USB_VBUS;
-
-// / PWM Enable pin instance.
-const Pin pinPWMEnable = PIN_PWM_ENABLE;
 
 // / Buffer for storing incoming USB data.
 static uint8_t usbBuffer[DATABUFFERSIZE];
@@ -406,9 +406,6 @@ int main()
 
   // If they are present, configure Vbus & Wake-up pins
   PIO_InitializeInterrupts(0);
-
-  // Disable PWM Output
-  PIO_Set(&pinPWMEnable);
 
   printf("SRAM init\n\r");
   SRAM_Init();

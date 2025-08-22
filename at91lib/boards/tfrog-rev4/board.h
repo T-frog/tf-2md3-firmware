@@ -225,9 +225,9 @@
   }
 //------------------------------------------------------------------------------
 
-#define PIN_PWM_ENABLE                                                 \
-  {                                                                    \
-    1 << 16, AT91C_BASE_PIOC, AT91C_ID_PIOC, PIO_OUTPUT_1, PIO_DEFAULT \
+#define PIN_PWM_ENABLE                                             \
+  {                                                                \
+    1 << 16, AT91C_BASE_PIOC, AT91C_ID_PIOC, PIO_INPUT, PIO_PULLUP \
   }
 
 #define PIN_PWM_CYCLE                                              \
