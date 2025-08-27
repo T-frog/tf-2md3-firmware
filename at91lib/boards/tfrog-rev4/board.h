@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------------------------
- *         ATMEL Microcontroller Software Support 
+ *         ATMEL Microcontroller Software Support
  * ----------------------------------------------------------------------------
  * Copyright (c) 2008, Atmel Corporation
  *
@@ -154,94 +154,66 @@
 /// controller), and PINS_* for a list of Pin instances.
 ///
 
+// clang-format off
+
 /// DBGU pins (DTXD and DRXD) definitions.
-#define PINS_DBGU                                                         \
-  {                                                                       \
-    0x00000600, AT91C_BASE_PIOA, AT91C_ID_PIOA, PIO_PERIPH_A, PIO_DEFAULT \
-  }
+#define PINS_DBGU \
+  {0x00000600, AT91C_BASE_PIOA, AT91C_ID_PIOA, PIO_PERIPH_A, PIO_DEFAULT}
 
 /// LED #0 pin definition.
-#define PIN_LED_0                                                     \
-  {                                                                   \
-    1 << 8, AT91C_BASE_PIOA, AT91C_ID_PIOA, PIO_OUTPUT_1, PIO_DEFAULT \
-  }
+#define PIN_LED_0 \
+  {1 << 8, AT91C_BASE_PIOA, AT91C_ID_PIOA, PIO_OUTPUT_1, PIO_DEFAULT}
 /// LED #1 pin definition.
-#define PIN_LED_1                                                      \
-  {                                                                    \
-    1 << 31, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_OUTPUT_1, PIO_DEFAULT \
-  }
+#define PIN_LED_1 \
+  {1 << 31, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_OUTPUT_1, PIO_DEFAULT}
 /// LED #2 pin definition.
-#define PIN_LED_2                                                      \
-  {                                                                    \
-    1 << 30, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_OUTPUT_1, PIO_DEFAULT \
-  }
+#define PIN_LED_2 \
+  {1 << 30, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_OUTPUT_1, PIO_DEFAULT}
 /// List of all LEDs pin definitions.
 #define PINS_LEDS PIN_LED_0, PIN_LED_1, PIN_LED_2
 
 /// ADC_AD0 pin definition.
-#define PIN_ADC_ADC0                                               \
-  {                                                                \
-    1 << 17, AT91C_BASE_PIOA, AT91C_ID_PIOA, PIO_INPUT, PIO_PULLUP \
-  }
+#define PIN_ADC_ADC0 \
+  {1 << 17, AT91C_BASE_PIOA, AT91C_ID_PIOA, PIO_INPUT, PIO_PULLUP}
 /// ADC_AD1 pin definition.
-#define PIN_ADC_ADC1                                               \
-  {                                                                \
-    1 << 18, AT91C_BASE_PIOA, AT91C_ID_PIOA, PIO_INPUT, PIO_PULLUP \
-  }
+#define PIN_ADC_ADC1 \
+  {1 << 18, AT91C_BASE_PIOA, AT91C_ID_PIOA, PIO_INPUT, PIO_PULLUP}
 /// ADC_AD2 pin definition.
-#define PIN_ADC_ADC2                                               \
-  {                                                                \
-    1 << 19, AT91C_BASE_PIOA, AT91C_ID_PIOA, PIO_INPUT, PIO_PULLUP \
-  }
+#define PIN_ADC_ADC2 \
+  {1 << 19, AT91C_BASE_PIOA, AT91C_ID_PIOA, PIO_INPUT, PIO_PULLUP}
 /// ADC_AD3 pin definition.
-#define PIN_ADC_ADC3                                               \
-  {                                                                \
-    1 << 20, AT91C_BASE_PIOA, AT91C_ID_PIOA, PIO_INPUT, PIO_PULLUP \
-  }
+#define PIN_ADC_ADC3 \
+  {1 << 20, AT91C_BASE_PIOA, AT91C_ID_PIOA, PIO_INPUT, PIO_PULLUP}
 /// Pins ADC
 #define PINS_ADC PIN_ADC_ADC0, PIN_ADC_ADC1, PIN_ADC_ADC2, PIN_ADC_ADC3
 
 /// USB VBus monitoring pin definition.
-#define PIN_USB_VBUS                                               \
-  {                                                                \
-    1 << 19, AT91C_BASE_PIOC, AT91C_ID_PIOC, PIO_INPUT, PIO_PULLUP \
-  }
+#define PIN_USB_VBUS \
+  {1 << 19, AT91C_BASE_PIOC, AT91C_ID_PIOC, PIO_INPUT, PIO_PULLUP}
 
-#define PINS_SRAM                                                              \
-  {0x000000FE, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_PERIPH_B, PIO_DEFAULT},     \
-      {0x0000FFFF, AT91C_BASE_PIOC, AT91C_ID_PIOC, PIO_PERIPH_A, PIO_DEFAULT}, \
-  {                                                                            \
-    0x00E00000, AT91C_BASE_PIOC, AT91C_ID_PIOC, PIO_PERIPH_B, PIO_DEFAULT      \
-  }
+#define PINS_SRAM \
+  {0x000000FE, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_PERIPH_B, PIO_DEFAULT}, \
+  {0x0000FFFF, AT91C_BASE_PIOC, AT91C_ID_PIOC, PIO_PERIPH_A, PIO_DEFAULT}, \
+  {0x00E00000, AT91C_BASE_PIOC, AT91C_ID_PIOC, PIO_PERIPH_B, PIO_DEFAULT}
 
-#define PINS_USERIO                                                   \
-  {                                                                   \
-    0x0021C701, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_INPUT, PIO_PULLUP \
-  }
+#define PINS_USERIO \
+  {0x0021C701, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_INPUT, PIO_PULLUP}
 
-#define PINS_RS485                                                      \
-  {                                                                     \
-    0x000000E0, AT91C_BASE_PIOA, AT91C_ID_US0, PIO_PERIPH_A, PIO_PULLUP \
-  }
+#define PINS_RS485 \
+  {0x000000E0, AT91C_BASE_PIOA, AT91C_ID_US0, PIO_PERIPH_A, PIO_PULLUP}
+
+#define PIN_PWM_ENABLE \
+  {1 << 16, AT91C_BASE_PIOC, AT91C_ID_PIOC, PIO_INPUT, PIO_PULLUP}
+
+#define PIN_PWM_CYCLE \
+  {1 << 19, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_INPUT, PIO_PULLUP}
+#define PIN_PWM_CYCLE2 \
+  {1 << 20, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_PERIPH_A, PIO_PULLUP}
+#define PIN_PCK_PCK1 \
+  {1 << 17, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_PERIPH_A, PIO_DEFAULT}
+
+// clang-format off
 //------------------------------------------------------------------------------
-
-#define PIN_PWM_ENABLE                                             \
-  {                                                                \
-    1 << 16, AT91C_BASE_PIOC, AT91C_ID_PIOC, PIO_INPUT, PIO_PULLUP \
-  }
-
-#define PIN_PWM_CYCLE                                              \
-  {                                                                \
-    1 << 19, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_INPUT, PIO_PULLUP \
-  }
-#define PIN_PWM_CYCLE2                                                \
-  {                                                                   \
-    1 << 20, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_PERIPH_A, PIO_PULLUP \
-  }
-#define PIN_PCK_PCK1                                                   \
-  {                                                                    \
-    1 << 17, AT91C_BASE_PIOB, AT91C_ID_PIOB, PIO_PERIPH_A, PIO_DEFAULT \
-  }
 
 #define RAMFUNC __attribute__((long_call, section(".ramfunc")))
 
@@ -249,5 +221,4 @@
 
 #define VSRC_DIV 10 / 84
 
-#endif  //#ifndef BOARD_H
-
+#endif  // BOARD_H
