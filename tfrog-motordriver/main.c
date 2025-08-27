@@ -419,17 +419,6 @@ int main()
   {
     volatile int32_t i;
 
-#ifdef PINS_CLEAR
-    static const Pin pinsClear[] = {PINS_CLEAR};
-    static const Pin pinsSet[] = {PINS_SET};
-
-    AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDDIS;
-    PIO_Configure(pinsClear, PIO_LISTSIZE(pinsClear));
-    for (i = 0; i < 30000; i++)
-      ;
-    PIO_Configure(pinsSet, PIO_LISTSIZE(pinsSet));
-#endif
-
     printf("Invalid FPGA %u !\n\r", THEVA.GENERAL.ID);
     for (i = 0; i < 30000; i++)
       ;
@@ -437,6 +426,19 @@ int main()
 
     if (err_cnt > 2)
     {
+#ifdef PINS_CLEAR
+      // FPGA configuration might not be loaded properly.
+      // Apply GND to all FPGA input pins.
+      static const Pin pinsClear[] = {PINS_CLEAR};
+      static const Pin pinsSet[] = {PINS_SET};
+
+      AT91C_BASE_WDTC->WDTC_WDMR = AT91C_WDTC_WDDIS;
+      PIO_Configure(pinsClear, PIO_LISTSIZE(pinsClear));
+      for (i = 0; i < 30000; i++)
+        ;
+      PIO_Configure(pinsSet, PIO_LISTSIZE(pinsSet));
+#endif
+
       AT91C_BASE_RSTC->RSTC_RCR = 0xA5000000 | AT91C_RSTC_EXTRST | AT91C_RSTC_PROCRST | AT91C_RSTC_PERRST;
       while (1)
         ;
