@@ -247,5 +247,4 @@
 #define VSRC_DIV    10 / 130
 #define VSRC_CONV_B 25 / 13  //(10*125)/(130*5)
 
-#endif  // #ifndef BOARD_H
-
+#endif  // BOARD_H

@@ -221,5 +221,4 @@
 
 #define VSRC_DIV 10 / 84
 
-#endif  //#ifndef BOARD_H
-
+#endif  // BOARD_H
