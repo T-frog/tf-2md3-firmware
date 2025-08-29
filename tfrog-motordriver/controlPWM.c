@@ -40,9 +40,6 @@
 
 static const Pin pinPWMCycle2 = PIN_PWM_CYCLE2;
 
-// / PWM Enable pin instance.
-static const Pin pinPWMEnable = PIN_PWM_ENABLE;
-
 #define SinTB_2PI  4096
 #define AtanTB_LEN 512
 
@@ -727,5 +724,4 @@ void controlPWM_init()
 
   THEVA.GENERAL.PWM.COUNT_ENABLE = 1;
   THEVA.GENERAL.OUTPUT_ENABLE = 1;
-  PIO_Clear(&pinPWMEnable);
 }
