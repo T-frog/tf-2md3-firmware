@@ -136,8 +136,8 @@ void controlPWM_config(int32_t i)
   // Interrupt interval should be less than 1%(= 3.6deg of phase error) of
   // hall signal edge interval.
   motor_param[i].vel_rely_hall =
-      (int64_t)motor_param[i].enc_rev * 48000 /
-      (2 * PWM_resolution * driver_param.control_cycle * 100);
+      motor_param[i].enc_rev * (48000 / (2 * 100)) /
+(PWM_resolution * driver_param.control_cycle);
 
   motor_param[i].enc_mul =
       (int32_t)((int64_t)SinTB_2PI * 0x40000 * motor_param[i].enc_denominator /
