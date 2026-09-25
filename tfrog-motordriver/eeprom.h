@@ -42,6 +42,7 @@ typedef struct _Tfrog_EEPROM_data
   uint8_t io_dir;
   uint8_t io_data;
   uint16_t soft_brake_ms;
+  uint8_t pulse_width_vel;
   char __endbyte;  // must be at the end of the struct to detect actual struct size
 } Tfrog_EEPROM_data;
 
@@ -55,23 +56,24 @@ typedef struct _Tfrog_EEPROM_data
 // Increment if MotorParam, DriverParam struct is changed.
 #define TFROG_EEPROM_PARAM_VERSION 0x0002
 
-#define TFROG_EEPROM_DEFAULT        \
-  {                                 \
-    TFROG_EEPROM_KEY,               \
-        TFROG_EEPROM_DATA_SIZE,     \
-        TFROG_EEPROM_PARAM_VERSION, \
-        0x01300000,                 \
-        {"unknown"},                \
-        1200,                       \
-        20,                         \
-        0,                          \
-        0,                          \
-        0,                          \
-        0,                          \
-        0,                          \
-        0,                          \
-        0,                          \
-        0,                          \
+#define TFROG_EEPROM_DEFAULT      \
+  {                               \
+      TFROG_EEPROM_KEY,           \
+      TFROG_EEPROM_DATA_SIZE,     \
+      TFROG_EEPROM_PARAM_VERSION, \
+      0x01300000,                 \
+      {"unknown"},                \
+      1200,                       \
+      20,                         \
+      0,                          \
+      0,                          \
+      0,                          \
+      0,                          \
+      0,                          \
+      0,                          \
+      0,                          \
+      0,                          \
+      7,                          \
   }
 
 #define TFROG_EEPROM_DATA_TEXT       0

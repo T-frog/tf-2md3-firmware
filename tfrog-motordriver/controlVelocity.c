@@ -284,7 +284,7 @@ void timer0_vel_calc()
     __vel = (int32_t)(enc[i] - __enc[i]);
     motor[i].vel1 = __vel;
 
-    if (_abs(__vel) > 6 || driver_state.fpga_version == 0)
+    if (_abs(__vel) >= saved_param.pulse_width_vel || driver_state.fpga_version == 0)
     {
       vel = __vel * 16;
       _spd_cnt[i] = 0;
