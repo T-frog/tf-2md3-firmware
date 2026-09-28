@@ -1290,7 +1290,7 @@ int32_t extended_command_analyze(char* data)
   }
   else if (strstr(data, "$SETPULSEWIDTHVEL") == data)
   {
-    int32_t v = hextoi(data + 17);
+    const int32_t v = atoi(data + 17);
     if (v < 0 || v > 32)
     {
       send(data);
