@@ -1291,7 +1291,7 @@ int32_t extended_command_analyze(char* data)
   else if (strstr(data, "$SETPULSEWIDTHVEL") == data)
   {
     const int32_t v = atoi(data + 17);
-    if (v < 0 || v > 32)
+    if (v < 0 || v > 7)
     {
       send(data);
       send("\n01Q\n\n");
