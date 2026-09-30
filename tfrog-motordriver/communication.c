@@ -1293,6 +1293,8 @@ int32_t extended_command_analyze(char* data)
     const int32_t v = atoi(data + 17);
     if (v < 0 || v > 7)
     {
+      // Resolution of the pulse-width-based and count-based velocities is the same at v=7.
+      // v>7 loses velocity resolution.
       send(data);
       send("\n01Q\n\n");
     }
