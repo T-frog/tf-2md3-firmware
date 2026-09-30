@@ -1052,6 +1052,9 @@ int32_t extended_command_analyze(char* data)
     send("; \nSOFTBRAKEMS:");
     itoa10(val, saved_param.soft_brake_ms);
     send(val);
+    send("; \nPULSEWIDTHVEL:");
+    itoa10(val, saved_param.pulse_width_vel);
+    send(val);
     send("; \n\n");
   }
   else if (strstr(data, "$LOCKPARAM") == data)
@@ -1284,6 +1287,24 @@ int32_t extended_command_analyze(char* data)
 
     send(data);
     send("\n00P\n\n");
+  }
+  else if (strstr(data, "$SETPULSEWIDTHVEL") == data)
+  {
+    const int32_t v = atoi(data + 17);
+    if (v < 0 || v > 7)
+    {
+      // Resolution of the pulse-width-based and count-based velocities is the same at v=7.
+      // v>7 loses velocity resolution.
+      send(data);
+      send("\n01Q\n\n");
+    }
+    else
+    {
+      saved_param.pulse_width_vel = v;
+
+      send(data);
+      send("\n00P\n\n");
+    }
   }
   else if (strstr(data, "$EEPROMSAVE") == data)
   {
